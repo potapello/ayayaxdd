@@ -672,7 +672,11 @@ function musicRollStart(time = 2) {
         musicRoll.play();
         //
         musicNormalVolume.move(0, time, easeInOutSine);
-        musicRollVolume.move(1, time, easeInOutSine);
+        musicRoll.onload = () => {
+            musicRollVolume.set(0);
+            musicRollVolume.move(1, time, easeInOutSine);
+            musicRoll.play()
+        };
         setTimeout(() => {
             musicNormal.pause();
             musicLite.name = trackname;
@@ -2285,7 +2289,8 @@ class imageFitFrame {
     }
     copy() {
         var iff = new imageFitFrame(this.image);
-        iff.fitsize = new Vector2().setv(this.fitsize);
+        iff.fitsize = new Vector2();
+        iff.fit();
         iff.ratio = Number(String(this.ratio));
         iff.offset.setv(this.offset);
         // iff.upscale.setv(this.upscale);
@@ -4237,7 +4242,7 @@ let wallpaper = new Image();
 let wlpsize = new Vector2();
 let parallaxSize = new Vector2();
 let parallaxOffset = new Vector2();
-let oldwallpaper = 'http://anime-zone.ru/inc/goods_wallpapers/lucky_star/lucky_star76.jpg';
+let oldwallpaper = 'https://mobimg.b-cdn.net/v3/fetch/d3/d3c75b8f4bcc1eee8767ff9d013fd679.jpeg?w=1470&r=0.5625';
 wallpaper.src = lsLoadString('wallpaper', oldwallpaper);
 wallpaper.onerror = () => {wallpaper.src = oldwallpaper};
 //
