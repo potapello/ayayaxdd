@@ -672,8 +672,7 @@ function musicRollStart(time = 2) {
         musicRoll.play();
         //
         musicNormalVolume.move(0, time, easeInOutSine);
-        musicRoll.onload = () => {
-            musicRollVolume.set(0);
+        musicRoll.oncanplay = () => {
             musicRollVolume.move(1, time, easeInOutSine);
             musicRoll.play()
         };
