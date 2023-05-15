@@ -1160,6 +1160,7 @@ function arrayAddNew(main, child) {
     };
     return temp
 };
+//
 function arrayANDCondition(array) {
     var summ = 0;
     for(i in array) {summ+=array[i]};
@@ -1170,6 +1171,12 @@ function arrayORCondition(array) {
     for(i in array) {summ+=array[i]};
     return summ > 0
 };
+function arrayImagesComplete(array) {
+    for(i in array) {
+        if(!array[i].complete) {return false}
+    }; return true
+}
+//
 function arrayShuffle(array) {
     let currentIndex = array.length, randomIndex;
     while (currentIndex != 0) {
@@ -2242,8 +2249,7 @@ let fitFrameBg = new Color(0, 0, 0, 0.8);
 let fitImageBorder = 4;
 let fitImageSquared = false;
 // for predict 404
-let imageNotFound = new Image();
-imageNotFound.src = 'images/notfound.jpg';
+let imageNotFound = invokeNewImage('images/notfound.jpg');
 function tryImage(image) {
     var error = true;
     try {
@@ -2254,8 +2260,9 @@ function tryImage(image) {
     return error
 };
 //
+let invokedImages = [];
 function invokeNewImage(src) {
-    var image = new Image(); image.src = src; return image
+    var image = new Image(); image.src = src; invokedImages.push(image); return image
 };
 //
 class imageFitFrame {
@@ -3214,7 +3221,7 @@ function screenLoading() {
         imageLoadProgress.shadow.x = imageLoadProgress.size.x;
         databaseShorter();
         //
-        sload.state = 'wait'
+        arrayImagesComplete(invokedImages) ? sload.state = 'wait' : false
     //
     } else if(sload.state === 'wait') {
         sload.alpha.update();
@@ -4230,7 +4237,7 @@ let wallpaper = new Image();
 let wlpsize = new Vector2();
 let parallaxSize = new Vector2();
 let parallaxOffset = new Vector2();
-let oldwallpaper = 'https://img.uquiz.com/content/images/quiz_share_images/1639866827.jpg';
+let oldwallpaper = 'http://anime-zone.ru/inc/goods_wallpapers/lucky_star/lucky_star76.jpg';
 wallpaper.src = lsLoadString('wallpaper', oldwallpaper);
 wallpaper.onerror = () => {wallpaper.src = oldwallpaper};
 //
