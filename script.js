@@ -2248,6 +2248,7 @@ let fitFrameSize = new Vector2(240);
 let fitFrameBg = new Color(0, 0, 0, 0.8);
 let fitImageBorder = 4;
 let fitImageSquared = false;
+let invokedImages = [];
 // for predict 404
 let imageNotFound = invokeNewImage('images/notfound.jpg');
 function tryImage(image) {
@@ -2260,7 +2261,6 @@ function tryImage(image) {
     return error
 };
 //
-let invokedImages = [];
 function invokeNewImage(src) {
     var image = new Image(); image.src = src; invokedImages.push(image); return image
 };
