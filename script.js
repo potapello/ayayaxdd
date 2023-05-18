@@ -4330,7 +4330,7 @@ function render() {
     developInfo();
     // title
     ctx.font = 'italic 12px Consolas'; ctx.fillStyle = '#fff';
-    ctx.fillText('ayayaxdd v0.72 beta', 2, cvssize.y-4);
+    ctx.fillText('ayayaxdd v0.74 beta', 2, cvssize.y-4);
     ctx.textAlign = 'end';
     ctx.fillText('created by potapello', cvssize.x-4, cvssize.y-4);
 };
