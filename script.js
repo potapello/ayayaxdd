@@ -22,23 +22,9 @@ function databaseShorter() {
 
 %%% ПОСЛЕД. АПДЕЙТЫ
 
-*** отдельный поток для ввода (хотя бы для скроллинга)
-
-*** сбор данных -> аниме всего, аниме по пресету, аниме на рулетке
-
-*** отображение информации о рейтинге
-
 *** скейл под разные разрешения экрана
 
-*** автооткрытие шикимори или первого доступного сурса после победы
-
-*** режим наложения заднего фона
-
-*** вывести медиа-файлы в облако и сделать подгрузку при ините (музыка уже в гитхабе)
-
 *** менеджер музыки
-
-*** глобальный оптимизон частей, которые долго думают
 
 */
 // @EAG FPS
@@ -569,28 +555,28 @@ let sound = {
     'prompt': new Audio('sounds/prompt.ogg'),
     'player': new Audio('sounds/player.ogg'),
 };
-let musicPrefix = 'https://raw.githubusercontent.com/potapello/ayayaxdd/master/audio/'
 let music = [
     //['src', rolltime],
-    [musicPrefix+'music1.ogg', 61, 'Kuhaku Gokko - Lil\'b'],
-    [musicPrefix+'music2.ogg', 42, 'Quinn Karter - Living in a Dream'],
-    [musicPrefix+'music3.ogg', 43, 'ITZY - Snowy'],
-    [musicPrefix+'music4.ogg', 0, 'Cagayake!GIRLS (from K-ON)'],
-    [musicPrefix+'music5.ogg', 35, 'bulow - Revolver'],
-    [musicPrefix+'music6.ogg', 47, 'Gawr Gura - REFLECT'],
-    [musicPrefix+'music7.ogg', 41, 'Ado - AntiSystem\'s'],
-    [musicPrefix+'music8.ogg', 44, 'Kenshi Yonezu - KICK BACK'],
-    [musicPrefix+'music9.ogg', 34, 'BABYMETAL - Divine Attack'],
+    ['audio/music1.ogg', 61, 'Kuhaku Gokko - Lil\'b'],
+    ['audio/music2.ogg', 42, 'Quinn Karter - Living in a Dream'],
+    ['audio/music3.ogg', 43, 'ITZY - Snowy'],
+    ['audio/music4.ogg', 0, 'Cagayake!GIRLS (from K-ON)'],
+    ['audio/music5.ogg', 35, 'bulow - Revolver'],
+    ['audio/music6.ogg', 47, 'Gawr Gura - REFLECT'],
+    ['audio/music7.ogg', 41, 'Ado - AntiSystem\'s'],
+    ['audio/music8.ogg', 44, 'Kenshi Yonezu - KICK BACK'],
+    ['audio/music9.ogg', 34, 'BABYMETAL - Divine Attack'],
     // BABYMETAL - Divine Attack
     // Kenshi Yonezu - KICK BACK
 ];
 let musicNormal = new Audio();
-musicNormal.oncanplay = () => {musicNormal.play()};
-let musicNormalVolume = new Vector1(0);
-let musicNormalLoop = false;
 let musicRoll = new Audio();
-musicRoll.oncanplay = () => {musicRoll.play()};
+let musicNormalVolume = new Vector1(0);
 let musicRollVolume = new Vector1(0);
+musicNormal.oncanplay = () => {musicNormal.play()};
+musicRoll.oncanplay = () => {musicRoll.play()};
+let musicNormalLoop = false;
+let musicNormalComplete = false;
 //
 // @EAG AUDIO METHODS
 //
@@ -616,6 +602,8 @@ function updateMusicCache() {
     musicRollVolume.update();
     musicNormal.volume = (pref.bgmusic / 100) * musicNormalVolume.get();
     musicRoll.volume = (pref.rollmusic / 100) * musicRollVolume.get();
+    // check
+    musicNormalComplete = String(musicNormal.duration) !== 'NaN';
     // лупим рандомим музычку
     if(musicNormal.currentTime >= musicNormal.duration - 2.1 && !musicNormalLoop) {
         musicNormalLoop = true;
@@ -672,10 +660,7 @@ function musicRollStart(time = 2) {
         musicRoll.play();
         //
         musicNormalVolume.move(0, time, easeInOutSine);
-        musicRoll.oncanplay = () => {
-            musicRollVolume.move(1, time, easeInOutSine);
-            musicRoll.play()
-        };
+        musicRollVolume.move(1, time, easeInOutSine);
         setTimeout(() => {
             musicNormal.pause();
             musicLite.name = trackname;
@@ -774,6 +759,7 @@ function prefSetValue(name, value) {
 function updatePreferences() {
     ctx.imageSmoothingEnabled = pref.imageSmoothing;
     ctx.imageSmoothingQuality = pref.imageQuality;
+    ctx.lineCap = 'round';
 };
 //
 // @EAG SAVELOAD DATA TYPES
@@ -1163,7 +1149,6 @@ function arrayAddNew(main, child) {
     };
     return temp
 };
-//
 function arrayANDCondition(array) {
     var summ = 0;
     for(i in array) {summ+=array[i]};
@@ -1174,12 +1159,6 @@ function arrayORCondition(array) {
     for(i in array) {summ+=array[i]};
     return summ > 0
 };
-function arrayImagesComplete(array) {
-    for(i in array) {
-        if(!array[i].complete) {return false}
-    }; return true
-}
-//
 function arrayShuffle(array) {
     let currentIndex = array.length, randomIndex;
     while (currentIndex != 0) {
@@ -1189,7 +1168,14 @@ function arrayShuffle(array) {
         array[randomIndex], array[currentIndex]];
     };
     return array
-  }
+};
+//
+function arrayCompleted(array) {
+    for(i in array) {
+        if(!array[i].complete) {return false}
+    };
+    return true
+};
 //
 // @EAG FILTER METHODS
 //
@@ -1709,6 +1695,13 @@ function transitionGradient(prog) {
     s.addColorStop(1, color1);
     //
     return s
+};
+//
+function rotatingArc(prog, radius, pos) {
+    var a = new Path2D();
+    var offs = Math.PI * 2 * prog;
+    a.arc(pos.x, pos.y, radius, offs, offs + Math.PI/2);
+    ctx.stroke(a)
 };
 //
 // @EAG SHAPED TEXTBUTTON
@@ -2251,7 +2244,7 @@ let fitFrameSize = new Vector2(240);
 let fitFrameBg = new Color(0, 0, 0, 0.8);
 let fitImageBorder = 4;
 let fitImageSquared = false;
-let invokedImages = [];
+let allInvokedImages = [];
 // for predict 404
 let imageNotFound = invokeNewImage('images/notfound.jpg');
 function tryImage(image) {
@@ -2265,7 +2258,9 @@ function tryImage(image) {
 };
 //
 function invokeNewImage(src) {
-    var image = new Image(); image.src = src; invokedImages.push(image); return image
+    var image = new Image(); image.src = src;
+    allInvokedImages.push(image);
+    return image
 };
 //
 class imageFitFrame {
@@ -2274,8 +2269,6 @@ class imageFitFrame {
     align = new Vector2(0.5);
     fitsize = null;
     offset = new Vector2();
-    // upscale = new Vector2();
-    // upoffset = new Vector2();
     bgColor = fitFrameBg;
     framehue = 0;
     ratio = 1;
@@ -2288,12 +2281,9 @@ class imageFitFrame {
     }
     copy() {
         var iff = new imageFitFrame(this.image);
-        iff.fitsize = new Vector2();
-        iff.fit();
+        iff.fitsize = new Vector2().setv(this.fitsize);
         iff.ratio = Number(String(this.ratio));
-        iff.offset.setv(this.offset);
-        // iff.upscale.setv(this.upscale);
-        // iff.upoffset.setv(this.upoffset);
+        iff.offset.setv(this.offset)
         return iff
     }
     gety() {return cvssize.y * (this.align.y * this.zoom) - this.image.naturalHeight * (this.align.y * this.zoom)}
@@ -2307,15 +2297,11 @@ class imageFitFrame {
             if(this.ratio < 1) {
                 // book ratio
                 this.fitsize = new Vector2(fitFrameSize.x * this.ratio, fitFrameSize.y);
-                this.offset = new Vector2((fitFrameSize.x - this.fitsize.x)/2, 0);
-                // this.upscale = new Vector2(this.image.naturalWidth);
-                // this.upoffset = new Vector2(0, (this.image.naturalHeight - this.image.naturalWidth)/2)
+                this.offset = new Vector2((fitFrameSize.x - this.fitsize.x)/2, 0)
             } else {
                 // album ratio
                 this.fitsize = new Vector2(fitFrameSize.x, fitFrameSize.y / this.ratio);
-                this.offset = new Vector2(0, (fitFrameSize.y - this.fitsize.y)/2);
-                // this.upscale = new Vector2(this.image.naturalHeight);
-                // this.upoffset = new Vector2((this.image.naturalWidth - this.image.naturalHeight)/2, 0)
+                this.offset = new Vector2(0, (fitFrameSize.y - this.fitsize.y)/2)
             }
         }
     }
@@ -2324,24 +2310,9 @@ class imageFitFrame {
         if(this.fitsize === null && this.image.complete) {this.fit()};
         // draw frame
         ctx.globalAlpha = this.alpha;
-        // if(!fitImageSquared) {
         var glal = globalAlign(this.align, this.fitsize.sumxy(fitImageBorder).multxy(this.zoom));
         drawImageSized(this.image, glal, this.fitsize.multxy(this.zoom));
         fillRectRoundedFrame(this.fitsize.multxy(this.zoom), glal, `hsl(${this.framehue}deg 100% 45%)`, fitImageBorder/2)
-        //
-    //     } else {
-    //         ctx.fillStyle = this.bgColor.getColor();
-    //         if(this.ratio !== 1) {
-    //             drawImagePart(this.image,
-    //                 this.upoffset, this.upscale,
-    //                 globalAlign(this.align, fitFrameSize.multv(new Vector2(this.zoom))), fitFrameSize.multv(new Vector2(this.zoom))
-    //                 )
-    //         };
-    //         fillRectFast(fitFrameSize.multv(new Vector2(this.zoom)), globalAlign(this.align, fitFrameSize.multv(new Vector2(this.zoom))));
-    //         drawImageSized(this.image, globalAlign(this.align, fitFrameSize.multv(new Vector2(this.zoom))).sumv(this.offset.multv(new Vector2(this.zoom))), this.fitsize.multv(new Vector2(this.zoom)));
-    //         fillRectRoundedFrame(fitFrameSize.multv(new Vector2(this.zoom)), globalAlign(this.align, fitFrameSize.multv(new Vector2(this.zoom))), `hsl(${this.framehue}deg 100% 45%)`, fitImageBorder/2);
-    //     }; 
-    //     ctx.globalAlpha = 1
     }
 };
 //
@@ -2555,18 +2526,15 @@ function clockwiseProgress(x) {
 };
 //
 function circleProgressBar(pos, progress, text, color = new Color()) {
-    var txt = color.alpha(1).gamma(80).getColor();
     var bg = color.light(50).getColor();
     var fg = color.getColor();
     //
-    ctx.beginPath();
-    ctx.arc(pos.x, pos.y, tInfo.radii-tinfBarSize/2, Math.PI*3/2, Math.PI*7/2);
-    ctx.lineWidth = tinfBarSize;
-    ctx.strokeStyle = bg; ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(pos.x, pos.y, tInfo.radii-tinfBarSize/2, Math.PI*3/2, clockwiseProgress(progress));
-    ctx.strokeStyle = fg; ctx.stroke();
-    ctx.fillStyle = txt;
+    var path = new Path2D();
+    path.arc(pos.x, pos.y, tInfo.radii-tinfBarSize/2, 0-Math.PI/2, Math.PI*3/2);
+    ctx.strokeStyle = bg; ctx.stroke(path);
+    path = new Path2D();
+    path.arc(pos.x, pos.y, tInfo.radii-tinfBarSize/2, Math.PI*3/2, clockwiseProgress(progress));
+    ctx.strokeStyle = fg; ctx.stroke(path);
     ctx.fillText(text, pos.x, pos.y+(ctx.measureText(text).actualBoundingBoxAscent/2), [tInfo.radii*1.75])
 };
 //
@@ -2610,6 +2578,9 @@ let tInfo = {
         fillText(tInfo.pos.sumxy(siteBoxSize/2, -tinfSpacing)  , 'Инфо', '#fff', 'bold 24px Segoe UI');
         // круги на полях
         ctx.font = `bold 32px Helvetica`;
+        ctx.fillStyle = '#fff';
+        ctx.lineWidth = tinfBarSize;
+        //
         circleProgressBar(
             tInfo.pos.sumxy(tinfSpacing).sumxy(tInfo.radii), 
             tInfo.episodes.get() / filterDefault.episodeMax, 
@@ -2649,13 +2620,30 @@ let buttonDoRoll = new TextButtonShaped(shapeRectRounded, 'Roll!', new Vector2(2
     colorMapMatrix(colorMapForeDefault),
     colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.25)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
 buttonDoRoll.onclick = () => {
-    playSound(sound['roll']);
-    roulette.doRoll(pref.rollTime, pref.rollSpeed);
-    srv.hideProgress.value = 0;
-    srv.hideProgress.move(1, srv.hideTime, easeInQuad);
-    srv.state = 'roll_start';
     rollBar.state = 'hide';
-    buttonDoRoll.state = 'unaval'
+    //
+    if(pref.rollNewTrack) {
+        buttonDoRoll.text = 'Wait';
+        musicRoll.oncanplay = () => {
+            playSound(sound['roll']);
+            roulette.doRoll(pref.rollTime, pref.rollSpeed);
+            srv.hideProgress.value = 0;
+            srv.hideProgress.move(1, srv.hideTime, easeInQuad);
+            srv.state = 'roll_start';
+            buttonDoRoll.state = 'unaval';
+            //
+            setTimeout(() => {buttonDoRoll.text = 'Roll!'}, 2000);
+            musicRoll.oncanplay = () => {musicRoll.play()}
+        }
+    } else {
+        playSound(sound['roll']);
+        roulette.doRoll(pref.rollTime, pref.rollSpeed);
+        srv.hideProgress.value = 0;
+        srv.hideProgress.move(1, srv.hideTime, easeInQuad);
+        srv.state = 'roll_start';
+        buttonDoRoll.state = 'unaval'
+    };
+    musicRollStart()
 };
 //
 let imageChangeFilter = invokeNewImage('images/filter.png');
@@ -2782,10 +2770,10 @@ let buttonNextTrack = new ImageButtonShaped(shapeRectRounded, mlcNextTrackImage,
 buttonNextTrack.onclick = () => {musicNormalNew(); playSound(sound['player'])};
 //
 let mlcMusicBar = new ShapedSelectBar(mlcBarSize, colorMatrix(`rgba(255,255,255,0.8)`), colorMatrix(`rgba(0,0,0,0.5)`));
-mlcMusicBar.onset = (value) => {musicNormal.currentTime = value};
+mlcMusicBar.onset = (value) => {if(musicNormalComplete) {musicNormal.currentTime = value}};
 mlcMusicBar.onhover = (value) => {
     ctx.fillStyle = '#fff'; ctx.textAlign = 'end'; ctx.font = 'bold 12px Consolas';
-    ctx.fillText(timeStringify(value), mouse.pos.x-2, mlcMusicBar.pos.y+mlcBarSize.y+12)
+    ctx.fillText(timeStringify(musicNormalComplete ? value : 0), mouse.pos.x-2, mlcMusicBar.pos.y+mlcBarSize.y+12)
 };
 //
 let musicLite = {
@@ -2794,7 +2782,8 @@ let musicLite = {
     size: new Vector2(mlcButtonSize*2 + mlcSpacing*2 + mlcBarSize.x, mlcButtonSize),
     spacing: 5,
     //
-    dur: '',
+    dur: 0,
+    load: 0, loada: 0,
     name: '', old: '',
     //
     draw: () => {
@@ -2833,9 +2822,18 @@ let musicLite = {
         ctx.fillText(musicLite.name, musicLite.pos.x + mlcButtonSize + mlcSpacing*2, musicLite.pos.y + 20);
         //
         ctx.textAlign = 'end';
-        String(musicNormal.duration) === 'NaN' ? null : musicLite.dur = musicNormal.duration;
-        ctx.fillText(`${timeStringify(musicNormal.currentTime)} - ${timeStringify(musicLite.dur)}`, 
-            musicLite.pos.x + mlcButtonSize + mlcBarSize.x, musicLite.pos.y + 20)
+        musicLite.dur = musicNormalComplete ? musicNormal.duration : 0;
+        ctx.fillText(`${timeStringify(musicNormal.currentTime)} - ${timeStringify(musicLite.dur)}`,
+        musicLite.pos.x + mlcButtonSize + mlcBarSize.x, musicLite.pos.y + 20);
+        // load anim
+        if(!musicNormalComplete) {
+            musicLite.loada += musicLite.loada < 1 ? deltaTime/1000 : null;
+            musicLite.load >= 1 ? musicLite.load = 0 : musicLite.load += deltaTime/1000; 
+            ctx.lineWidth = 6; ctx.strokeStyle = `rgba(255,255,255,${Math.norma(musicLite.loada-0.25)})`;
+            rotatingArc(musicLite.load, 18, musicLite.pos.sumxy(mlcButtonSize + mlcSpacing + mlcBarSize.x/2, mlcButtonSize/2))
+        } else {
+            musicLite.loada = 0
+        }
     },
 };
 //
@@ -2923,9 +2921,7 @@ let roulette = {
         roulette.speedMax = speed * (1 + (Math.random() * roulette.randomizer) - roulette.randomizer/2);
         roulette.catchWinner = true;
         //
-        localStorage.removeItem(savePrefix+'roulette.winner');
-        //
-        musicRollStart()
+        localStorage.removeItem(savePrefix+'roulette.winner')
     },
     draw: () => {
         // обновляем
@@ -3213,7 +3209,7 @@ let firstMouseEvent = false;
 let dynamicBgcolor = colorMatrix(sload.bgcolor).alpha(0);
 let staticBgcolor = '#000';
 let imageLoadProgress = new TextBox(globalAlign(new Vector2(0.5, 0.3)), new Vector2(400));
-let loadImagesBar = `rgba(15,15,80,1)#rgba(100,100,255,1)#rgba(0,0,0,1)#rgba(0,0,0,1)`;
+let loadImagesBar = `rgba(255,255,255,0.2)#rgba(255,255,255,1)#rgba(0,0,0,1)#rgba(0,0,0,1)`;
 //
 function screenLoading() {
     fillRect(cvssize, globalAlign(new Vector2(0.5), cvssize), dynamicBgcolor.getColor());
@@ -3225,7 +3221,7 @@ function screenLoading() {
         imageLoadProgress.shadow.x = imageLoadProgress.size.x;
         databaseShorter();
         //
-        arrayImagesComplete(invokedImages) ? sload.state = 'wait' : false
+        sload.state = 'wait'
     //
     } else if(sload.state === 'wait') {
         sload.alpha.update();
@@ -3239,7 +3235,8 @@ function screenLoading() {
             roulette.zoomMult = 0;
             roulette.addAlign = new Vector2(0),
             roulette.addAlign = srv.rhAlign.get();
-            sload.state = 'demo';
+            //
+            if(arrayCompleted(allInvokedImages)) {sload.state = 'demo'}
         }
     //
     } else if(sload.state === 'demo') {
@@ -4241,7 +4238,7 @@ let wallpaper = new Image();
 let wlpsize = new Vector2();
 let parallaxSize = new Vector2();
 let parallaxOffset = new Vector2();
-let oldwallpaper = 'https://mobimg.b-cdn.net/v3/fetch/d3/d3c75b8f4bcc1eee8767ff9d013fd679.jpeg?w=1470&r=0.5625';
+let oldwallpaper = 'https://img.uquiz.com/content/images/quiz_share_images/1639866827.jpg';
 wallpaper.src = lsLoadString('wallpaper', oldwallpaper);
 wallpaper.onerror = () => {wallpaper.src = oldwallpaper};
 //
