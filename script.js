@@ -558,16 +558,30 @@ let sound = {
 let music = [
     //['src', rolltime],
     ['audio/music1.ogg', 61, 'Kuhaku Gokko - Lil\'b'],
-    ['audio/music2.ogg', 42, 'Quinn Karter - Living in a Dream'],
-    ['audio/music3.ogg', 43, 'ITZY - Snowy'],
-    ['audio/music4.ogg', 0, 'Cagayake!GIRLS (from K-ON)'],
+    ['audio/music2.ogg', 49, 'Miku Sawai - Gomen ne, Iiko ja Irarenai'],
+    ['audio/music3.ogg', 17, 'DUSTCELL - Narazumono'],
+    ['audio/music4.ogg', 0, 'Cagayake! - GIRLS'],
     ['audio/music5.ogg', 35, 'bulow - Revolver'],
-    ['audio/music6.ogg', 47, 'Gawr Gura - REFLECT'],
+    ['audio/music6.ogg', 26, 'Giga (feat. KAFU) - CH4NGE'],
     ['audio/music7.ogg', 41, 'Ado - AntiSystem\'s'],
     ['audio/music8.ogg', 44, 'Kenshi Yonezu - KICK BACK'],
     ['audio/music9.ogg', 34, 'BABYMETAL - Divine Attack'],
-    // BABYMETAL - Divine Attack
-    // Kenshi Yonezu - KICK BACK
+    ['audio/music10.ogg', 0, 'Uesaka Sumire - Inner Urge'],
+    ['audio/music11.ogg', 47.5, 'Kanako Itou - Fatima'],
+    ['audio/music12.ogg', 36, 'Kanako Itou - Hacking to the Gate'],
+    ['audio/music13.ogg', 0, 'ZOE, Jododo - Lighting'],
+    ['audio/music14.ogg', 0, 'Ikimono Gakari - Blue Bird'],
+    ['audio/music15.ogg', 46, 'Uverworld - Touch off'],
+    ['audio/music16.ogg', 55, 'Masayuki Suzuki - Love Dramatic'],
+    ['audio/music17.ogg', 0, 'Takuma Terashima - Nameless story'],
+    ['audio/music18.ogg', 42, 'Konomi Suzuki - Redo'],
+    ['audio/music19.ogg', 34, 'Huwie Ishizaki - Wasuregataki'],
+    ['audio/music20.ogg', 49, 'yama - Shikisai'],
+    ['audio/music21.ogg', 27, 'Kessoku Band - Seishun Complex'],
+    // DELETED
+    // 'audio/music2.ogg', 42, 'Quinn Karter - Living in a Dream'
+    // 'audio/music3.ogg', 43, 'ITZY - Snowy'
+    // 'audio/music6.ogg', 47, 'Gawr Gura - REFLECT'
 ];
 let musicNormal = new Audio();
 let musicRoll = new Audio();
