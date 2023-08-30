@@ -29,15 +29,15 @@ let fpsFocusLast = Number();
 let fpsFocusSwitch = false;
 function workWithFPS() {
     // // limit fps, if no focus
-    if(fpsFocusSwitch) {
-        fpsFocusSwitch = false;
-        if(windowVisibility) {
-            lockFpsSwitch(0, false)
-        } else {
-            fpsFocusLast = Number(pref.framerate);
-            lockFpsSwitch(fpsFocusLimiter, false)
-        }
-    };
+    // if(fpsFocusSwitch) {
+    //     fpsFocusSwitch = false;
+    //     if(windowVisibility) {
+    //         lockFpsSwitch(0, false)
+    //     } else {
+    //         fpsFocusLast = Number(pref.framerate);
+    //         lockFpsSwitch(fpsFocusLimiter, false)
+    //     }
+    // };
     //
     deltaTime = performance.now() - oldTime;
     oldTime = performance.now();
@@ -492,7 +492,7 @@ function getMousewheel() {
     mouse.wheel = 0;
     if(a != 0) {if(a > 0) {a = 'btm'} else {a = 'top'}} else {a = 'idle'};
     wheelState = a;
-    updateEventThread(events.wheel, wheelState, mouse.wheel)
+    // updateEventThread(events.wheel, wheelState, mouse.wheel)
 };
 // mouse button events
 document.addEventListener('mousedown', (e) => {
@@ -1478,6 +1478,7 @@ let tagbase = {
 class Preset {
     constructor(name, includes=null, excludes=null, years=null, episodes=null, score=null, mult=1, others=null) {
         this.name = txtPreset(name);
+        this.tag = name;
         this.in = includes; this.ex = excludes;
         this.years = years; this.ep = episodes; 
         this.scoreAllow = false; this.score = score;
@@ -1754,7 +1755,7 @@ function filterModify(filter, mod) {
 };
 function filterPreset(preset = presetbase['Дефолтный']) {
     resetFilter();
-    presetSelected = preset.name;
+    presetSelected = preset.tag;
     filterDefault = filterModify(filterDefault, preset.addon());
     lsSaveObject('filterDefault', filterDefault)
 };
@@ -5898,7 +5899,7 @@ pref.lockfps ? lockFpsSwitch(pref.framerate) : lockFpsSwitch();
 //
 let devinfoValues = {
     width: 300,
-    height: 82,
+    height: 94,
     offset: 12,
     margin: 4,
     xanchor: 12,
@@ -5926,8 +5927,9 @@ function developInfo() {
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(4)), 'roulette: '+Math.floor(roulette.progress.get()*10)/10+'/'+(roulette.picsCount-1), '#ffc', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(5)), 'full: '+Math.floor(fullsize.x)+'x'+Math.floor(fullsize.y) + ', cvs: '+Math.floor(cvssize.x)+'x'+Math.floor(cvssize.y), '#ccf', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(6)), 'scale: '+floatNumber(cvsscale.get(), 2), '#cfc', 'bold 12px Consolas');
+        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(7)), 'touch-s: '+floatNumber(touchScroll, 1), '#cfc', 'bold 12px Consolas');
         //
-        graphFPS.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(7)), 3, 0);
+        graphFPS.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(8)), 3, 0);
         ctx.textAlign = 'start';
     } else if(pref.showFPS) {
         fillText(new Vector2(14, 30), 'FPS: '+FPS, '#fff', 'bold 16px Consolas');
