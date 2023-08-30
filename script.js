@@ -5947,7 +5947,7 @@ function render() {
     jikan._update();
     // draw
     wallpaperImage();
-    windowVisibility ? activeScreen() : false;
+    activeScreen();
     transitionScreen();
     hoverHint.draw();
     ctx.textAlign = 'start';
