@@ -29,15 +29,15 @@ let fpsFocusLast = Number();
 let fpsFocusSwitch = false;
 function workWithFPS() {
     // // limit fps, if no focus
-    // if(fpsFocusSwitch) {
-    //     fpsFocusSwitch = false;
-    //     if(windowVisibility) {
-    //         lockFpsSwitch(0, false)
-    //     } else {
-    //         fpsFocusLast = Number(pref.framerate);
-    //         lockFpsSwitch(fpsFocusLimiter, false)
-    //     }
-    // };
+    if(fpsFocusSwitch) {
+        fpsFocusSwitch = false;
+        if(windowVisibility) {
+            lockFpsSwitch(0, false)
+        } else {
+            fpsFocusLast = Number(pref.framerate);
+            lockFpsSwitch(fpsFocusLimiter, false)
+        }
+    };
     //
     deltaTime = performance.now() - oldTime;
     oldTime = performance.now();
@@ -5899,7 +5899,7 @@ pref.lockfps ? lockFpsSwitch(pref.framerate) : lockFpsSwitch();
 //
 let devinfoValues = {
     width: 300,
-    height: 94,
+    height: 82,
     offset: 12,
     margin: 4,
     xanchor: 12,
@@ -5926,10 +5926,8 @@ function developInfo() {
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(3)), 'memUsage/Total: ' + usage + ' / ' + total, '#fcc', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(4)), 'roulette: '+Math.floor(roulette.progress.get()*10)/10+'/'+(roulette.picsCount-1), '#ffc', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(5)), 'full: '+Math.floor(fullsize.x)+'x'+Math.floor(fullsize.y) + ', cvs: '+Math.floor(cvssize.x)+'x'+Math.floor(cvssize.y), '#ccf', 'bold 12px Consolas');
-        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(6)), 'scale: '+floatNumber(cvsscale.get(), 2), '#cfc', 'bold 12px Consolas');
-        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(7)), 'touch-s: '+floatNumber(touchScroll, 1), '#cfc', 'bold 12px Consolas');
-        //
-        graphFPS.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(8)), 3, 0);
+        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(6)), 'scale: '+floatNumber(cvsscale.get(), 2), '#cfc', 'bold 12px Consolas');        //
+        graphFPS.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(7)), 3, 0);
         ctx.textAlign = 'start';
     } else if(pref.showFPS) {
         fillText(new Vector2(14, 30), 'FPS: '+FPS, '#fff', 'bold 16px Consolas');
