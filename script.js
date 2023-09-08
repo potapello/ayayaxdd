@@ -2,8 +2,11 @@
 var ctx = cvs.getContext("2d");
 // focus stopper
 let windowVisibility = false;
+let onhideMusicPaused = false;
 window.onfocus = window.onpageshow = () => {
-    windowVisibility = true; fpsFocusSwitch = true
+    windowVisibility = true; fpsFocusSwitch = true;
+    //
+    if(onhideMusicPaused) {onhideMusicPaused = false; musicNormalPause(1)}
 };
 window.onpagehide = window.onblur = () => {
     windowVisibility = false; fpsFocusSwitch = true
@@ -11,20 +14,34 @@ window.onpagehide = window.onblur = () => {
 // database shorter
 function databaseShorter() {
     for(a in adb) {
-        // delete adb[a].synonyms;
         delete adb[a].relations;
         delete adb[a].thumbnail
     }
 };
 //
-// @EAG FPS
+// @EAG SUMMARY
 //
+let $appInfo = {
+    // main
+    version: '0.94 beta',
+    date: '8 Sep 2023',
+    name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
+    fullname: 'AYAYA - Anime Roulette',
+    author: 'by potapello',
+    // other
+    codename: 'ayayaxdd', // EAG? в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
+    cleft: 'ayayaxdd 0.94 beta',
+    cright: 'created by potapello',
+};
+//
+// @EAG FPS
+// уёбск
 let fpsCalcFreq = 10;
 var FPS = 0, deltaTime = 0, oldTime = 0;
 let fpsFrames = 0, fpsSumm = 0;
 let timeMultiplier = 1;
 //
-let fpsFocusLimiter = 20;
+let fpsFocusLimiter = 60;
 let fpsFocusLast = Number();
 let fpsFocusSwitch = false;
 function workWithFPS() {
@@ -145,12 +162,6 @@ function findCent(array) {
 };
 //
 let graphFPS = new Graph('FPS', 80, 100);
-//
-// @EAG RNG WORK
-//
-let _rng = Number(0);
-let _rngmax = Number(65535);
-function RNG() {_rng = Math.floor(Math.random()*_rngmax)};
 //
 // @EAG VECTOR1 CLASS
 //
@@ -417,14 +428,6 @@ function easeInQuint(x) {
 function easeOutQuint(x) {
 return 1 - Math.pow(1 - x, 5);
 };
-function easeOutCubic(x){
-return 1 - Math.pow(1 - x, 3)
-};
-function easeInOutCirc(x) {
-return x < 0.5
-  ? (1 - Math.sqrt(1 - Math.pow(2 * x, 2))) / 2
-  : (Math.sqrt(1 - Math.pow(-2 * x + 2, 2)) + 1) / 2
-};
 //
 // @EAG MOUSE INPUT
 //
@@ -439,6 +442,8 @@ let mouse = {
     press: false,
     click: false,
     context: false,
+    next: false,
+    preview: false,
     oldtouch: [new Vector2(), new Vector2()],
 };
 let _def_mouse = JSON.stringify(mouse);
@@ -497,9 +502,11 @@ function getMousewheel() {
 // mouse button events
 document.addEventListener('mousedown', (e) => {
     if(e.button == 0) {mouse.press = true};
+    if(e.button == 3) {mouse.preview = true};
 });
 document.addEventListener('mouseup', (e) => {
     if(e.button == 0) {mouse.press = false};
+    if(e.button == 3) {mouse.preview = false};
 });
 //
 // @EAG TOUCH INPUT
@@ -548,22 +555,42 @@ document.addEventListener('keydown', (e) => {
 // @EAG INPUT LISTENER
 //
 function inputListener() {
-    // keyboard
-    if(keyPressed('+') || keyPressed('=')) {cvsscale.getFixed() < 2.4 ? cvsscale.move(cvsscale.getFixed()+0.1, 0.25, easeOutCirc) : false; globalRescale()};
-    if(keyPressed('-')) {cvsscale.getFixed() >= 0.6 ? cvsscale.move(cvsscale.getFixed()-0.1, 0.25, easeOutCirc) : false; globalRescale()};
-    if(keyPressed('Escape')) {
-        if(activeScreen !== screenRoulette && activeScreen !== screenLoading) {
-            requestScreen(screenRoulette)
-        }
-    };
-    if(activeScreen == screenRoulette && roulette.catchWinner !== true) {
-        if(keyPressed('ArrowLeft')) {
-            roulette.progress.move(Math.round(roulette.progress.getFixed())-1, 0.3, easeOutCirc)
-        } else if(keyPressed('ArrowRight')) {
-            roulette.progress.move(Math.round(roulette.progress.getFixed())+1, 0.3, easeOutCirc)
-        } else if(keyPressed(' ')) {
-            buttonDoRoll.onclick()
-        }
+    // KEYBOARD
+    if(keyboard !== {}) {
+        // scaling
+        if(keyPressed('+') || keyPressed('=')) {cvsscale.getFixed() < 2.4 ? cvsscale.move(cvsscale.getFixed()+0.1, 0.25, easeOutCirc) : false; globalRescale()};
+        if(keyPressed('-')) {cvsscale.getFixed() >= 0.6 ? cvsscale.move(cvsscale.getFixed()-0.1, 0.25, easeOutCirc) : false; globalRescale()};
+        // return to roulette screen
+        if(keyPressed('Escape') || mouse.preview) {
+            mouse.preview = false;
+            if(activeScreen !== screenRoulette && activeScreen !== screenLoading) {
+                requestScreen(screenRoulette)
+            }
+        };
+        if(activeScreen == screenRoulette && roulette.catchWinner !== true) {
+            // roulette key scroll
+            if(keyPressed('ArrowLeft')) {
+                roulette.pause(5000);
+                roulette.progress.move(Math.round(roulette.progress.getFixed())-1, 0.3, easeOutCirc)
+            } else if(keyPressed('ArrowRight')) {
+                roulette.pause(5000);
+                roulette.progress.move(Math.round(roulette.progress.getFixed())+1, 0.3, easeOutCirc)
+            } else if(keyPressed(' ')) {
+                buttonDoRoll.onclick()
+            };
+            // music menu keys
+            if(pref.bgmusic > 0) {
+                if(keyPressed('ArrowUp')) {
+                    mnMenu.active(-1);
+                } else if(keyPressed('ArrowDown')) {
+                    mnMenu.active(1);
+                };
+                if(keyPressed('Enter')) {mnMenu.apply = true} 
+                else if(keyPressed('1')) {mnMenu.plan = true}
+            }
+        };
+        // end
+        // keyboard = {}
     };
     // reset
     mouse.click = false;
@@ -669,7 +696,7 @@ let music = [
     ['audio/music3.ogg', 17, 'DUSTCELL - Narazumono'],
     ['audio/music4.ogg', 0, 'Cagayake! - GIRLS'],
     ['audio/music5.ogg', 35, 'bulow - Revolver'],
-    ['audio/music6.ogg', 26, 'Giga (feat. KAFU) - CH4NGE'],
+    ['audio/music6.ogg', 0, 'Aoi Yuki - Los! Los! Los!'],
     ['audio/music7.ogg', 41, 'Ado - AntiSystem\'s'],
     ['audio/music8.ogg', 44, 'Kenshi Yonezu - KICK BACK'],
     ['audio/music9.ogg', 34, 'BABYMETAL - Divine Attack'],
@@ -685,10 +712,8 @@ let music = [
     ['audio/music19.ogg', 34, 'Huwie Ishizaki - Wasuregataki'],
     ['audio/music20.ogg', 49, 'yama - Shikisai'],
     ['audio/music21.ogg', 27, 'Kessoku Band - Seishun Complex'],
-    // DELETED
-    // 'audio/music2.ogg', 42, 'Quinn Karter - Living in a Dream'
-    // 'audio/music3.ogg', 43, 'ITZY - Snowy'
-    // 'audio/music6.ogg', 47, 'Gawr Gura - REFLECT'
+    ['audio/music22.ogg', 51, 'Perfume - Pick Me Up'],
+    ['audio/music23.ogg', 23, 'Nightcore - Everytime We Touch'],
 ];
 //
 let musicNormal = new Audio();
@@ -697,6 +722,7 @@ let musicNormalVolume = new Vector1(0);
 let musicRollVolume = new Vector1(0);
 musicNormal.oncanplay = () => {if(pref.bgmusic > 0) {musicNormal.play()}};
 musicRoll.oncanplay = () => {musicRoll.play()};
+let musicRollPrefound = null;
 let musicNormalLoop = false;
 let musicNormalComplete = false;
 let musicBGVOld = -1;
@@ -789,17 +815,17 @@ function musicNormalNew() {
     }
 };
 //
-function musicNormalPause() {
+function musicNormalPause(time = 0.25) {
     if(musicNormal.paused) {
         if(pref.bgmusic > 0) {
             buttonPauseTrack.image = mlcPauseImage;
             musicNormal.play();
-            musicNormalVolume.move(1, 0.25, easeInOutSine)
+            musicNormalVolume.move(1, time, easeInOutSine)
         }
     } else {
         buttonPauseTrack.image = mlcPlayImage;
-        musicNormalVolume.move(0, 0.25, easeInOutSine);
-        setTimeout(() => {musicNormal.pause()}, 250)
+        musicNormalVolume.move(0, time, easeInOutSine);
+        setTimeout(() => {musicNormal.pause()}, time*1000)
     }
 }
 //
@@ -807,17 +833,20 @@ function musicRollStart(time = 2) {
     if(pref.rollNewTrack) {
         var trackname;
         musicRoll.pause();
-        [musicRoll.src, musicRoll.currentTime, trackname] = musicRandomTrack();
-        musicRoll.play();
         //
+        [musicRoll.src, musicRoll.currentTime, trackname] = musicRollPrefound === null
+        ? musicRandomTrack() : music[musicRollPrefound] === undefined
+        ? musicRandomTrack() : music[musicRollPrefound];
+        musicRollPrefound = null;
+        //
+        musicRoll.play();
         musicNormalVolume.move(0, time, easeInOutSine);
-        musicRollVolume.move(1, time, easeInOutSine);
         setTimeout(() => {
             musicNormal.pause();
             musicLite.name = trackname;
             musicNormal.src = String(musicRoll.src)
         }, time*1000)
-    };
+    }
 };
 function musicRollEnd(time = 0.5) {
     if(pref.rollNewTrack) {
@@ -829,6 +858,114 @@ function musicRollEnd(time = 0.5) {
             musicRoll.pause()
         }, time*1000)
     };
+};
+//
+// @EAG MUSIC NORMAL MENU
+//
+let musicMenuWidth = 420;
+function getCurrentMusic() {
+    for(a in music) {
+        if(music[a][2] === musicLite.name) {return Number(a)}
+    };
+    return 0
+};
+function getTrackMenu(sel) {
+    return [
+        music[sel-2] !== undefined ?    [textStringLimit(music[sel-2][2], mnMenu.size.x*0.68),  '#fff5'] : null,
+        music[sel-1] !== undefined ?    [textStringLimit(music[sel-1][2], mnMenu.size.x*0.68),  '#fffb'] : null,
+        music[sel] !== undefined ?      [textStringLimit(music[sel][2],   mnMenu.size.x*0.68),  '#ffff'] : null,
+        music[sel+1] !== undefined ?    [textStringLimit(music[sel+1][2], mnMenu.size.x*0.68),  '#fffb'] : null,
+        music[sel+2] !== undefined ?    [textStringLimit(music[sel+2][2], mnMenu.size.x*0.68),  '#fff5'] : null,
+    ]
+};
+//
+let mnMenu = {
+    anchor: new Vector2(0.5, 0.15),
+    pos: new Vector2(),
+    size: new Vector2(musicMenuWidth, 0),
+    spacing: 4,
+    //
+    fsize: 18,
+    font: 'Segoe UI',
+    //
+    break: true,
+    apply: false,
+    plan: false,
+    //
+    sel: 0,
+    tracks: [],
+    alpha: new Vector1(0),
+    time: 0,
+    selector: (name) => {return `>>> ${name} <<<`},
+    //
+    active: (input) => {
+        if(srv.state === 'idle') {
+            if(pref.bgmusic > 0) {
+                if(mnMenu.alpha.get() <= 0) {
+                    mnMenu.sel = getCurrentMusic();
+                    mnMenu.alpha.move(1, 0.25, easeInOutSine);
+                } else {
+                    if(mnMenu.alpha.getFixed() <= 0) {mnMenu.alpha.move(1, 0.25, easeInOutSine)};
+                    if(mnMenu.sel + input >= 0 && mnMenu.sel + input < music.length) {
+                        mnMenu.sel += input;
+                        playSound(sound['scroll'])
+                    }
+                };
+                mnMenu.tracks = getTrackMenu(mnMenu.sel);
+                mnMenu.time = 1.5
+            }
+        }
+    },
+    //
+    draw: () => {
+        // update & preroll lock
+        mnMenu.alpha.update();
+        if(srv.state !== 'idle') {
+            mnMenu.time = 0;
+            mnMenu.alpha.move(0, 0.25, easeInOutSine)
+        };
+        //
+        if(mnMenu.alpha.get() > 0) {
+            // timing & applying
+            if(mnMenu.time <= 0) {
+                if(mnMenu.alpha.getFixed() !== 0) {mnMenu.alpha.move(0, 0.25, easeInOutSine)}
+            } else {
+                mnMenu.time -= deltaTime/1000;
+                if(mnMenu.apply) {
+                    mnMenu.time = 0;
+                    playSound(sound['player']);
+                    musicNormalSelect(mnMenu.sel);
+                    mnMenu.apply = false
+                } else if(mnMenu.plan) {
+                    mnMenu.time = 0;
+                    playSound(sound['player']);
+                    musicRollPrefound = mnMenu.sel;
+                    mnMenu.plan = false
+                }
+            }
+            // scale + position
+            mnMenu.pos = normalAlign(mnMenu.anchor, mnMenu.size);
+            const spacing = mnMenu.spacing * cvsscale.get();
+            const fsize = mnMenu.fsize * cvsscale.get();
+            // tracknames, markup
+            mnMenu.size.x = musicMenuWidth * cvsscale.get();
+            mnMenu.size.y = fsize * 5 + spacing * 5;
+            // draw
+            ctx.globalAlpha = mnMenu.alpha.get();
+            fillRectRounded(mnMenu.size.sumxy(spacing*2), mnMenu.pos.minxy(spacing), `rgba(0,0,0,${pref.bgalpha})`, spacing*2);
+            scaleFont(mnMenu.fsize, mnMenu.font);
+            ctx.textAlign = 'center';
+            for(let i=0; i<5; i++) {
+                if(mnMenu.tracks[i] === null) {continue};
+                ctx.fillStyle = mnMenu.tracks[i][1];
+                fillTextFast(mnMenu.pos.sumxy(mnMenu.size.x/2, fsize + (fsize + spacing) * i),
+                    i === 2 ? mnMenu.selector(mnMenu.tracks[i][0]) : mnMenu.tracks[i][0])
+            }
+        };
+        mnMenu.apply = false;
+        mnMenu.plan = false;
+        ctx.globalAlpha = 1
+    },
 };
 //
 // @EAG FILTER DEFAULT
@@ -889,7 +1026,7 @@ let pref = {
     showNSFW: false,
     autoScroll: true,
     // draw
-    imageQuality: 'low',
+    imageQuality: 'medium',
     imageSmoothing: true,
     lockfps: true,
     framerate: 60,
@@ -973,6 +1110,14 @@ function optimizeAnimeArray(array) {
 //
 let _TextTranslations = {
     'ru': {
+        // global
+        eagName: 'Аниме Рулетка',
+        eagFilter: 'Фильтруем Аниме',
+        eagEmpty: 'Рулетка пуста!',
+        eagOther: 'Проект основан на оффлайн базе данных аниме (\"Offline Anime Database\") от manami-project. Также используются некоторые API: Jikan REST API, Microsoft Text Translator (через restapi.com).',
+        eagThanks: 'Спасибо за использование :)',
+        // lang
+        langWarn: 'Требуется перезагрузка!',
         // tagnames
         tagnames: {
             'action':           'Экшн',
@@ -1086,7 +1231,7 @@ let _TextTranslations = {
         malScore: 'Ср. оценка: ',
         malScoredBy: `Всего оценок: `,
         // rollbar
-        rbRoll: 'Roll!', rbWait: 'Ждём', rbMusicOff: 'Музыка выключена.',
+        rbRoll: 'Roll!', rbWait: 'Ждём', rbMusicOff: 'Музыка выключена.', rbWarn: 'Победитель уже определён!',
         // desc
         descHead: 'Описание',
         descWait: 'Секундочку...',
@@ -1095,6 +1240,7 @@ let _TextTranslations = {
         descTranslate: '[Перевести]',
         descWork: 'Переводим... ',
         descRoll: 'Рулетка крутится...',
+        descTrailer: '[Трейлер]',
         // single words
         wordError: 'Ошибка',
         wordOriginal: '[Оригинал]',
@@ -1130,6 +1276,8 @@ let _TextTranslations = {
         loadGen: `Генерируем рулетку...`,
         loadDone: `Готово!`,
         loadFirstEvent: `Нажмите в любую область экрана для продолжения...`,
+        loadNoCon: `Ошибка загрузки ресурсов!`,
+        loadRecon: `При попытке загрузки онлайн-ресурса возникла ошибка. Пожалуйста, проверьте соединение с интернетом и перезагрузите страницу.`,
         // presetinfo
         prinIncludes: 'Включения:', prinExcludes: 'Исключения:', prinPreset: 'Пресет: ', prinEps: ' Серии: ',
         prinYears: '. Года выхода: ', prinScore: '. Ср. оценка: ', prinMultiplier: '. Множитель:',
@@ -1158,8 +1306,10 @@ let _TextTranslations = {
         prefShowFPS: 'Показать FPS',
         prefDevinfo: 'Показать доп. информацию',
         prefScale: 'Размер: ',
+        prefVersion: 'Версия: ',
+        prefAbout: 'О проекте',
         // prefsets
-        pstDisable: 'Выкл.', pstLow: 'Низк.', pstHigh: 'Выс.', pstChange: 'Сменить',
+        pstDisable: 'Выкл.', pstLow: 'Низко', pstMedium: 'Средне', pstHigh: 'Высоко', pstChange: 'Сменить',
         // hints
         hintTags: 'Тут можно включать и исключать тэги для фильтра. Не забывайте смотреть, есть ли аниме по уже выбранной комбинации. Для работы некоторых тэгов нужно включить `NSFW` в настройках.',
         hintAllowScore: 'Это значит, что не пройдёт всё, чего нет на сайте MAL (+5000 тайтлов) и что не удовлетворяет минимальной и максимальной указанным средним оценкам.',
@@ -1175,6 +1325,14 @@ let _TextTranslations = {
         hintMusicOff: 'Выберите "0", чтобы выключить музыку на заднем фоне.',
     },
     'en': {
+        // global
+        eagName: 'Anime Roulette',
+        eagFilter: 'Filtering Anime',
+        eagEmpty: 'Roulette is empty!',
+        eagOther: 'The project is based on an \"Offline Anime Database\" by manami-project. Some APIs are also used: Jikan REST API, Microsoft Text Translator (via restapi.com).',
+        eagThanks: 'Thanks for using :)',
+        // lang
+        langWarn: 'A reboot is required!',
         // tagnames
         tagnames: {
             'action':           'Action',
@@ -1288,7 +1446,7 @@ let _TextTranslations = {
         malScore: 'Avg. score: ',
         malScoredBy: `Total scores: `,
         // rollbar
-        rbRoll: 'Roll!', rbWait: 'Wait', rbMusicOff: 'Music is turned off.',
+        rbRoll: 'Roll!', rbWait: 'Wait', rbMusicOff: 'Music is turned off.', rbWarn: 'The winner has already been determined!',
         // desc
         descHead: 'Description',
         descWait: 'Please wait...',
@@ -1297,6 +1455,7 @@ let _TextTranslations = {
         descTranslate: '[Translate]',
         descWork: 'Translating... ',
         descRoll: 'Roulette is spinning...',
+        descTrailer: '[Trailer]',
         // single words
         wordError: 'Error',
         wordOriginal: '[Original]',
@@ -1332,6 +1491,8 @@ let _TextTranslations = {
         loadGen: `Generating roulette...`,
         loadDone: `Success!`,
         loadFirstEvent: `Tap anywhere on the screen to continue...`,
+        loadNoCon: `Resource download error!`,
+        loadRecon: `An error occurred while trying to download an online resource. Please check your internet connection and reload the page.`,
         // presetinfo
         prinIncludes: 'Includes:', prinExcludes: 'Excludes:', prinPreset: 'Preset: ', prinEps: ' Episodes: ',
         prinYears: '. Years: ', prinScore: '. Avg. score: ', prinMultiplier: '. Multiplier:',
@@ -1360,8 +1521,10 @@ let _TextTranslations = {
         prefShowFPS: 'Show FPS',
         prefDevinfo: 'Show Dev. info',
         prefScale: 'Scale: ',
+        prefVersion: 'Version: ',
+        prefAbout: 'About the project',
         // prefsets
-        pstDisable: 'Off', pstLow: 'Low', pstHigh: 'High', pstChange: 'Change',
+        pstDisable: 'Off', pstLow: 'Low', pstMedium: 'Medium', pstHigh: 'High', pstChange: 'Change',
         // hints
         hintTags: 'Here you can include and exclude tags for the filter. Do not forget to see if there is an anime for the already selected combination. For some tags to work, you need to enable `NSFW` in the settings.',
         hintAllowScore: 'This means that everything that is not on the MAL site (+5000 titles) and that does not meet the minimum and maximum avg. score will not pass.',
@@ -1389,15 +1552,23 @@ function txtPreset(key) {
     return _Text.presetnames[key] === undefined ? key : _Text.presetnames[key]
 };
 //
+let langInitialized = pref.language;
+let langSelected = pref.language;
 let allTranslations = {
     'en': {
         name: 'English',
-        author: 'Web-translator'
+        comment: 'A web translator was used',
     },
     'ru': {
         name: 'Русский',
-        author: 'potapello'
-    }
+        comment: 'Оригинальный язык',
+    },
+    //
+    head: () => {
+        return langInitialized === langSelected
+        ? allTranslations[pref.language].name
+        : allTranslations[pref.language].name + ' - ' + _TextTranslations[pref.language].langWarn
+    },
 };
 //
 // @EAG TAG CLASS
@@ -1462,10 +1633,10 @@ let tagbase = {
     'altworld':         new animeTag('altworld', ['alternative world']),
     'shorts':           new animeTag('shorts', ['short episodes', 'shorts', 'short movie']),
     // oh no
-    'secret':           new animeTag('secret', ['hentai', 'nudity']),
+    'secret':           new animeTag('secret', ['hentai']),
     'allnsfw':          new animeTag('allnsfw', [
         // eto pizdec
-        'hentai', 'anal', 'oral', 'nudity', 'large breasts', 'pantsu',
+        'hentai', 'anal', 'oral', 'nudity', 'large breasts', 'pantsu', 'nudity',
         'pantsu shots', 'transgender', 'big boobs', 'bondage', 'masturbation', 'sado maso', 
         'tentacle', 'threesome', 'boys love', 'sex', 'boobjob', 'group sex', 'lactation',
         'exhibitionism', 'incest', 'urinating', 'voyeurism', 'double penetration', 'strap-ons',
@@ -2216,6 +2387,29 @@ function fullAlign(align=new Vector2(0.5), size=new Vector2(0)) {
     return new Vector2(fullsize.x*align.x-(size.x*align.x), fullsize.y*align.y-(size.y*align.y))
 };
 //
+let _currentAngle = 0;
+let _currentTranslate = new Vector2();
+function setRotation(anchor = new Vector2(), angle = 360) {
+    _currentAngle += angle;
+    _currentTranslate = _currentTranslate.sumv(anchor);
+    ctx.translate(anchor.x, anchor.y);
+    ctx.rotate((angle * Math.PI) / 180)
+};
+function resetRotation() {
+    ctx.translate(-_currentTranslate.x, -_currentTranslate.y);
+    ctx.rotate((-_currentAngle * Math.PI) / 180);
+    _currentAngle = 0;
+    _currentTranslate = new Vector2()
+};
+//
+function clipCanvas(size, pos = new Vector2()) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(pos.x, pos.y, size.x, size.y);
+    ctx.clip()
+};
+function clipRestore() {ctx.restore()};
+//
 // @EAG IMPROVED DRAW METHODS
 //
 function drawImage(image, vec2) {
@@ -2558,6 +2752,7 @@ class TextButtonShaped {
         this.ondeact = () => {};
         this.onhide = () => {};
         this.onshow = () => {};
+        this.onhover = () => {};
     }
     draw() {
         if(this.aval) {
@@ -2573,10 +2768,12 @@ class TextButtonShaped {
             //
             this.shape = this.shapefunc(this.pos.get().sumxy(0, tap), size, [12 * cvsscale.get()]);
             this.shadow = this.shapefunc(this.pos.get().sumxy(0, tap+1), size.sumxy(0, height-tap), [12 * cvsscale.get()]);
-            if(!this.initactivity) {this.state = shapeCollisionState(this.shadow, false)} 
-            else {setTimeout(() => {this.active = true}, 500); this.initactivity = false};
             //
             if(this.state !== 'unaval') {
+                if(!this.initactivity) {this.state = shapeCollisionState(this.shadow, false)}
+                else {setTimeout(() => {this.active = true}, 500); this.initactivity = false};
+                //
+                if(this.state === 'hover') {this.onhover()};
                 if(this.state !== this.oldstate) {
                     if(this.state === 'click') {
                         if(this.isSwitcher) {
@@ -2727,16 +2924,16 @@ class ImageButtonShaped {
             // colors
             !this.isSwitcher ? this.shapecm.setState(this.state, 0.25) : this.active ? this.shapecm.setState('click', 0.25) : this.shapecm.setState('idle', 0.25);
             this.shapecm.update();
-            // this.shapecm.alphaMult(this.alpha);
             this.shapeclr = this.shapecm.get();
             this.shadowclr = this.shapecm.idle.light(50).getColor();
             // draw
-            ctx.globalAlpha = this.alpha.get();
+            const oldalp = ctx.globalAlpha;
+            ctx.globalAlpha = ctx.globalAlpha * this.alpha.get();
             fillShape(this.shadow, this.shadowclr);
             fillShape(this.shape, this.shapeclr);
             this.imagepos = this.pos.get().sumv(this.spacing.get()).sumxy(0, this.tap.get());
             drawImageSized(this.image, this.imagepos, this.shapesize.minv(this.spacing.get().multxy(2)));
-            ctx.globalAlpha = 1
+            ctx.globalAlpha = oldalp
         } else {
             this.aval = this.image.complete
         }
@@ -2967,10 +3164,10 @@ function textStringLimit(text, limit) {
         return text.substring(0, Math.floor(text.length * (limit / width)) - 2) + '...'
     }
 };
-function textSplitByLength(full='', len) {
+function textSplitByLength(full='', len, max=199) {
     if(full.length <= len) {return [full]}
     else {
-        var ma=0, mb=0, fragment = '', result = [];
+        var iter = 0, ma=0, mb=0, fragment = '', result = [];
         // отрезаем кусок
         while(ma + len < full.length) {
             // берём len символов от А маркера
@@ -2983,6 +3180,8 @@ function textSplitByLength(full='', len) {
             result.push(fragment);
             ma = ma + mb;
             // если остаток строки больше максимума, цикл повторится
+            // ограничиваем кол-во итераций
+            iter++; if(iter >= max) {break}
         };
         // если меньше, то остаток строки будет отправлен в result и на этом функция завершится
         result.push(full.substring(ma));
@@ -2990,9 +3189,9 @@ function textSplitByLength(full='', len) {
     }
 };
 //
-function textWidthFit(text, width) {
+function textWidthFit(text, width, max) {
     // textbox fill
-    var state = 'measure', strings = [], measure, pointer, settext = text;
+    var iter = 0, state = 'measure', strings = [], measure, pointer, settext = text;
     while(state !== '') {
         if(state === 'measure') {
             measure = getTextMetrics(settext);
@@ -3014,7 +3213,9 @@ function textWidthFit(text, width) {
                 settext = settext.replace(settext.substring(0, pointer), '');
                 state = 'measure'
             }
-        }
+        };
+        // iter limit
+        iter++; if(iter >= max) {break}
     };
     return [strings, new Vector2(width, measure.y)]
 };
@@ -3030,6 +3231,7 @@ class TextBox {
         this.strings = [];
         this.complet = [''];
         this.spacing = 5;
+        this.iterlimit = 99;
         this.addshadow = true;
         this.dissolve = new Vector1(1);
         this.dissolving = false;
@@ -3049,7 +3251,7 @@ class TextBox {
         );
     };
     draw() {
-        var pointer;
+        var pointer = 0, iters = 0;
         // update all
         this.pos.update();
         this.size.update();
@@ -3059,14 +3261,16 @@ class TextBox {
         // detect text changes
         if(this.state === '' && this.settext !== this.text) {
             this.settext = this.text;
-            this.state = 'measure'
+            this.state = 'measure';
+            iters = 0
         };
         //
         // textbox fill
         while(this.state !== '') {
+            iters++;
             if(this.state === 'measure') {
                 this.measure = getTextMetrics(this.settext);
-                if(this.measure.x <= this.size.get().x) {
+                if(this.measure.x <= this.size.get().x || iters >= this.iterlimit) {
                     this.strings.push(this.settext);
                     this.complet = this.strings;
                     this.strings = [];
@@ -3099,7 +3303,7 @@ class TextBox {
                     this.settext = this.settext.replace(this.settext.substring(0, pointer), '');
                     this.state = 'measure'
                 }
-            }
+            };
         };
         // ограничиваем ширину текста изменяя расстояние между знаками
         var letters = 0-((this.shadow.getFixed().x - this.shadow.get().x)/(getMaxTextLength(this.complet)-1));
@@ -3145,6 +3349,7 @@ let hoverHint = {
     font: 'Segoe UI Light',
     fsize: 14,
     spacing: 3,
+    color: '#fff',
     //
     scaletime: 0,
     //
@@ -3152,9 +3357,10 @@ let hoverHint = {
     cd: 0,
     alpha: new Vector1(0),
     //
-    invoke: (text) => {
+    invoke: (text, color = '#fff') => {
         hoverHint.text = text;
-        hoverHint.cd = hoverHint.time
+        hoverHint.cd = hoverHint.time;
+        hoverHint.color = color
     },
     //
     draw: () => {
@@ -3199,7 +3405,7 @@ let hoverHint = {
             hoverHint.main.spacing = hoverHint.spacing * cvsscale.get();
             ctx.textAlign = 'start';
             hoverHint.main.castShadow();
-            ctx.fillStyle = '#fff';
+            ctx.fillStyle = hoverHint.color;
             hoverHint.main.draw()
         };
         // end
@@ -3216,16 +3422,7 @@ let fitImageBorder = 4;
 let fitImageSquared = false;
 let allInvokedImages = [];
 // for predict 404
-let imageNotFound = invokeNewImage('images/notfound.jpg');
-function tryImage(image) {
-    var error = true;
-    try {
-        drawImageSized(image, new Vector2(), new Vector2())
-    } catch (e) {
-        error = false
-    }
-    return error
-};
+let imageNotFound = invokeNewImage('images/notfound.png');
 //
 function invokeNewImage(src) {
     var image = new Image(); image.src = src;
@@ -3498,6 +3695,7 @@ function siteUpdateURLs(sources) {
 // @EAG TITLE INFO OBJECT
 //
 let tinfBoxSize = 250;
+let tinfBoxZoom = 1.2;
 let tinfSpacing = 5;
 let tinfTime = 0.3;
 let tinfHeaderSize = 24;
@@ -3511,7 +3709,9 @@ let seasonsDataMap = {
     UNDEFINED:  [`rgba(186,0,133,1)`,   `seasonUndefined`],
 };
 function tinfEpisodesColor(x) {
-    return Math.norma(x) < 0.5 ? `rgba(${255*x*2},255,63,1)` : `rgba(255,${255-255*(x-0.5)*2},63,1`
+    return x <= 1
+    ? x < 0.5 ? `rgba(${255*x*2},255,63,1)` : `rgba(255,${255-255*(x-0.5)*2},63,1`
+    : `rgba(255, 63, ${Math.norma(x-1)*255}, 1)`
 };
 let typesDataMap = {
     SPECIAL:    `typeSpecial`,
@@ -3540,6 +3740,10 @@ let tInfo = {
     //
     spacing: tinfSpacing * cvsscale.get(),
     box: tinfBoxSize * cvsscale.get(),
+    zoom: new Vector1(tinfBoxZoom),
+    alpha: new Vector1(0),
+    hidereq: false,
+    hided: true,
     //
     anchor: new Vector2(0.05, 0.95),
     pos: new Vector2(),
@@ -3597,14 +3801,28 @@ let tInfo = {
             //
             tInfo.updater -= deltaTime / 1000
         };
+        // hide animation
+        if((roulette.isempty || tInfo.hidereq) && !tInfo.hided) {
+            tInfo.hided = true;
+            tInfo.zoom.move(tinfBoxZoom, srv.hideTime, easeOutCirc);
+            tInfo.alpha.move(0, srv.hideTime, easeOutCirc)
+        };
+        if(!tInfo.hidereq && !roulette.isempty && tInfo.hided) {
+            tInfo.hided = false;
+            tInfo.zoom.move(1, srv.hideTime, easeOutCirc);
+            tInfo.alpha.move(1, srv.hideTime, easeOutCirc)
+        };
+        tInfo.zoom.update();
+        tInfo.alpha.update();
         // позиция, бг
+        ctx.globalAlpha = tInfo.alpha.get();
         tInfo.spacing = tinfSpacing * cvsscale.get();
-        tInfo.box = tinfBoxSize * cvsscale.get();
+        tInfo.box = tinfBoxSize * tInfo.zoom.get() * cvsscale.get();
         tInfo.pos = normalAlign(tInfo.anchor, new Vector2(tInfo.box));
         fillRectRounded(new Vector2(tInfo.box), tInfo.pos, `rgba(0,0,0,${pref.bgalpha})`, 10*cvsscale.get());
         // размеры элементов
-        tInfo.height = (tinfBoxSize * cvsscale.get() - (tinfSpacing * cvsscale.get()) * 9) / 8,
-        tInfo.width = tinfBoxSize * cvsscale.get() - (tinfSpacing * cvsscale.get() * 2),
+        tInfo.height = (tInfo.box - tInfo.spacing * 9) / 8,
+        tInfo.width = tInfo.box - tInfo.spacing * 2,
         // заголовок
         ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
         scaleFont(tinfHeaderSize, 'Segoe UI', 'bold');
@@ -3617,7 +3835,7 @@ let tInfo = {
             tInfo.posit(0).sumxy(0, tInfo.height*0.85),
             `#0008`, tInfo.spacing);
         fillRectRounded(
-            new Vector2(tInfo.width * (tInfo.episodes.get() / filterDefault.episodeMax), tInfo.height*0.2),
+            new Vector2(tInfo.width * Math.norma(tInfo.episodes.get() / filterDefault.episodeMax), tInfo.height*0.2),
             tInfo.posit(0).sumxy(0, tInfo.height*0.85),
             tinfEpisodesColor(tInfo.episodes.get() / filterDefault.episodeMax), tInfo.spacing);
         // сезон, год, тип, статус
@@ -3642,7 +3860,8 @@ let tInfo = {
             scaleFont(tinfFontSize, 'Segoe UI');
             fillTextFast(tInfo.posit(6).sumxy(tInfo.width*0.5, tInfo.height*0.5), txt('malScore') +  tInfo.score);
             fillTextFast(tInfo.posit(7).sumxy(tInfo.width*0.5, tInfo.height*0.3), txt('malScoredBy') + tInfo.scoredby)
-        }
+        };
+        ctx.globalAlpha = 1
     },
 };
 //
@@ -3655,7 +3874,7 @@ let descrWait = 1;
 //
 let descrTransFunctions = {
     'get-ru': () => {
-        tDesc.scroll = 0;
+        tDesc.scroll.set(0);
         if(!tDesc.terror) {
             playSound(sound['player']);
             translator.ru(jikan._response.data.synopsis);
@@ -3668,7 +3887,7 @@ let descrTransFunctions = {
         }
     },
     'orig': () => {
-        tDesc.scroll = 0;
+        tDesc.scroll.set(0);
         if(!tDesc.terror) {
             tDesc.original = true;
             decsrTranslate.onclick = descrTransFunctions['trans'];
@@ -3678,7 +3897,7 @@ let descrTransFunctions = {
         }
     },
     'trans': () => {
-        tDesc.scroll = 0;
+        tDesc.scroll.set(0);
         if(!tDesc.terror) {
             tDesc.original = false;
             decsrTranslate.onclick = descrTransFunctions['orig'];
@@ -3696,6 +3915,16 @@ let decsrTranslate = new TextButtonShaped(shapeRectRounded, txt('descTranslate')
 decsrTranslate.onclick = descrTransFunctions['get-ru'];
 decsrTranslate.height = 0; decsrTranslate.waitanim = false;
 //
+let descrWatchTrailer = new TextButtonShaped(shapeRectRounded, txt('descTrailer'),
+    new Vector2(tinfBoxSize/3, descrFontSize),
+    colorMapMatrix(`rgba(255,255,255,1)#rgba(63,255,255,1)#rgba(63,255,255,1)#rgba(200,63,63,0.9)`),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(0,0,0,0)#rgba(0,0,0,0)#rgba(0,0,0,0))`));
+descrWatchTrailer.onclick = () => {
+    if(!musicNormal.paused) {onhideMusicPaused = true; musicNormalPause(2)};
+    window.open(jikan._result.data.trailer.url);
+};
+descrWatchTrailer.height = 0; descrWatchTrailer.state = `unaval`;
+//
 let tDesc = {
     anchor: new Vector2(0.95),
     pos: new Vector2(),
@@ -3705,10 +3934,11 @@ let tDesc = {
     //
     malid: null,
     desc: [txt('descNone')],
-    height: 0,
+    height: new Vector2(),
     //
-    max: 0,
-    scroll: 0,
+    full: 0,
+    scroll: new Vector1(),
+    clip: new Vector2(),
     indicate: [false, false],
     //
     original: true,
@@ -3725,14 +3955,17 @@ let tDesc = {
     tdesc: [],
     //
     newDesc: () => {
+        descrWatchTrailer.state = `unaval`;
         decsrTranslate.state = 'unaval';
-        if(pref.autoScroll && roulette.dragged === false) {
-            tDesc.desc = [txt('descRoll')];
-            tDesc.request = false;
-            return
+        if(!roulette.winnerCentered()) {
+            if(pref.autoScroll && roulette.dragged === false) {
+                tDesc.desc = [txt('descRoll')];
+                tDesc.request = false;
+                return
+            }
         };
         tDesc.malid = malAnimeID(roulette.centerAnime.sources);
-        tDesc.scroll = 0;
+        tDesc.scroll.set(0);
         tDesc.apply = true;
         if(tDesc.malid == null) {
             tDesc.desc = [txt('descNone')];
@@ -3746,6 +3979,7 @@ let tDesc = {
     },
     //
     resize: () => {
+        descrWatchTrailer.size = new Vector2(tinfBoxSize/3, descrFontSize).multxy(cvsscale.get());
         scaleFont(descrFontSize, 'Segoe UI');
         if (tDesc.apply) {
             // var height;
@@ -3762,7 +3996,7 @@ let tDesc = {
         tDesc.terror = false;
         tDesc.tstate = 'idle';
         tDesc.original = true;
-        tDesc.scroll = 0
+        tDesc.scroll.set(0)
     },
     //
     draw: () => {
@@ -3770,7 +4004,9 @@ let tDesc = {
         tDesc.fsize = descrFontSize * cvsscale.get();
         // обновления, позиция, задний фон
         tDesc.alpha.update();
+        tDesc.scroll.update();
         tDesc.pos = normalAlign(tDesc.anchor, new Vector2(tInfo.box));
+        ctx.globalAlpha = tInfo.alpha.get();
         fillRectRounded(new Vector2(tInfo.box), tDesc.pos, `rgba(0,0,0,${pref.bgalpha})`, 10*cvsscale.get());
         // заголовок
         ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
@@ -3794,18 +4030,22 @@ let tDesc = {
                 [tDesc.desc, tDesc.height] = textWidthFit(jikan._response.data.synopsis, tInfo.box - (tInfo.spacing*2 + tDesc.fsize));
                 tDesc.alpha.set(0);
                 tDesc.alpha.move(1, 0.25);
-                tDesc.scroll = 0
+                tDesc.scroll.set(0);
+                // хаваем ссылку на трейлер
+                if(jikan._result.data.trailer.url !== null) {
+                    descrWatchTrailer.state = `idle`
+                }
             }
         };
-        // ограничение текста
-        var fontSpacing = descrFontSpacing * tDesc.fsize * cvsscale.get();
-        tDesc.max = Math.floor((tInfo.box - tInfo.spacing*2) / (fontSpacing + tDesc.fsize)) -1;
         // режим показа
         tDesc.original
         ? tDesc.showing = tDesc.desc
         : tDesc.showing = tDesc.tdesc;
+        // ограничение текста
+        tDesc.full = (tDesc.showing.length + 1) * tDesc.height.y;
+        tDesc.clip.setxy(tInfo.box - tInfo.spacing*2, tInfo.box * 0.9 - tInfo.spacing*2);
         // индикаторы
-        tDesc.indicate = [tDesc.scroll + tDesc.max < tDesc.showing.length, tDesc.scroll > 0];
+        tDesc.indicate = [tDesc.scroll.getFixed() + tDesc.clip.y < tDesc.full, tDesc.scroll.getFixed() > 0];
         // скроллинг
         if(mouse.pos.overAND(tDesc.pos) && mouse.pos.lessAND(tDesc.pos.sumxy(tInfo.box))) {
             // паузим рулетку, ещё раз запрашиваем описание если стоп был и продолжаем
@@ -3814,22 +4054,21 @@ let tDesc = {
                 tDesc.release()
             };
             roulette.pause(3000);
-            if(tDesc.max >= tDesc.showing.length) {
-                tDesc.scroll = 0
+            if(tDesc.clip >= tDesc.full) {
+                tDesc.scroll.set(0)
             } else {
                 if(wheelState !== 'idle') {
                     if(wheelState === 'top') {
-                        if(tDesc.indicate[1]) {tDesc.scroll -= 1}
+                        if(tDesc.indicate[1]) {tDesc.scroll.move(tDesc.scroll.getFixed()-tDesc.height.y*2, 0.25, easeOutCirc)}
                     } else {
-                        if(tDesc.indicate[0]) {tDesc.scroll += 1}
+                        if(tDesc.indicate[0]) {tDesc.scroll.move(tDesc.scroll.getFixed()+tDesc.height.y*2, 0.25, easeOutCirc)}
                     }
-                }
+                };
+                if(tDesc.scroll.getFixed() + tDesc.clip.y > tDesc.full) {tDesc.scroll.move(tDesc.full - tDesc.clip.y, 0.25, easeOutCirc)};
+                if(tDesc.scroll.getFixed() < 0) {tDesc.scroll.move(0, 0.25, easeOutCirc)}
             }
         };
         // индикаторы
-        ctx.globalAlpha = tDesc.alpha.get();
-        ctx.textAlign = 'center';
-        scaleFont(descrFontSize, 'Consolas');
         var indic = tDesc.indicate[0]
             ? tDesc.indicate[1] 
                 ? '\\/ /\\'
@@ -3837,44 +4076,60 @@ let tDesc = {
             : tDesc.indicate[1]
                 ? '   /\\'
                 : '     ';
-        fillTextFast(tDesc.pos.sumxy(tInfo.box/2, tInfo.box - tInfo.spacing*2), indic);
-        // описание
-        scaleFont(descrFontSize, 'Segoe UI');
+        // трейлер и индикатор
         ctx.textAlign = 'start';
-        for(let i = 0; i < tDesc.max && i < tDesc.showing.length; i++) {
-            fillTextFast(tDesc.pos.sumxy(tInfo.spacing, tInfo.spacing + (fontSpacing + tDesc.fsize) * (i + 1) - fontSpacing), tDesc.showing[i + tDesc.scroll]);
-        };
-        ctx.globalAlpha = 1;
-        // кнопка перевода
+        scaleFont(descrFontSize, 'Consolas');
+        fillTextFast(tDesc.pos.sumxy(tInfo.spacing, tInfo.box - tInfo.spacing*2), indic);
         ctx.textAlign = 'center';
+        scaleFont(descrFontSize, 'Segoe UI');
+        descrWatchTrailer.size.setxy(tInfo.box/3, tDesc.fsize);
+        descrWatchTrailer.pos = tDesc.pos.sumxy(tInfo.box).minv(descrWatchTrailer.size).minxy(tInfo.spacing, tInfo.spacing*2);
+        descrWatchTrailer.draw();
+        // начала и хвосты
+        ctx.globalAlpha = ctx.globalAlpha * tDesc.alpha.get();
+        var start = Math.floor(tDesc.scroll.get() / tDesc.height.y) - 1;
+        var tail = Math.ceil((tDesc.scroll.get() + tDesc.clip.y) / tDesc.height.y) + 1;
+        // описание
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'start';
+        clipCanvas(tDesc.clip, tDesc.pos.sumxy(tInfo.spacing));
+        for(let i = 0; i < tDesc.showing.length; i++) {
+            if(i < start) {continue};
+            if(i >= tail || tDesc.showing[i] === undefined) {break};
+            fillTextFast(tDesc.pos.sumxy(tInfo.spacing).sumxy(0, -tDesc.scroll.get() + tDesc.height.y * (i+1)), tDesc.showing[i]);
+        };
+        clipRestore();
+        // ctx.globalAlpha = tInfo.alpha.get();
+        // кнопка перевода
         // decsrTranslate.size.setxy(tInfo.box/3, tDesc.fsize);
         // decsrTranslate.pos = tDesc.pos.sumxy(tInfo.box).minv(decsrTranslate.size).minxy(tInfo.spacing, tInfo.spacing*2);
         // decsrTranslate.draw();
         // перевод текста
-        if(!tDesc.original && !tDesc.translate && !tDesc.terror) {
-            if(tDesc.tstate === 'work') {
-                tDesc.tdesc = [txt('descWork') + translator.getProgress()];
-                if(translator.state === 'idle') {
-                    if(translator.error) {
-                        tDesc.original = true;
-                        tDesc.terror = true;
-                        decsrTranslate.text = txt('wordError');
-                        tDesc.tstate = 'error';
-                    } else {
-                        scaleFont(descrFontSize, 'Segoe UI');
-                        [tDesc.tdesc, tDesc.height] = textWidthFit(translator.single, tInfo.box - (tInfo.spacing*2 + tDesc.fsize));
-                        tDesc.alpha.set(0);
-                        tDesc.alpha.move(1, 0.25);
-                        tDesc.scroll = 0;
-                        decsrTranslate.onclick = descrTransFunctions['orig'];
-                        decsrTranslate.text = txt('wordOriginal');
-                        decsrTranslate.state = 'idle';
-                        tDesc.translate = true;
-                        tDesc.tstate = 'ok'
-                    }
-                }
-            }
-        }
+        // if(!tDesc.original && !tDesc.translate && !tDesc.terror) {
+        //     if(tDesc.tstate === 'work') {
+        //         tDesc.tdesc = [txt('descWork') + translator.getProgress()];
+        //         if(translator.state === 'idle') {
+        //             if(translator.error) {
+        //                 tDesc.original = true;
+        //                 tDesc.terror = true;
+        //                 decsrTranslate.text = txt('wordError');
+        //                 tDesc.tstate = 'error';
+        //             } else {
+        //                 scaleFont(descrFontSize, 'Segoe UI');
+        //                 [tDesc.tdesc, tDesc.height] = textWidthFit(translator.single, tInfo.box - (tInfo.spacing*2 + tDesc.fsize));
+        //                 tDesc.alpha.set(0);
+        //                 tDesc.alpha.move(1, 0.25);
+        //                 tDesc.scroll.set(0);
+        //                 decsrTranslate.onclick = descrTransFunctions['orig'];
+        //                 decsrTranslate.text = txt('wordOriginal');
+        //                 decsrTranslate.state = 'idle';
+        //                 tDesc.translate = true;
+        //                 tDesc.tstate = 'ok'
+        //             }
+        //         }
+        //     }
+        // }
+        ctx.globalAlpha = 1
     }
 };
 //
@@ -3888,32 +4143,43 @@ let buttonDoRoll = new TextButtonShaped(shapeRectRounded, txt('rbRoll'), new Vec
     colorMapMatrix(colorMapForeDefault),
     colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.25)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
 buttonDoRoll.onclick = () => {
-    rollBar.state = 'hide';
-    //
-    if(pref.rollNewTrack) {
-        buttonDoRoll.text = txt('rbWait');
-        musicRoll.oncanplay = () => {
+    if(!roulette.hidemap) {
+        rollBar.state = 'hide';
+        //
+        if(pref.rollNewTrack) {
+            buttonDoRoll.text = txt('rbWait');
+            musicRoll.oncanplay = () => {
+                playSound(sound['roll']);
+                roulette.doRoll(pref.rollTime, pref.rollSpeed);
+                srv.hideProgress.value = 0;
+                srv.hideProgress.move(1, srv.hideTime, easeInQuad);
+                srv.state = 'roll_start';
+                tInfo.hidereq = true;
+                buttonDoRoll.state = 'unaval';
+                musicRollVolume.reset();
+                musicRollVolume.move(1, 2, easeInOutSine);
+                //
+                setTimeout(() => {buttonDoRoll.text = txt('rbRoll')}, 2000);
+                // musicRoll.oncanplay = () => {musicRoll.play()}
+            }
+        } else {
             playSound(sound['roll']);
             roulette.doRoll(pref.rollTime, pref.rollSpeed);
             srv.hideProgress.value = 0;
             srv.hideProgress.move(1, srv.hideTime, easeInQuad);
             srv.state = 'roll_start';
-            buttonDoRoll.state = 'unaval';
-            //
-            setTimeout(() => {buttonDoRoll.text = txt('rbRoll')}, 2000);
-            musicRoll.oncanplay = () => {musicRoll.play()}
-        }
-    } else {
-        playSound(sound['roll']);
-        roulette.doRoll(pref.rollTime, pref.rollSpeed);
-        srv.hideProgress.value = 0;
-        srv.hideProgress.move(1, srv.hideTime, easeInQuad);
-        srv.state = 'roll_start';
-        buttonDoRoll.state = 'unaval'
-    };
-    musicRollStart()
+            tInfo.hidereq = true;
+            buttonDoRoll.state = 'unaval'
+        };
+        musicRollStart()
+    }
 };
 buttonDoRoll.waitanim = false;
+buttonDoRoll.onhover = () => {
+    if(typeof roulette.catchWinner !== 'boolean' && !roulette.hidemap) {
+        hoverHint.invoke(txt('rbWarn'), `#f66`)
+    }
+};
 //
 let imageChangeFilter = invokeNewImage('images/filter.png');
 let imagePrefMenu = invokeNewImage('images/pref.png');
@@ -3925,21 +4191,6 @@ let buttonOpenPref = new ImageButtonShaped(shapeRectRounded, imagePrefMenu, new 
 buttonOpenPref.onclick = () => {playSound(sound['player']); spref.scroll.set(0); requestScreen(screenPreferences)};
 buttonChangeFilter.waitanim = false;
 buttonOpenPref.waitanim = false;
-//
-// let buttonPrevTitle = new TextButtonShaped(shapeRectRounded, '<<', new Vector2(40, 40),
-//     colorMapMatrix(colorMapForeDefault),
-//     colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.25)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
-// let buttonNextTitle = new TextButtonShaped(shapeRectRounded, '>>', new Vector2(40, 40),
-//     colorMapMatrix(colorMapForeDefault),
-//     colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.25)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
-// buttonPrevTitle.onclick = () => {
-//     roulette.speed.set(0); roulette.dragged = 5000;
-//     roulette.progress.move(Math.round(roulette.progress.getFixed())-1, 0.3, easeOutCirc)
-// };
-// buttonNextTitle.onclick = () => {
-//     roulette.speed.set(0); roulette.dragged = 5000;
-//     roulette.progress.move(Math.round(roulette.progress.getFixed())+1, 0.3, easeOutCirc)
-// };
 //
 let rollBar = {
     anchor: new Vector2(0.5, 1.2),
@@ -3974,14 +4225,10 @@ let rollBar = {
             scaleFont(36, 'Arial', 'bold');
             buttonDoRoll.size.setxy(rbRollWidth, rollBar.size.y-rollBar.spacing*2);
             buttonDoRoll.pos.setv(rollBar.pos.sumxy(rollBar.spacing));
-            buttonDoRoll.draw();
+            buttonDoRoll.draw()
             // карта
             scaleFont(16, 'Segoe UI', 'bold');
             drawMapRoulette(rollBar.size.x - (rbRollWidth*2 + rollBar.spacing*4), rollBar.pos.sumxy(rbRollWidth + rollBar.spacing*2, rollBar.size.y*0.75 - rmpBarHeight/2));
-            // ctx.fillStyle = "#fff";
-            // fillTextFast(
-            //     rollBar.pos.sumxy(rollBar.size.x/2, rollBar.size.y/2 - rollBar.spacing/2), 
-            //     `${Math.round(roulette.progress.get())+1}/${roulette.picsCount} | ${1234}`);
             // фильтр, настройки
             scaleFont(36, 'Arial', 'bold');
             buttonChangeFilter.sizedZoom(new Vector2(buttonDoRoll.size.y));
@@ -4050,6 +4297,7 @@ buttonPauseTrack.onclick = () => {musicNormalPause(); playSound(sound['player'])
 let buttonNextTrack = new ImageButtonShaped(shapeRectRounded, mlcNextTrackImage, new Vector2(5),
     colorMapMatrix(`rgba(0,0,0,0)#rgba(127,255,127,0.2)#rgba(127,255,127,0.5)#rgba(255,127,127,0.2)`));
 buttonNextTrack.onclick = () => {musicNormalNew(); playSound(sound['player'])};
+buttonPauseTrack.waitanim = false; buttonNextTrack.waitanim = false;
 //
 let mlcMusicBar = new ShapedSelectBar(mlcBarSize, colorMatrix(`rgba(255,255,255,0.8)`), colorMatrix(`rgba(0,0,0,0.5)`));
 mlcMusicBar.onset = (value) => {if(musicNormalComplete && pref.bgmusic > 0) {
@@ -4173,11 +4421,11 @@ let roulette = {
         //
         for(let i=0; i<roulette.picsCount; i++) {
             roulette.pics[i] = new Image();
-            roulette.pics[i].onerror = () => {roulette.pics[i].src = 'images/notfound.jpg'};
+            roulette.pics[i].onerror = () => {roulette.pics[i].src = 'images/notfound.png'};
             if(array[i]['picture'] !== undefined) {
                 roulette.pics[i].src = array[i]['picture']
             } else {
-                roulette.pics[i].src = 'images/notfound.jpg';
+                roulette.pics[i].src = 'images/notfound.png';
                 console.warn(`roulette.picsGet -> argument -> array[${i}]['picture'] is undefined!`);
             }
         }
@@ -4203,11 +4451,11 @@ let roulette = {
     centerItem: () => {
         if(roulette.picsCount > 1) {
             var flag = Math.round(roulette.progress.get());
-            while(flag < 0) {flag += roulette.picsCount};
-            while(flag > roulette.picsCount - 1) {flag -= roulette.picsCount};
+            if(flag < 0) {flag -= Math.floor(flag / roulette.picsCount) * roulette.picsCount};
+            if(flag > roulette.picsCount - 1) {flag -= Math.floor(flag / roulette.picsCount) * roulette.picsCount};
             return roulette.anime[flag]
         } else {
-            return Math.norma(roulette.picsCount)
+            return roulette.anime[Math.norma(roulette.picsCount)]
         }
     },
     winnerCentered: () => {
@@ -4216,8 +4464,8 @@ let roulette = {
     centerNumber: () => {
         if(roulette.picsCount > 1) {
             var n = Math.round(roulette.progress.get());
-        while(n < 0) {n += roulette.picsCount};
-        while(n > roulette.picsCount - 1) {n -= roulette.picsCount};
+            if(n < 0) {n -= Math.floor(n / roulette.picsCount) * roulette.picsCount};
+            if(n > roulette.picsCount - 1) {n -= Math.floor(n / roulette.picsCount) * roulette.picsCount};
         return n
         } else {
             return Math.norma(roulette.picsCount)
@@ -4227,10 +4475,8 @@ let roulette = {
     time: 0, atime: 0,
     catchWinner: false,
     speedMax: 0,
-    randomizer: 0.5,
+    randomizer: 0.3,
     doRoll: (time, speed) => {
-        winnerRelease.move(0, 2, easeOutQuint);
-        blinkProgress.set(0);
         if(roulette.winnerPos >= 0) {setTimeout(() => {
             roulette.pics[roulette.winnerPos].bgColor = new Color(0,0,0,1);
             roulette.winnerPos = -1
@@ -4275,7 +4521,6 @@ let roulette = {
                 roulette.winnerPos = roulette.centerNumber();
                 roulette.nameboxcolor = roulette.winnerStyle;
                 roulette.progress.move(roulette.winnerPos, 0.5, easeOutQuint);
-                winnerRelease.move(1, 2, easeOutQuint);
                 roulette.time = roulette.atime;
                 console.log('Winner: '+roulette.catchWinner['title'] + '\n    ' + roulette.catchWinner['sources'][0]);
                 musicRollEnd();
@@ -4333,16 +4578,20 @@ let roulette = {
                 roulette.progress.move(Math.round(roulette.progress.getFixed()), 1, easeInOutSine)
             }
         };
+        // стопаем рулетку, если расфокус
+        if(!windowVisibility) {roulette.pause(3000)};
         // циклируем
-        if(roulette.progress.get() >= roulette.picsCount) {
-            roulette.progress.value -= roulette.picsCount;
-            if(roulette.picsCount === 1) {
-                playSound(sound['scroll'])
-            }
-        } else if(roulette.progress.get() <= -1) {
-            roulette.progress.value += roulette.picsCount;
-            if(roulette.picsCount === 1) {
-                playSound(sound['scroll'])
+        if(srv.state !== 'show_roulette') {
+            if(roulette.progress.get() >= roulette.picsCount) {
+                roulette.progress.value -= Math.floor(roulette.progress.value / roulette.picsCount) * roulette.picsCount;
+                if(roulette.picsCount === 1) {
+                    playSound(sound['scroll'])
+                }
+            } else if(roulette.progress.get() <= -1) {
+                roulette.progress.value -= Math.floor(roulette.progress.value / roulette.picsCount) * roulette.picsCount;
+                if(roulette.picsCount === 1) {
+                    playSound(sound['scroll'])
+                }
             }
         };
         // обнуляем
@@ -4357,7 +4606,7 @@ let roulette = {
             var pos = normalAlign(new Vector2(0.5, 0.33));
             scaleFont(40, 'Segoe UI', 'bold');
             ctx.fillStyle = '#fff';
-            ctx.fillText('Рулетка пуста!', pos.x, pos.y)
+            ctx.fillText(txt('eagEmpty'), pos.x, pos.y)
         } else if (roulette.picsCount == 1) {
             // в рулетке 1 тайтл
             roulette.hidemap = true;
@@ -4415,7 +4664,7 @@ function rouletteSetItems(array) {
     } else {
         roulette.picsCount = array.length;
         roulette.picsGet(array)
-    };
+    }
 };
 //
 function rouletteApplyPreset(preset = presetbase['Дефолтный'], max = pref.rouletteItems) {
@@ -4458,59 +4707,16 @@ function radialShadow(p=0) {
     return g
 };
 //
-let winnerRelease = new Vector1(0);
-let blinkProgress = new Vector1(0);
-function gradWinner(hue = 180) {
-    blinkProgress.update();
-    winnerRelease.update();
-    var d = cvssize;
-    var p = (blinkProgress.get()*0.98)+0.01;
-    const r = winnerRelease.get();
-    //
-    const cy = `hsl(${hue}deg 100% 45%)`;
-    const cw = `hsl(${hue}deg 100% 80%)`;
-    const cb = fitFrameBg.getColor();
-    //
-    var lg = ctx.createLinearGradient(100, 100, d.x, d.y);
-    if(r !== 1) {
-        lg.addColorStop(0, cy);
-        lg.addColorStop(Math.norma(r), cy);
-        lg.addColorStop(Math.norma(r+0.05), cb);
-        lg.addColorStop(1, cb);
-    } else {
-        lg.addColorStop(0, cy);
-        if(blinkProgress.isMoving()) {
-            lg.addColorStop(Math.norma(p-0.025), cy);
-            lg.addColorStop(Math.norma(p), cw);
-            lg.addColorStop(Math.norma(p+0.025), cy)
-        };
-        lg.addColorStop(1, cy);
-        //
-        if(!blinkProgress.isMoving()) {
-            if(_rng < 500) {
-                blinkProgress.set(1);
-                blinkProgress.move(0, 3, easeInOutSine)
-            }
-        }
-    };
-    //
-    var o = {
-        getColor : () => {
-            return lg
-    },};
-    return o
-};
-//
 let rmpBarHeight = 10;
 let rouletteMapBar = new ShapedSelectBar(new Vector2(cvssize.x*0.3, rmpBarHeight*cvsscale.get()), colorMatrix(`rgba(0,0,0,0)`), colorMatrix(`rgba(0,0,0,0.5)`));
 rouletteMapBar.permanent = true;
 rouletteMapBar.onset = (value) => {
     roulette.progress.set(value);
-    roulette.dragged = 5000
+    roulette.pause(5000)
 };
 rouletteMapBar.unpress = (value) => {
     roulette.progress.move(Math.round(value), 0.5, easeOutCirc);
-    roulette.dragged = 5000
+    roulette.pause(5000)
 };
 rouletteMapBar.postdraw = () => {
     var p = rouletteMapBar.pos, s = rouletteMapBar.size;
@@ -4521,40 +4727,71 @@ rouletteMapBar.postdraw = () => {
     }
 };
 function drawMapRoulette(width, pos) {
-    rouletteMapBar.size = new Vector2(width, rmpBarHeight*cvsscale.get());
-    rouletteMapBar.pos = pos;
-    var p = roulette.progress.get(); p = p > roulette.picsCount ? roulette.picsCount : p < 0 ? 0 : p;
-    rouletteMapBar.update(p, roulette.picsCount);
-    rouletteMapBar.draw()
+    if(!roulette.hidemap) {
+        rouletteMapBar.size = new Vector2(width, rmpBarHeight*cvsscale.get());
+        rouletteMapBar.pos = pos;
+        var p = roulette.progress.get(); p = p > roulette.picsCount ? roulette.picsCount : p < 0 ? 0 : p;
+        rouletteMapBar.update(p, roulette.picsCount);
+        rouletteMapBar.draw()
+    }
 };
 //
 // @EAG SCREEN LOADING
 //
 let sload = {
-    state: 'show',
-    time: 1,
+    state: 'startup', // startup
+    time: 0.5,
     init: false,
+    connection: true,
     //
+    ayaya: invokeNewImage('images/ayaya.png'),
     alpha: new Vector1(0),
-    bgcolor: 'rgba(48,48,143,1)',
+    showing: true,
+    bgcolor: 'rgba(11,11,18,1)',
+    head: txt('eagName'),
+    headsize: 50,
 };
-// window.onload = () => {sload.state = 'show'};
 //
 let firstMouseEvent = false;
 let dynamicBgcolor = colorMatrix(sload.bgcolor).alpha(0);
 let staticBgcolor = '#000';
 let imageLoadProgress = new TextBox(normalAlign(new Vector2(0.5, 0.3)), new Vector2(400 * cvsscale.get()));
+imageLoadProgress.iterlimit = 4;
 let loadImagesBar = `rgba(200,200,200,0.2)#rgba(255,255,255,0.8)#rgba(0,0,0,1)#rgba(0,0,0,1)`;
 //
 function screenLoading() {
     imageLoadProgress.size.setxy(400 * cvsscale.get());
     imageLoadProgress.margin.setxy(10 * cvsscale.get());
     var spbsize =  new Vector2(fullsize.x, 8 * cvsscale.get());
-    fillRect(fullsize, normalAlign(new Vector2(0.5), fullsize), dynamicBgcolor.getColor());
     //
-    if(sload.state === 'show') {
+    sload.alpha.update();
+    fillRect(fullsize, normalAlign(new Vector2(0.5), fullsize), dynamicBgcolor.alpha(sload.alpha.get()).getColor());
+    //
+    if(wallerror) {
         sload.alpha.move(1, sload.time, easeInOutSine);
-        dynamicBgcolor.fadeTo(colorMatrix(sload.bgcolor), sload.time);
+        sload.state = 'timeout'
+    };
+    //
+    if(wallpaper.complete && sload.showing === false) {
+        sload.showing = 'none';
+        sload.alpha.move(0.5, sload.time, easeInOutSine)
+    };
+    //
+    if(sload.state === 'startup') {
+        if(sload.ayaya.complete) {sload.state = 'show'}
+    //
+    } else if(sload.state === 'timeout') {
+        var center = fullAlign(new Vector2(0.5, 0.5));
+        var spacing = 15 * cvsscale.get();
+        ctx.fillStyle = '#b55'; ctx.textAlign = 'center';
+        scaleFont(36, 'Segoe UI Light');
+        fillTextFast(center.minxy(0, spacing), txt('loadNoCon'));
+        ctx.fillStyle = '#ccc';
+        scaleFont(18, 'Segoe UI');
+        fillTextArray(center.sumxy(-fullsize.x/4, spacing*3), textWidthFit(txt('loadRecon'), fullsize.x/2), spacing/4)
+    //
+    } else if(sload.state === 'show') {
+        sload.alpha.move(1, sload.time, easeInOutSine);
         imageLoadProgress.text = txt('loadJkrg');
         imageLoadProgress.shadow.x = imageLoadProgress.size.x;
         databaseShorter();
@@ -4562,13 +4799,10 @@ function screenLoading() {
         sload.state = 'wait'
     //
     } else if(sload.state === 'wait') {
-        sload.alpha.update();
-        dynamicBgcolor.update();
         shapeProgressBar(normalAlign(new Vector2(0.5, 0), spbsize), spbsize, sload.alpha.get(), colorMapMatrix(loadImagesBar));
         //
         if(sload.alpha.get() >= 1) {
-            sload.alpha.set(1);
-            dynamicBgcolor = colorMatrix(sload.bgcolor);
+            sload.showing = false;
             roulette.alphaMult = 0;
             roulette.zoomMult = 0;
             roulette.addAlign = new Vector2(0),
@@ -4624,7 +4858,7 @@ function screenLoading() {
                 if(!lsItemUndefined('roulette.winner')) {
                     [roulette.winnerPos, roulette.catchWinner] = lsLoadObject('roulette.winner', [roulette.winnerPos, roulette.catchWinner]);
                     roulette.progress.move(roulette.winnerPos, 3, easeOutQuint);
-                    setTimeout(() => {winnerRelease.move(1, 2, easeOutQuint); setTimeout(() => {playSound(sound['winner'])}, 100)}, 3*1000)
+                    setTimeout(() => {setTimeout(() => {playSound(sound['winner'])}, 100)}, 3*1000)
                 } else {
                     roulette.progress.move(0, 3, easeOutQuint)
                 };
@@ -4637,24 +4871,30 @@ function screenLoading() {
                 //
                 sload.state = 'none';
                 staticBgcolor = sload.bgcolor;
-                dynamicBgcolor = new Color(0,0,0,0);
+                setTimeout(() => {
+                    imageLoadProgress.text = '';
+                    sload.head = txt('eagFilter');
+                    sload.ayaya.src = imageChangeFilter.src;
+                    sload.headsize = 36
+                }, tss.fulltime*1000);
                 requestScreen(screenRoulette)
             }
         }
     };
     //
-    ctx.globalAlpha = sload.alpha.get();
-    //
-    var center = fullAlign(new Vector2(0.5, 0.5));
-    var sizei = new Vector2(200 * cvsscale.get());
-    var spacing = 15 * cvsscale.get();
-    drawImageSized(imageChangeFilter, center.minxy(sizei.x/2, sizei.y).minxy(0, spacing), sizei);
-    imageLoadProgress.pos = center.sumxy(0, imageLoadProgress.shadow.get().y/2 + spacing);
-    ctx.textAlign = 'center';
-    imageLoadProgress.castShadow();
-    ctx.fillStyle = '#fff';
-    scaleFont(28, 'Segoe UI');
-    imageLoadProgress.draw();
+    ctx.globalAlpha = sload.showing === true ? sload.alpha.get() : 1;
+    if(sload.state !== 'startup' && sload.state !== 'timeout') {
+        var center = fullAlign(new Vector2(0.5, 0.5));
+        var sizei = new Vector2(200 * cvsscale.get());
+        var spacing = 15 * cvsscale.get();
+        drawImageSized(sload.ayaya, center.minxy(sizei.x/2, sizei.y).minxy(0, spacing), sizei);
+        imageLoadProgress.pos = normalAlign(new Vector2(0.5, 0.99), imageLoadProgress.shadow.get().multxy(0,1));
+        ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+        scaleFont(sload.headsize, 'Segoe UI', 'bold');
+        fillTextFast(center.sumxy(0, sload.headsize * cvsscale.get()), sload.head);
+        scaleFont(28, 'Segoe UI');
+        imageLoadProgress.draw()
+    }
 };
 //
 // @EAG SCREEN ROULETTE
@@ -4671,6 +4911,9 @@ let srv = {
 let namebox = new TextBox(new Vector2(), new Vector2(640 * cvsscale.get(), 0));
 namebox.dissolving = true;
 namebox.shadow.x = namebox.size.x/2;
+namebox.iterlimit = 4;
+let rollProgressBar = colorMapMatrix(`rgba(0,0,0,0.2)#rgba(225,225,255,0.8)#rgba(0,0,0,1)#rgba(0,0,0,1)`);
+let rollProgressHeight = 3;
 //
 _lastbufferedtitle = '';
 namebox.onupd = () => {
@@ -4689,7 +4932,6 @@ namebox.onupd = () => {
 };
 //
 function screenRoulette() {
-    sload.init = true;
     var srvhp = srv.hideProgress.get();
     if(srv.state === 'show_roulette') {
         fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), radialShadow(srvhp));
@@ -4701,12 +4943,14 @@ function screenRoulette() {
         // рисуем
         roulette.draw();
         rollBar.draw();
+        tDesc.draw();
+        tInfo.draw();
         ctx.globalAlpha = (1 - srvhp);
-        tDesc.draw(); 
-        tInfo.draw(); 
         musicLite.draw();
+        mnMenu.draw();
         ctx.globalAlpha = 1;
         if(srvhp <= 0) {
+            mnMenu.break = false;
             roulette.complete = true;
             srv.state = 'idle'
         }
@@ -4725,8 +4969,10 @@ function screenRoulette() {
         tDesc.draw();
         tInfo.draw();
         musicLite.draw();
+        mnMenu.draw();
     //
     } else if(srv.state === 'roll_start') {
+        mnMenu.break = true;
         fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), radialShadow(0));
         srv.hideProgress.update();
         //
@@ -4737,15 +4983,19 @@ function screenRoulette() {
         namebox.measureShadow();
         if(roulette.winnerCentered()) {ctx.fillStyle = roulette.nameboxcolor.getColor()};
         namebox.draw();
-        //
+        // main ui
         roulette.draw();
         rollBar.draw();
-        ctx.globalAlpha = (1 - srvhp);
         tDesc.draw(); 
-        tInfo.draw(); 
+        tInfo.draw();
+        ctx.globalAlpha = 1 - srvhp;
         musicLite.draw();
+        mnMenu.draw();
+        // roll progress
+        ctx.globalAlpha = srvhp;
+        shapeProgressBar(new Vector2(cvsxoffset,0), new Vector2(cvssize.x, rollProgressHeight*cvsscale.get()), 
+        Math.norma(roulette.time / roulette.atime), rollProgressBar);
         ctx.globalAlpha = 1;
-        //
         if(srvhp >= 1) {
             srv.state = 'roll'
         }
@@ -4757,6 +5007,9 @@ function screenRoulette() {
         namebox.castShadow();
         scaleFont(36, 'Segoe UI'); ctx.fillStyle = '#fff';
         namebox.draw();
+        // roll progress
+        shapeProgressBar(new Vector2(cvsxoffset,0), new Vector2(cvssize.x, rollProgressHeight*cvsscale.get()), 
+        Math.norma(roulette.time / roulette.atime), rollProgressBar);
         //
         roulette.draw();
         if(typeof roulette.catchWinner !== 'boolean') {
@@ -4764,6 +5017,7 @@ function screenRoulette() {
             srv.hideProgress.value = 1;
             srv.hideProgress.move(0, srv.hideTime, easeOutExpo);
             srv.state = 'roll_stop';
+            tInfo.hidereq = false;
             rollBar.state = 'show'
         }
     //
@@ -4781,13 +5035,19 @@ function screenRoulette() {
         //
         roulette.draw();
         rollBar.draw();
-        ctx.globalAlpha = (1 - srvhp);
         tDesc.draw(); 
         tInfo.draw(); 
+        ctx.globalAlpha = 1 - srvhp;
         musicLite.draw();
+        mnMenu.draw();
+        // roll progress
+        ctx.globalAlpha = srvhp;
+        shapeProgressBar(new Vector2(cvsxoffset,0), new Vector2(cvssize.x, rollProgressHeight*cvsscale.get()), 
+        Math.norma(roulette.time / roulette.atime), rollProgressBar);
         ctx.globalAlpha = 1;
         //
         if(srvhp <= 0) {
+            mnMenu.break = false;
             namebox.state = 'measure';
             srv.state = 'idle'
         }
@@ -4811,7 +5071,7 @@ let sbBlockHint = {
 // blocks
 function sbTextHeader(text, pos, width, spacing, scroll=0) {
     var sizey = spacing*2 + ctx.measureText(text).fontBoundingBoxAscent;
-    ctx.fillStyle = '#fff';
+    ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
     ctx.fillText(text, pos.x + width/2, pos.y + sizey - spacing*2 - scroll);
     // hints
     if(sbBlockHint.text !== null) {
@@ -4843,6 +5103,19 @@ function sbButtonPrefix(text, button, pos, width, spacing, scroll=0) {
     }
     //
     return sizey + spacing
+};
+function sbVoidPrefix(text, pos, width, spacing, scroll=0) {
+        var sizey = spacing*2 + ctx.measureText(text).fontBoundingBoxAscent;
+        ctx.fillStyle = '#fff'; ctx.textAlign = 'start';
+        ctx.fillText(text, pos.x + spacing, pos.y + sizey - spacing*2 - scroll);
+        // hints
+        if(sbBlockHint.text !== null) {
+            if(mouse.pos.overAND(pos.minxy(0, scroll)) && mouse.pos.lessAND(pos.sumxy(width/2, sizey - scroll))) {
+                sbBlockHint.show()
+            }; sbBlockHint.text = null
+        }
+        //
+        return sizey + spacing
 };
 function sbTwoButtonPrefix(text, button1, button2, pos, width, spacing, scroll=0) {
     var sizey = spacing*2 + button1.size.y;
@@ -5184,15 +5457,15 @@ function actualizeFilterButtons() {
     buttonScoreAllow.active = filterDefault['scoreAllow'];
 };
 //
-let buttonFilterLeave = new TextButtonShaped(shapeRectRounded, txt('wordBack'), new Vector2(240, 60),
+let buttonFilterLeave = new TextButtonShaped(shapeRectRounded, txt('wordBack'), filterThreeSize,
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
     colorMapMatrix(`rgba(24,110,24,1)#rgba(40,160,40,1)#rgba(63,255,63,1)#rgba(200,200,47,0.1)`));
 buttonFilterLeave.onclick = () => {requestScreen(screenRoulette, false)};
-let buttonFilterApply = new TextButtonShaped(shapeRectRounded, txt('wordApply'), new Vector2(240, 60),
+let buttonFilterApply = new TextButtonShaped(shapeRectRounded, txt('wordApply'), filterThreeSize,
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
     colorMapMatrix(`rgba(24,110,24,1)#rgba(40,160,40,1)#rgba(63,255,63,1)#rgba(200,200,47,0.1)`));
 buttonFilterApply.onclick = () => {animeFilterApply()};
-let buttonFilterReset = new TextButtonShaped(shapeRectRounded, txt('wordReset'), new Vector2(240, 60),
+let buttonFilterReset = new TextButtonShaped(shapeRectRounded, txt('wordReset'), filterThreeSize,
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
     colorMapMatrix(`rgba(24,110,24,1)#rgba(40,160,40,1)#rgba(63,255,63,1)#rgba(200,200,47,0.1)`));
 buttonFilterReset.onclick = () => {resetFilter(); filterPrecount.request(); tagSelectionPrepare(); lsSaveObject('tagSelection', tagSelection)};
@@ -5321,14 +5594,14 @@ function screenAnimeFilter() {
     if(cvssize.y >= saf.height) {saf.scroll.set(0)}
     else {
         if(saf.scroll.get() < saf.height - cvssize.y && wheelState === 'btm') {
-            saf.scroll.move(Math.floor(saf.scroll.getFixed())+sensivity, 0.5, easeOutExpo)} 
+            saf.scroll.move(Math.floor(saf.scroll.getFixed())+sensivity, 0.5, easeOutExpo)}
         else if(saf.scroll.get() > 0 && wheelState === 'top') {
             saf.scroll.move(Math.floor(saf.scroll.getFixed())-sensivity, 0.5, easeOutExpo)};
         if(saf.scroll.get() < 0) {saf.scroll.set(0)};
         if(saf.scroll.get() > saf.height - cvssize.y) {saf.scroll.set(saf.height - cvssize.y)}
     };
     //
-    saf.width = fullsize.y * 1.2 > fullsize.x ? fullsize.x : fullsize.y * 1.2;
+    saf.width = fullsize.y * 1.3 > fullsize.x ? fullsize.x : fullsize.y * 1.3;
     saf.height = 0 + saf.precounter + fbSpacing;
     saf.xanchor = (cvssize.x - saf.width)/2 - fbSpacing + cvsxoffset;
     fillRect(new Vector2(saf.width + fbSpacing*2, cvssize.y), new Vector2(saf.xanchor, 0), saf.bgcolor);
@@ -5445,6 +5718,7 @@ function positionsWidthBox(array, width, spacing, height=0, scroll=0) {
 //
 let prefButtonSpacing = 5;
 let prefButtonHeight = 32;
+let prefLangButtons = new Vector2(40, 30);
 let prefBarHeight = 16;
 let prefOptionWidth = 250;
 // base
@@ -5465,6 +5739,24 @@ let prefTextPalette = `rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,
 let prefPromptPalette = `rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`;
 let prefBarPalette = [`rgba(220,48,220,0.8)`, `rgba(127,24,127,0.3)`];
 let prefSwitchPalette = `rgba(220,63,63,1)#rgba(220,220,63,1)#rgba(63,220,63,1)#rgba(220,220,63,0.3)`;
+// лангуагес ёбн рот
+let imgFlagEnglish = invokeNewImage(`images/flag_en.jpg`);
+let buttonLangEnglish = new ImageButtonShaped(shapeRectRounded, imgFlagEnglish, new Vector2(0), 
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(0,0,0,0)#rgba(0,0,0,0)#rgba(0,0,0,0)`));
+buttonLangEnglish.waitanim = false; buttonLangEnglish.height = 0;
+buttonLangEnglish.onclick = () => {prefSetValue('language', 'en'); langSelected = 'en'};
+buttonLangEnglish.onhover = () => {hoverHint.invoke(allTranslations.en.comment)};
+//
+let imgFlagRussian = invokeNewImage(`images/flag_ru.jpg`);
+let buttonLangRussian = new ImageButtonShaped(shapeRectRounded, imgFlagRussian, new Vector2(0), 
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(0,0,0,0)#rgba(0,0,0,0)#rgba(0,0,0,0)`));
+buttonLangRussian.waitanim = false; buttonLangRussian.height = 0;
+buttonLangRussian.onclick = () => {prefSetValue('language', 'ru'); langSelected = 'ru'};
+buttonLangRussian.onhover = () => {hoverHint.invoke(allTranslations.ru.comment)};
+//
+let prefLanguages = [
+    buttonLangEnglish, buttonLangRussian
+];
 // roulette
 let prefRouletteTime = new ShapedSelectBar(new Vector2(prefOptionWidth*1.5, prefBarHeight), colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
 let prefRouletteSpeed = new ShapedSelectBar(new Vector2(prefOptionWidth*1.5, prefBarHeight), colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
@@ -5569,14 +5861,17 @@ function actualPrefRender() {
     prefRenderFps.update((pref.framerate - 30)/5, 34);
     prefRenderBack.update(pref.bgalpha*100, 100);
     if(!pref.imageSmoothing) {
-        prefRenderQuality.update(0, 2);
+        prefRenderQuality.update(0, 3);
         prefRenderText = txt('pstDisable')
     } else {
         if(pref.imageQuality === 'low') {
-            prefRenderQuality.update(1, 2);
+            prefRenderQuality.update(1, 3);
             prefRenderText = txt('pstLow')
+        } else if(pref.imageQuality === 'medium') {
+            prefRenderQuality.update(2, 3);
+            prefRenderText = txt('pstMedium')
         } else {
-            prefRenderQuality.update(2, 2);
+            prefRenderQuality.update(3, 3);
             prefRenderText = txt('pstHigh')
         }
     };
@@ -5593,6 +5888,8 @@ function setRenderQuality(value) {
         prefSetValue('imageSmoothing', true);
         if(value === 1) {
             prefSetValue('imageQuality', 'low')
+        } else if(value === 2) {
+            prefSetValue('imageQuality', 'medium')
         } else {
             prefSetValue('imageQuality', 'high')
         }
@@ -5639,7 +5936,7 @@ function screenPreferences() {
     };
     // start
     spref.height = 0;
-    spref.width = fullsize.y * 1.2 > fullsize.x ? fullsize.x : fullsize.y * 1.2;
+    spref.width = fullsize.y * 1.3 > fullsize.x ? fullsize.x : fullsize.y * 1.3;
     spref.xanchor = (cvssize.x - spref.width)/2 + (spacing + bheight)/2 + cvsxoffset;
     fillRect(new Vector2(spref.width + spacing*2, cvssize.y), new Vector2(spref.xanchor, 0), spref.bgcolor);
     spref.height += spacing;
@@ -5650,15 +5947,25 @@ function screenPreferences() {
     buttonPrefDefault.pos = new Vector2(spref.xanchor - (spacing + bheight*2), cvssize.y - (bheight*2 + spacing + _imagebuttonheight));
     buttonPrefApply.draw(); buttonPrefDefault.draw();
     spref.alpha.update(); ctx.globalAlpha = spref.alpha.get();
-    // НАСТРОЙКИ РУЛЕТКИ
-    scaleFont(54, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
+    //
+    scaleFont(54, 'Segoe UI', 'bold');
     fillRectRounded(new Vector2(spref.width, spref.pointer - spref.height), new Vector2(spref.xanchor+spacing, spref.height - spref.scroll.get()), spref.selbox, 10 * cvsscale.get());
     spref.height += sbTextHeader(txt('prefHead'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     spref.height += spacing;
     spref.pointer = spref.height;
-    //
+    spref.height += spacing;
+    // ЯЗЫК
+    scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
+    sbVoidPrefix(allTranslations.head(), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get())
+    for(elem in prefLanguages) {
+        prefLanguages[elem].pos.setxy(spref.xanchor+spref.width - (spacing*2 + prefLangButtons.x) * Number(+elem+1) + spacing, spref.height+spacing - spref.scroll.get());
+        prefLanguages[elem].sizedZoom(prefLangButtons.multxy(cvsscale.get()));
+        prefLanguages[elem].draw()
+    };
+    spref.height += prefLangButtons.y;
+    // НАСТРОЙКИ РУЛЕТКИ
     actualPrefRoulette();
-    scaleFont(40, 'Segoe UI', 'bold');
+    scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
     spref.height += sbTextHeader(txt('prefRoll'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
     spref.height += sbSelectbarPrefix(txt('prefRTime'), Math.round(prefRouletteTime.point())+5, prefRouletteTime, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
@@ -5701,6 +6008,19 @@ function screenPreferences() {
     spref.height += sbButtonPrefix(txt('prefParallax'), prefRenderParallax, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     spref.height += sbButtonPrefix(txt('prefShowFPS'), prefRenderShowFps, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     spref.height += sbButtonPrefix(txt('prefDevinfo'), prefRenderDevInfo, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+    // О ПРОГРАММЕ
+    // scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
+    // spref.height += sbTextHeader(txt('prefAbout'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+    spref.height += spacing;
+    scaleFont(32, 'Segoe UI', 'bold');
+    spref.height += sbTextHeader($appInfo.fullname, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+    scaleFont(24, 'Segoe UI');
+    spref.height += sbTextHeader($appInfo.author + ` | ` + txt('prefVersion') + $appInfo.version + ` | ` + $appInfo.date, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+    scaleFont(18, 'Segoe UI Light');
+    spref.height += sbTextFit(txt('eagOther'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+    scaleFont(20, 'Segoe UI', 'bold');
+    spref.height += sbTextHeader(txt('eagThanks'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+    spref.height += spacing
 };  
 //
 // @EAG SCREEN TRANSITION
@@ -5818,17 +6138,26 @@ let wlpsize = new Vector2();
 let parallaxSize = new Vector2();
 let parallaxOffset = new Vector2();
 let oldwallpaper = randomWallpaperGD();
+let wallerror = null;
 wallpaper.src = lsLoadString('wallpaper', randomWallpaperGD());
-wallpaper.onerror = () => {wallpaper.src = oldwallpaper};
+wallpaper.onerror = () => {
+    wallpaper.src = oldwallpaper;
+    wallpaper.onerror = () => {
+        wallpaper.src = '';
+        lsSaveValue('wallpaper', randomWallpaperGD());
+        wallerror = true
+    }
+};
 //
 function setWallpaper(src) {
     wallpaper.src = src
 };
 function randomWallpaperGD(apply = false) {
     const prefix = 'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=';
+    const base = JSON.parse(JSON.stringify(wallpaperbase));
     return apply
-    ? setWallpaper(prefix + randomItemsFrom(wallpaperbase, 1)[0])
-    : prefix + randomItemsFrom(wallpaperbase, 1)[0]
+    ? setWallpaper(prefix + randomItemsFrom(base, 1)[0])
+    : prefix + randomItemsFrom(base, 1)[0]
 };
 //
 function updateWallSize() {
@@ -5859,7 +6188,7 @@ function updateWallSize() {
 };
 //
 function wallpaperImage() {
-    if(!wallpaper.complete || !sload.init) {
+    if(!wallpaper.complete || sload.state === 'startup' || sload.state === 'timeout' || wallerror) {
         fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), staticBgcolor)
     } else {
         updateWallSize();
@@ -5926,7 +6255,8 @@ function developInfo() {
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(3)), 'memUsage/Total: ' + usage + ' / ' + total, '#fcc', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(4)), 'roulette: '+Math.floor(roulette.progress.get()*10)/10+'/'+(roulette.picsCount-1), '#ffc', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(5)), 'full: '+Math.floor(fullsize.x)+'x'+Math.floor(fullsize.y) + ', cvs: '+Math.floor(cvssize.x)+'x'+Math.floor(cvssize.y), '#ccf', 'bold 12px Consolas');
-        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(6)), 'scale: '+floatNumber(cvsscale.get(), 2), '#cfc', 'bold 12px Consolas');        //
+        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(6)), 'scale: '+floatNumber(cvsscale.get(), 2), '#cfc', 'bold 12px Consolas');
+        //
         graphFPS.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(7)), 3, 0);
         ctx.textAlign = 'start';
     } else if(pref.showFPS) {
@@ -5934,15 +6264,12 @@ function developInfo() {
     }
 };
 //
-//
-// render();
 function render() {
     // input & update
     canvasActualSize();
     workWithFPS();
     inputListener();
     updatePreferences();
-    RNG();
     updateMusic();
     jikan._update();
     // draw
@@ -5954,9 +6281,7 @@ function render() {
     developInfo();
     // title
     scaleFont(12, 'Consolas', 'italic'); ctx.fillStyle = '#fff';
-    ctx.fillText('ayayaxdd v0.84 beta', 2, fullsize.y-4);
+    ctx.fillText($appInfo.cleft, 2, fullsize.y-4);
     ctx.textAlign = 'end';
-    ctx.fillText('created by potapello', fullsize.x-4, fullsize.y-4);
-    //
-    // requestAnimationFrame(render)
+    ctx.fillText($appInfo.cright, fullsize.x-4, fullsize.y-4);
 };
