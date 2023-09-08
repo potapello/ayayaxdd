@@ -5724,6 +5724,7 @@ let prefOptionWidth = 250;
 // base
 let imagePrefApply = invokeNewImage('images/apply.png');
 let imagePrefDefault = invokeNewImage('images/recycle.png');
+let imageAyayaConfused = invokeNewImage('images/confused.png');
 //
 let buttonPrefApply = new ImageButtonShaped(shapeRectRounded, imagePrefApply, new Vector2(prefButtonSpacing), 
     colorMapMatrix(`rgba(24,110,24,1)#rgba(40,160,40,1)#rgba(63,255,63,1)#rgba(47,200,47,0.3)`));
@@ -5934,6 +5935,9 @@ function screenPreferences() {
         if(spref.scroll.get() < 0) {spref.scroll.set(0)};
         if(spref.scroll.get() > spref.height - cvssize.y) {spref.scroll.set(spref.height - cvssize.y)}
     };
+    // ayaya
+    var ayayasize = new Vector2(imageAyayaConfused.naturalWidth, imageAyayaConfused.naturalHeight).multxy(0.33 * cvsscale.get());
+    drawImageSized(imageAyayaConfused, new Vector2((spref.width + spref.xanchor + spacing) - ayayasize.x, spref.height - (ayayasize.y + spref.scroll.get())), ayayasize)
     // start
     spref.height = 0;
     spref.width = fullsize.y * 1.3 > fullsize.x ? fullsize.x : fullsize.y * 1.3;
@@ -6020,7 +6024,7 @@ function screenPreferences() {
     spref.height += sbTextFit(txt('eagOther'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     scaleFont(20, 'Segoe UI', 'bold');
     spref.height += sbTextHeader(txt('eagThanks'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    spref.height += spacing
+    spref.height += spacing;
 };  
 //
 // @EAG SCREEN TRANSITION
