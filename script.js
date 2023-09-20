@@ -13,7 +13,7 @@ window.onpagehide = window.onblur = () => {
 };
 // database shorter
 function databaseShorter() {
-    for(a in adb) {
+    for(var a in adb) {
         delete adb[a].relations;
         delete adb[a].thumbnail
     }
@@ -23,14 +23,14 @@ function databaseShorter() {
 //
 let $appInfo = {
     // main
-    version: '0.94 beta',
-    date: '8 Sep 2023',
+    version: '1.0 beta',
+    date: '19 Sep 2023',
     name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
     fullname: 'AYAYA - Anime Roulette',
     author: 'by potapello',
     // other
     codename: 'ayayaxdd', // EAG? в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
-    cleft: 'ayayaxdd 0.94 beta',
+    cleft: 'ayayaxdd 1.0 beta',
     cright: 'created by potapello',
 };
 //
@@ -41,11 +41,11 @@ var FPS = 0, deltaTime = 0, oldTime = 0;
 let fpsFrames = 0, fpsSumm = 0;
 let timeMultiplier = 1;
 //
-let fpsFocusLimiter = 60;
+let fpsFocusLimiter = 20;
 let fpsFocusLast = Number();
 let fpsFocusSwitch = false;
 function workWithFPS() {
-    // // limit fps, if no focus
+    // // limit fps, if no focus @RELEASE
     if(fpsFocusSwitch) {
         fpsFocusSwitch = false;
         if(windowVisibility) {
@@ -109,7 +109,7 @@ class Graph {
         ctx.beginPath();
         ctx.moveTo(pos.x-1, pos.y+this.height-(((this.array[0]+this.pickup)/this.max)*this.height)+2);
         if(this.array.length > 1) {
-            for(let i = 1; i < this.array.length; i++) {
+            for(var i = 1; i < this.array.length; i++) {
                 ctx.lineTo(pos.x+i*elem_spacing+elem_spacing/1.15, pos.y+this.height-(((this.array[i]+this.pickup)/this.max)*this.height)+2)
             }
         }
@@ -123,7 +123,7 @@ class Graph {
         ctx.lineWidth ="2";
         ctx.moveTo(pos.x, pos.y+this.height-(((this.array[0]+this.pickup)/this.max)*this.height)+2);
         if(this.array.length > 1) {
-            for(let i = 1; i < this.array.length; i++) {
+            for(var i = 1; i < this.array.length; i++) {
                 ctx.lineTo(pos.x+i*elem_spacing+elem_spacing/1.15-1, pos.y+this.height-(((this.array[i]+this.pickup)/this.max)*this.height)+2)
             }
         }
@@ -144,20 +144,21 @@ class Graph {
 };
 // graph functions
 function findMax(array) {
-    max = array[0];
-    for(i = 1; i < array.length; i++) {
+    var max = array[0];
+    for(var i = 1; i < array.length; i++) {
         if(max >= array[i]) {continue} else {max = array[i]}
     }; return max
 };
 function findMin(array, default_min) {
+    var min;
     if(default_min || default_min == 0) {min = default_min} else {min = array[0]};
-    for(i = 0; i < array.length; i++) {
+    for(var i = 0; i < array.length; i++) {
         if(min <= array[i]) {continue} else {min = array[i]}
     }; return min
 };
 function findCent(array) {
-    summ = 0;
-    for(i = 0; i < array.length; i++) {summ += array[i]};
+    var summ = 0;
+    for(var i = 0; i < array.length; i++) {summ += Number(String(array[i])) !== NaN ? array[i] : 0};
     return Math.floor(summ/array.length*10)/10
 };
 //
@@ -426,7 +427,7 @@ function easeInQuint(x) {
     return Math.pow(x, 5)
 };
 function easeOutQuint(x) {
-return 1 - Math.pow(1 - x, 5);
+return 1 - Math.pow(1 - x, 5)
 };
 //
 // @EAG MOUSE INPUT
@@ -447,17 +448,6 @@ let mouse = {
     oldtouch: [new Vector2(), new Vector2()],
 };
 let _def_mouse = JSON.stringify(mouse);
-//
-let events = {
-    // default args for functions -> (key, value)
-    wheel: {},
-};
-function updateEventThread(array, key, value) {
-    for(f in array) {array[f](key, value)}
-};
-function resetEventThread() {
-    events = {wheel:{},}
-};
 //
 let wheelState = 'idle';
 let touchScroll = 0;
@@ -496,8 +486,7 @@ function getMousewheel() {
     var a = mouse.wheel;
     mouse.wheel = 0;
     if(a != 0) {if(a > 0) {a = 'btm'} else {a = 'top'}} else {a = 'idle'};
-    wheelState = a;
-    // updateEventThread(events.wheel, wheelState, mouse.wheel)
+    wheelState = a
 };
 // mouse button events
 document.addEventListener('mousedown', (e) => {
@@ -539,7 +528,7 @@ function keyPressed(key = String()) {
     if(keyboard[key] === undefined) {
         return false
     } else {
-        var k = keyboard[key];
+        const k = keyboard[key];
         keyboard[key] = false;
         return k
     }
@@ -549,16 +538,17 @@ document.addEventListener('keyup', (e) => {
     keyboard[e.key] = false
 });
 document.addEventListener('keydown', (e) => {
-    keyboard[e.key] = true
+    keyboard.EVENT = true;
+    keyboard[e.key] = true;
 });
 //
 // @EAG INPUT LISTENER
 //
 function inputListener() {
     // KEYBOARD
-    if(keyboard !== {}) {
+    if(keyboard.EVENT !== undefined) {
         // scaling
-        if(keyPressed('+') || keyPressed('=')) {cvsscale.getFixed() < 2.4 ? cvsscale.move(cvsscale.getFixed()+0.1, 0.25, easeOutCirc) : false; globalRescale()};
+        if(keyPressed('+') || keyPressed('=')) {cvsscale.getFixed() < 3.9 ? cvsscale.move(cvsscale.getFixed()+0.1, 0.25, easeOutCirc) : false; globalRescale()};
         if(keyPressed('-')) {cvsscale.getFixed() >= 0.6 ? cvsscale.move(cvsscale.getFixed()-0.1, 0.25, easeOutCirc) : false; globalRescale()};
         // return to roulette screen
         if(keyPressed('Escape') || mouse.preview) {
@@ -579,18 +569,16 @@ function inputListener() {
                 buttonDoRoll.onclick()
             };
             // music menu keys
-            if(pref.bgmusic > 0) {
-                if(keyPressed('ArrowUp')) {
-                    mnMenu.active(-1);
-                } else if(keyPressed('ArrowDown')) {
-                    mnMenu.active(1);
-                };
-                if(keyPressed('Enter')) {mnMenu.apply = true} 
-                else if(keyPressed('1')) {mnMenu.plan = true}
-            }
+            if(keyPressed('ArrowUp')) {
+                mnMenu.active(-1);
+            } else if(keyPressed('ArrowDown')) {
+                mnMenu.active(1);
+            };
+            if(keyPressed('Enter')) {mnMenu.apply = true} 
+            else if(keyPressed('1')) {mnMenu.plan = true}
         };
         // end
-        // keyboard = {}
+        keyboard = {}
     };
     // reset
     mouse.click = false;
@@ -646,12 +634,12 @@ function moreThanZero(value) {
     return value < 0 ? 0 : value
 }
 function timeStringify(sec) {
-    var m = Math.floor(sec/60);
-    var s = Math.floor(sec - m*60);
+    const m = Math.floor(sec/60);
+    const s = Math.floor(sec - m*60);
     return `${m}:${s>=10?s:'0'+s}`
 };
 function floatNumber(x, digits=1) {
-    var d = Math.pow(10, Math.abs(digits))
+    const d = Math.pow(10, Math.abs(digits))
     return Math.round(x * d) / d
 };
 //
@@ -736,13 +724,15 @@ function playSound(sound = new Audio()) {
 };
 //
 function musicInitialize() {
-    var track = musicRandomTrack();
+    const track = musicRandomTrack();
     musicNormal.src = track[0];
     musicLite.name = track[2];
     musicNormalVolume.move(1, 2, easeInOutSine);
     if(pref.bgmusic > 0) {musicNormal.play()};
-    //
+    // @RELEASE
     updateMusic = updateMusicCache;
+    // setTimeout(() => {musicAnalysis.init()}, 3000);
+    musicAnalysis.init();
     musicInitialize = () => {}
 };
 function updateMusic() {};
@@ -808,7 +798,7 @@ function musicNormalNew() {
         musicNormal.currentTime = 0;
         musicNormalVolume.move(1, 1, easeInOutSine);
         buttonPauseTrack.image = mlcPauseImage;
-        var track = musicRandomTrack()
+        const track = musicRandomTrack()
         musicNormal.src = track[0];
         musicLite.name = track[2];
         musicNormal.play()
@@ -830,42 +820,44 @@ function musicNormalPause(time = 0.25) {
 }
 //
 function musicRollStart(time = 2) {
+    var trackname;
+    musicRoll.pause();
+    //
     if(pref.rollNewTrack) {
-        var trackname;
-        musicRoll.pause();
-        //
         [musicRoll.src, musicRoll.currentTime, trackname] = musicRollPrefound === null
         ? musicRandomTrack() : music[musicRollPrefound] === undefined
         ? musicRandomTrack() : music[musicRollPrefound];
         musicRollPrefound = null;
-        //
-        musicRoll.play();
-        musicNormalVolume.move(0, time, easeInOutSine);
-        setTimeout(() => {
-            musicNormal.pause();
-            musicLite.name = trackname;
-            musicNormal.src = String(musicRoll.src)
-        }, time*1000)
-    }
+    } else {
+        [musicRoll.src, musicRoll.currentTime, trackname] = musicRollPrefound === null
+        ? music[getCurrentMusic()] : music[musicRollPrefound] === undefined
+        ? music[getCurrentMusic()] : music[musicRollPrefound];
+    };
+    //
+    musicRoll.play();
+    musicNormalVolume.move(0, time, easeInOutSine);
+    setTimeout(() => {
+        musicNormal.pause();
+        musicLite.name = trackname;
+        musicNormal.src = String(musicRoll.src)
+    }, time*1000)
 };
 function musicRollEnd(time = 0.5) {
-    if(pref.rollNewTrack) {
-        if(pref.bgmusic > 0) {musicNormal.play()};
-        musicNormal.currentTime = Number(String(musicRoll.currentTime));
-        musicRollVolume.move(0, time, easeInOutSine);
-        setTimeout(() => {
-            musicNormalVolume.move(1, time, easeInOutSine);
-            musicRoll.pause()
-        }, time*1000)
-    };
+    if(pref.bgmusic > 0) {musicNormal.play()};
+    musicNormal.currentTime = Number(String(musicRoll.currentTime));
+    musicRollVolume.move(0, time, easeInOutSine);
+    setTimeout(() => {
+        musicNormalVolume.move(1, time, easeInOutSine);
+        musicRoll.pause()
+    }, time*1000)
 };
 //
 // @EAG MUSIC NORMAL MENU
 //
 let musicMenuWidth = 420;
 function getCurrentMusic() {
-    for(a in music) {
-        if(music[a][2] === musicLite.name) {return Number(a)}
+    for(var a in music) {
+        if(music[a][2] === musicLite.fullname) {return Number(a)}
     };
     return 0
 };
@@ -900,30 +892,25 @@ let mnMenu = {
     //
     active: (input) => {
         if(srv.state === 'idle') {
-            if(pref.bgmusic > 0) {
-                if(mnMenu.alpha.get() <= 0) {
-                    mnMenu.sel = getCurrentMusic();
-                    mnMenu.alpha.move(1, 0.25, easeInOutSine);
-                } else {
-                    if(mnMenu.alpha.getFixed() <= 0) {mnMenu.alpha.move(1, 0.25, easeInOutSine)};
-                    if(mnMenu.sel + input >= 0 && mnMenu.sel + input < music.length) {
-                        mnMenu.sel += input;
-                        playSound(sound['scroll'])
-                    }
-                };
-                mnMenu.tracks = getTrackMenu(mnMenu.sel);
-                mnMenu.time = 1.5
-            }
+            if(mnMenu.alpha.get() <= 0) {
+                mnMenu.sel = getCurrentMusic();
+                mnMenu.alpha.move(1, 0.25, easeInOutSine);
+            } else {
+                if(mnMenu.alpha.getFixed() <= 0) {mnMenu.alpha.move(1, 0.25, easeInOutSine)};
+                if(mnMenu.sel + input >= 0 && mnMenu.sel + input < music.length) {
+                    mnMenu.sel += input;
+                    playSound(sound['scroll'])
+                }
+            };
+            mnMenu.tracks = getTrackMenu(mnMenu.sel);
+            mnMenu.time = 1.5
         }
     },
     //
     draw: () => {
         // update & preroll lock
         mnMenu.alpha.update();
-        if(srv.state !== 'idle') {
-            mnMenu.time = 0;
-            mnMenu.alpha.move(0, 0.25, easeInOutSine)
-        };
+        if(srv.state !== 'idle') {mnMenu.time = 0};
         //
         if(mnMenu.alpha.get() > 0) {
             // timing & applying
@@ -932,17 +919,17 @@ let mnMenu = {
             } else {
                 mnMenu.time -= deltaTime/1000;
                 if(mnMenu.apply) {
-                    mnMenu.time = 0;
-                    playSound(sound['player']);
-                    musicNormalSelect(mnMenu.sel);
-                    mnMenu.apply = false
+                    if(pref.bgmusic > 0) {
+                        mnMenu.time = 0;
+                        playSound(sound['player']);
+                        musicNormalSelect(mnMenu.sel)
+                    }
                 } else if(mnMenu.plan) {
                     mnMenu.time = 0;
                     playSound(sound['player']);
-                    musicRollPrefound = mnMenu.sel;
-                    mnMenu.plan = false
+                    musicRollPrefound = mnMenu.sel
                 }
-            }
+            };
             // scale + position
             mnMenu.pos = normalAlign(mnMenu.anchor, mnMenu.size);
             const spacing = mnMenu.spacing * cvsscale.get();
@@ -955,7 +942,7 @@ let mnMenu = {
             fillRectRounded(mnMenu.size.sumxy(spacing*2), mnMenu.pos.minxy(spacing), `rgba(0,0,0,${pref.bgalpha})`, spacing*2);
             scaleFont(mnMenu.fsize, mnMenu.font);
             ctx.textAlign = 'center';
-            for(let i=0; i<5; i++) {
+            for(var i=0; i<5; i++) {
                 if(mnMenu.tracks[i] === null) {continue};
                 ctx.fillStyle = mnMenu.tracks[i][1];
                 fillTextFast(mnMenu.pos.sumxy(mnMenu.size.x/2, fsize + (fsize + spacing) * i),
@@ -965,6 +952,85 @@ let mnMenu = {
         mnMenu.apply = false;
         mnMenu.plan = false;
         ctx.globalAlpha = 1
+    },
+};
+//
+// @EAG MUSIC ANALYZER
+//
+let musicAnalysis = {
+    ctx: null,
+    //
+    srcNormal: null,
+    srcRoll: null,
+    anNormal: null,
+    anRoll: null,
+    //
+    freq: new Uint8Array(1024),
+    domain: new Uint8Array(2048),
+    //
+    step: 0,
+    equalizer: [],
+    equalCent: 0,
+    // initialize
+    init: () => {
+        if(pref.visual) {
+            musicAnalysis.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            musicAnalysis.srcNormal = musicAnalysis.ctx.createMediaElementSource(musicNormal);
+            musicAnalysis.srcRoll = musicAnalysis.ctx.createMediaElementSource(musicRoll);
+            musicAnalysis.anNormal = musicAnalysis.ctx.createAnalyser();
+            musicAnalysis.anRoll = musicAnalysis.ctx.createAnalyser();
+            musicAnalysis.srcNormal.connect(musicAnalysis.anNormal);
+            musicAnalysis.srcRoll.connect(musicAnalysis.anRoll);
+            musicAnalysis.anNormal.connect(musicAnalysis.ctx.destination);
+            musicAnalysis.anRoll.connect(musicAnalysis.ctx.destination);
+            musicAnalysis.anNormal.fftSize = 2048;
+            musicAnalysis.anRoll.fftSize = 2048;
+            musicAnalysis.anNormal.smoothingTimeConstant = 0.85
+        }
+    },
+    // update
+    update: () => {
+        if(musicAnalysis.ctx !== null && pref.visual) {
+            if(srv.state !== 'idle') {
+                musicAnalysis.anRoll.getByteFrequencyData(musicAnalysis.freq);
+                musicAnalysis.anRoll.getByteTimeDomainData(musicAnalysis.domain)
+            } else {
+                musicAnalysis.anNormal.getByteFrequencyData(musicAnalysis.freq);
+                musicAnalysis.anNormal.getByteTimeDomainData(musicAnalysis.domain)
+            };
+            // equalizer
+            musicAnalysis.step = 1024 / (pref.visualQuality / 2);
+            const freqArray = Array.from(musicAnalysis.freq);
+            const freqMax = findMax(freqArray);
+            musicAnalysis.equalCent = findCent(freqArray);
+            musicAnalysis.equalizer = [];
+            for(var i = 0; i < pref.visualQuality/2; i++) {
+                musicAnalysis.equalizer[i] = (findCent(freqArray.splice(0, musicAnalysis.step)) / (freqMax/2 + 128))
+            };
+        }
+    },
+};
+//
+// @EAG MUSIC EQUALIZER
+//
+let musicEqualizer = {
+    size: new Vector2(),
+    // draw
+    draw: () => {
+        // calc
+        musicEqualizer.size.setxy(cvssize.x / pref.visualQuality, cvssize.y/2.5);
+        //
+        for(var i = 0; i < pref.visualQuality; i++) {
+            const a = i < pref.visualQuality/2 ? i : i - pref.visualQuality/2;
+            const elem = i < pref.visualQuality/2 ?pref.visualQuality/2 - (i+1) : a;
+            ctx.fillStyle = `hsla(${Math.round(360 * musicAnalysis.equalizer[elem])} 100% 80% / 0.6)`;
+            ctx.fillRect(
+                cvsxoffset + musicEqualizer.size.x * i,
+                cvssize.y - musicEqualizer.size.y * musicAnalysis.equalizer[elem],
+                musicEqualizer.size.x,
+                musicEqualizer.size.y * musicAnalysis.equalizer[elem]
+            )
+        }
     },
 };
 //
@@ -1017,19 +1083,19 @@ function resetFilter() {
 // @EAG PREFERENCES
 //
 let pref = {
-    // roulette
-    rollTime: 30,
+    // roulette @RELEASE
+    rollTime: 30,       // 30
     rollSpeed: 40,
     rouletteItems: 50,
     rollImages: 13,
-    showMap: false,
+    showMap: false,     // --not use
     showNSFW: false,
-    autoScroll: true,
+    autoScroll: true,       // true
     // draw
     imageQuality: 'medium',
     imageSmoothing: true,
     lockfps: true,
-    framerate: 60,
+    framerate: 90,        
     bgalpha: 0.7,
     scale: 1,
     // audio
@@ -1038,10 +1104,13 @@ let pref = {
     rollmusic: 10,
     playerShow: true,
     rollNewTrack: true,
+    // visual
+    visual: false,
+    visualQuality: 128, // 2^n
     // other
-    language: 'en',         // NIPM
+    language: 'en',
     parallax: true,
-    showFPS: false,
+    showFPS: false,          // false
     showDebugInfo: false,
 };
 let prefDefault = JSON.stringify(pref);
@@ -1084,8 +1153,21 @@ function lsLoadObject(name, def=null) {
     return lsItemUndefined(name) ? def : JSON.parse(lsLoadItem(name))
 };
 // load preferences
-for(key in pref) {
+for(var key in pref) {
     pref[key] = lsLoadValue(`pref.${key}`, pref[key])
+};
+// pref visual
+let _prefVisuals = pref.visual;
+function prefVisualSwitch() {
+    if(!pref.visual) {
+        prefSetValue('visual', true);
+        if(!_prefVisuals) {
+            musicAnalysis.init();
+            _prefVisuals = true
+        }
+    } else {
+        prefSetValue('visual', false)
+    }
 };
 //
 // @EAG SAVE OPTIMIZATION
@@ -1100,7 +1182,7 @@ function optimizeAnimeObject(object) {
 };
 function optimizeAnimeArray(array) {
     var arr = [];
-    for(i in array) {
+    for(var i in array) {
         arr[i] = optimizeAnimeObject(array[i])
     };
     return arr
@@ -1210,6 +1292,7 @@ let _TextTranslations = {
             'Выключаем свет': 'Выключаем свет',
             'Женский спорт': 'Женский спорт',
             'Кухня, 7 сезон': 'Кухня, 7 сезон',
+            'Прохладная любовь': 'Прохладная любовь',
         },
         // status
         statusFinished: 'Вышел', statusOngoing: 'Онгоинг', statusUpcoming: 'Анонс', statusUnknown: 'Неизв.',
@@ -1257,7 +1340,7 @@ let _TextTranslations = {
         promHoverCopy: 'Нажмите, чтобы скопировать название',
         // filter
         filterApplyPreset: 'Применить',
-        filterWallpaper: 'Вставьте ссылку на изображение',
+        filterWallpaper: 'Вставьте ссылку на изображение или нажмите "Отмена" для случайного изображения из заранее подготовленных...',
         filterDiap: 'Диапазоны',
         filterYear: 'Год выхода (0 - 2023)',
         filterEps: 'Кол-во серий (1 - 9999)',
@@ -1270,6 +1353,7 @@ let _TextTranslations = {
         filterWarn: 'Применение фильтра перезапишет старые элементы рулетки и удалит ПОБЕДИТЕЛЯ, если он уже определялся до этого.',
         filterFindNone: 'Ни одного тайтла, прошедшего по условиям фильтра, не найдено! Фильтр восстановлен до настроек пресета.',
         filterCounter: 'Кол-во тайтлов, проходящих по условиям: ',
+        filterFirstChange: 'Измените что-нибудь для подсчёта...',
         // load
         loadJkrg: `Думаем...`,
         loadPics: `Грузим картинки...`,
@@ -1306,8 +1390,10 @@ let _TextTranslations = {
         prefShowFPS: 'Показать FPS',
         prefDevinfo: 'Показать доп. информацию',
         prefScale: 'Размер: ',
+        prefScaleSet: 'Размер интерфейса',
         prefVersion: 'Версия: ',
         prefAbout: 'О проекте',
+        prefVisual: 'Визуализация музыки',
         // prefsets
         pstDisable: 'Выкл.', pstLow: 'Низко', pstMedium: 'Средне', pstHigh: 'Высоко', pstChange: 'Сменить',
         // hints
@@ -1323,6 +1409,9 @@ let _TextTranslations = {
         hintPrefReset: 'Вернуть все настройки к значениям по умолчанию.',
         hintTrackName: 'Сейчас играет: ',
         hintMusicOff: 'Выберите "0", чтобы выключить музыку на заднем фоне.',
+        hintAudioVisual: 'Визуализация звука снизу во всю внутреннюю ширину интерфейса.',
+        hintRoll: 'На низких значениях времени и скорости будет слабый рандом. Рекомендуемое время = 20-60, скорость не меньше 20.',
+        hintPrefScale: 'Множитель размера всех элементов интерфейса. Можно настраивать кнопками "+" и "-".',
     },
     'en': {
         // global
@@ -1425,6 +1514,7 @@ let _TextTranslations = {
             'Выключаем свет': 'Turning off the light',
             'Женский спорт': 'Women\'s sports',
             'Кухня, 7 сезон': 'Kitchen, season 7',
+            'Прохладная любовь': '\"Cool\" love',
         },
         // status
         statusFinished: 'Finished', statusOngoing: 'Ongoing', statusUpcoming: 'Upcoming', statusUnknown: 'Unknown',
@@ -1472,7 +1562,7 @@ let _TextTranslations = {
         promHoverCopy: 'Click to copy the name',
         // filter
         filterApplyPreset: 'Apply',
-        filterWallpaper: 'Insert a URL link to the image',
+        filterWallpaper: 'Insert a URL link to the image or click "Cancel" for a random image from the pre-prepared ones...',
         filterDiap: 'Ranges',
         filterYear: 'Year of release (0 - 2023)',
         filterEps: 'Episodes (1 - 9999)',
@@ -1485,6 +1575,7 @@ let _TextTranslations = {
         filterWarn: 'Applying the filter will overwrite the old roulette elements and remove the WINNER if it has already been determined before.',
         filterFindNone: 'Not a single title that passed the filter conditions was found! The filter has been restored to the preset settings.',
         filterCounter: 'Number of filtered anime: ',
+        filterFirstChange: 'Precounter is waiting for changes...',
         // load
         loadJkrg: `Thinkge...`,
         loadPics: `Loading pictures...`,
@@ -1521,8 +1612,10 @@ let _TextTranslations = {
         prefShowFPS: 'Show FPS',
         prefDevinfo: 'Show Dev. info',
         prefScale: 'Scale: ',
+        prefScaleSet: 'UI size',
         prefVersion: 'Version: ',
         prefAbout: 'About the project',
+        prefVisual: 'Music visualization',
         // prefsets
         pstDisable: 'Off', pstLow: 'Low', pstMedium: 'Medium', pstHigh: 'High', pstChange: 'Change',
         // hints
@@ -1538,6 +1631,9 @@ let _TextTranslations = {
         hintPrefReset: 'Return all settings to default values.',
         hintTrackName: 'Now playing: ',
         hintMusicOff: 'Select "0" to turn off the background music.',
+        hintAudioVisual: 'Visualization of the sound at the bottom of the entire width of the interface.',
+        hintRoll: 'At low values of time and speed, there will be a weak random. Recommended time = 20-60, speed not less than 20.',
+        hintPrefScale: 'Multiplier of the size of all interface elements. You can configure it using the "+" and "-" buttons.',
     },
 };
 //
@@ -1652,7 +1748,8 @@ class Preset {
         this.tag = name;
         this.in = includes; this.ex = excludes;
         this.years = years; this.ep = episodes; 
-        this.scoreAllow = false; this.score = score;
+        this.score = score;
+        this.scoreAllow = this.score.max !== 10 || this.score.min !== 5;
         this.mult = mult; this.others = others
     }
     addon() {
@@ -1670,12 +1767,12 @@ class Preset {
         var ini = '', exi = '';
         if(this.in !== null) {
             ini = ' ' + txt('prinIncludes');
-            for(i in this.in) {ini = ini + ' ' + tagbase[this.in[i]].name + ','};
+            for(var i in this.in) {ini = ini + ' ' + tagbase[this.in[i]].name + ','};
             ini = ini.substring(0, ini.length-1) + '.'
         };
         if(this.ex !== null) {
             exi = ' ' + txt('prinExcludes');
-            for(i in this.ex) {exi = exi + ' ' + tagbase[this.ex[i]].name + ','};
+            for(var i in this.ex) {exi = exi + ' ' + tagbase[this.ex[i]].name + ','};
             exi = exi.substring(0, exi.length-1) + '.'
         };
         return txt('prinPreset') + this.name + '.' + ini + exi + txt('prinEps') + this.ep.min + '-' + this.ep.max + txt('prinYears') + this.years.min+ '-' + this.years.max + txt('prinScore') + this.score.min + '-' + this.score.max + txt('prinMultiplier') + ' x'+String(this.mult + 0.001).substring(0,4)
@@ -1685,6 +1782,7 @@ class Preset {
 // @EAG ALL PRESETS
 //
 let YEARS = new Range(1900, 2024);
+let SCORES = new Range(5, 10);
 let presetbase = {
     'Дефолтный': new Preset('Дефолтный', 
     includes = null, excludes = null,
@@ -1802,8 +1900,12 @@ let presetbase = {
     includes = ['tsundere'], excludes = null,
     years = YEARS, episodes = new Range(1, 50), score = new Range(6, 10),
     mult = 1, others = null),
-    'Влюбиться насмерть': new Preset('Влюбиться насмерть', 
+    'Влюбиться насмерть': new Preset('Влюбиться насмерть',
     includes = ['yandere'], excludes = null,
+    years = YEARS, episodes = new Range(1, 50), score = new Range(6, 10),
+    mult = 1, others = null),
+    'Прохладная любовь': new Preset('Прохладная любовь',
+    includes = ['kuudere'], excludes = null,
     years = YEARS, episodes = new Range(1, 50), score = new Range(6, 10),
     mult = 1, others = null),
     'Бесконечное \"это\"': new Preset('Бесконечное \"это\"',
@@ -1844,7 +1946,7 @@ let presetbase = {
 //
 function arrayAddNew(main, child) {
     var temp = [].concat(main), temp2;
-    for(i in child) {
+    for(var i in child) {
         temp2 = child[i];
         if(typeof child[i] === 'string') {
             if(child[i].substr(0, 8) === 'https://') {
@@ -1857,12 +1959,12 @@ function arrayAddNew(main, child) {
 };
 function arrayANDCondition(array) {
     var summ = 0;
-    for(i in array) {summ+=array[i]};
+    for(var i in array) {summ+=array[i]};
     return summ === array.length
 };
 function arrayORCondition(array) {
     var summ = 0;
-    for(i in array) {summ+=array[i]};
+    for(var i in array) {summ+=array[i]};
     return summ > 0
 };
 function arrayShuffle(array) {
@@ -1877,7 +1979,7 @@ function arrayShuffle(array) {
 };
 //
 function arrayCompleted(array) {
-    for(i in array) {
+    for(var i in array) {
         if(!array[i].complete) {return false}
     };
     return true
@@ -1885,7 +1987,7 @@ function arrayCompleted(array) {
 //
 function objectAddEntry(object, entries=[]) {
     var obj = object, entry;
-    for(e in entries) {
+    for(var e in entries) {
         entry = String(entries[e])
         obj[entry] === undefined
         ? obj[entry] = 1
@@ -1895,16 +1997,16 @@ function objectAddEntry(object, entries=[]) {
 };
 //
 function objectSortEntries(object) {
-    var sorted = [], obj = object, l = 0, max, key;
+    var sorted = [], obj = JSON.parse(JSON.stringify(object)), l = 0, max, key;
     // calc length
-    for(asd in obj) {
+    for(var asd in obj) {
         l += 1
     };
     console.log(l);
     // search max, migrate, delete
-    for(let i=0;i<l;i++) {
+    for(var i=0;i<l;i++) {
         max = 0;
-        for(j in obj) {
+        for(var j in obj) {
             if(obj[j] > max) {max = obj[j]; key = j}
         };
         sorted[i] = `${key}: ${max}`;
@@ -1916,9 +2018,9 @@ function objectSortEntries(object) {
 // @EAG FILTER METHODS
 //
 function filterModify(filter, mod) {
-    af = JSON.parse(JSON.stringify(filter));
+    var af = JSON.parse(JSON.stringify(filter));
     if(typeof mod == 'object') {
-        for(key in mod) {
+        for(var key in mod) {
                 af[key] = mod[key];
             }
     };
@@ -1932,20 +2034,20 @@ function filterPreset(preset = presetbase['Дефолтный']) {
 };
 //
 function filterAnimeTag(animetag, array) {
-    tags = tagbase[animetag].tags;
-    for(i in tags) {
+    const tags = tagbase[animetag].tags;
+    for(var i in tags) {
         if(array.indexOf(tags[i]) !== -1) {return true}
     }
     return false
 };
 function filterIncludeTags(included, array) {
-    for(i in included) {
+    for(var i in included) {
         if(!filterAnimeTag(included[i], array)) {return false} else {continue}
     }
     return true
 };
 function filterExcludeTags(excluded, array) {
-    for(i in excluded) {
+    for(var i in excluded) {
         if(filterAnimeTag(excluded[i], array)) {return false} else {continue}
     }
     return true
@@ -1954,26 +2056,29 @@ function filterExcludeTags(excluded, array) {
 let filterPrecount = {
     count: 0,
     timeout: 1,
-    flag: true,
+    flag: false,
+    first: false,
     filter: JSON.parse(JSON.stringify(filterDefault)),
     request: () => {
         filterPrecount.filter = JSON.parse(JSON.stringify(filterDefault));
         filterPrecount.filter.tagsIncluded = []; 
         filterPrecount.filter.tagsExcluded = [];
-        for(t in tagSelection) {
+        for(var t in tagSelection) {
             if(tagSelection[t] === 'inc') {filterPrecount.filter.tagsIncluded.push(t)};
             if(tagSelection[t] === 'exc') {filterPrecount.filter.tagsExcluded.push(t)}
         };
+        filterPrecount.first = true;
         filterPrecount.flag = true;
         filterPrecount.timeout = 0.5
     },
     update: () => {
+        if(!filterPrecount.first) {filterPrecount.count = txt('filterFirstChange'); return}
         if(filterPrecount.flag) {
             if(filterPrecount.timeout < 0) {
                 filterPrecount.count = getListFiltered(filterPrecount.filter).length;
                 filterPrecount.flag = false
             } else {
-                filterPrecount.count = txt('rbWait') + ' ' + Math.floor(filterPrecount.timeout*1000) + 'мc.';
+                filterPrecount.count = txt('rbWait');
                 filterPrecount.timeout -= deltaTime/1000
             }
         }
@@ -1983,7 +2088,7 @@ let filterPrecount = {
 // @EAG FEEDBACK FUNCTIONS
 //
 function getArrayWorkProgress(iter, length, step) {
-    for(let i = 1; i<100/step; i++) {
+    for(var i = 1; i<100/step; i++) {
         if(iter == Math.round(length*step*i/100)) {console.info(`Work progress -> ${step*i}%`)}
     }
 };
@@ -1991,18 +2096,18 @@ function getArrayWorkProgress(iter, length, step) {
 // @EAG LIST GETTER FUNCTIONS
 //
 function getListFiltered(filter = filterDefault) {
-    var list = [];
-    for(i in adb) {
+    var list = [], anime;
+    for(var i in adb) {
         anime = adb[i];
         // sort by episodes
         if(anime['episodes'] < filter.episodeMin || anime['episodes'] > filter.episodeMax) {continue};
         // sort by score, if allowed
         if(filter.scoreAllow) {
-            var anime_id = malAnimeID(anime.sources);
+            const anime_id = malAnimeID(anime.sources);
             if(anime_id == null) {continue}
             else {
                 if(adb_ratings[anime_id] === undefined) {continue};
-                var score = adb_ratings[anime_id]['score'];
+                const score = adb_ratings[anime_id]['score'];
                 if(score == 'None' || score == undefined) {continue}
                 else {
                     if(score < filter.scoreMin) {continue};
@@ -2022,20 +2127,20 @@ function getListFiltered(filter = filterDefault) {
         // sort by nsfw
         if(!filter.NSFW && filterAnimeTag('allnsfw', anime['tags'])) {continue};
         // sort by season
-        season = anime['animeSeason']['season'];
+        const season = anime['animeSeason']['season'];
         if(!filter.seasonSpring && season == 'SPRING') {continue};
         if(!filter.seasonSummer && season == 'SUMMER') {continue};
         if(!filter.seasonFall && season == 'FALL') {continue};
         if(!filter.seasonWinter && season == 'WINTER') {continue};
         if(!filter.seasonUndefined && season == 'UNDEFINED') {continue};
         // sort by status
-        stat = anime['status'];
+        const stat = anime['status'];
         if(!filter.statusFinished && stat == 'FINISHED') {continue};
         if(!filter.statusUpcoming && stat == 'UPCOMING') {continue};
         if(!filter.statusOngoing && stat == 'ONGOING') {continue};
         if(!filter.statusUnknown && stat == 'UNKNOWN') {continue};
         // sort by type
-        type = anime['type'];
+        const type = anime['type'];
         if(!filter.typeMovie && type == 'MOVIE') {continue};
         if(!filter.typeTV && type == 'TV') {continue};
         if(!filter.typeONA && type == 'ONA') {continue};
@@ -2051,7 +2156,7 @@ function getListFiltered(filter = filterDefault) {
 function randomItemsFrom(array, count) {
     var list = array, items = [];
     if(list.length > count) {
-        for(let i=0; i<count; i++) {
+        for(var i=0; i<count; i++) {
             items.push(list.splice(Math.floor(Math.random()*(list.length-0.01)), 1)[0])
         }
     } else {
@@ -2135,7 +2240,7 @@ let jikan = {
 //
 function malAnimeID(sources) {
     source = null;
-    for(s in sources) {
+    for(var s in sources) {
         if(sources[s].includes('myanimelist.net')) {
             source = sources[s]
         }
@@ -2204,7 +2309,7 @@ let translator = {
     //
     pack: () => {
         translator.single = '';
-        for(str in translator.response) {
+        for(var str in translator.response) {
             translator.single += translator.response[str]
         };
         translator.state = 'idle'
@@ -2234,7 +2339,7 @@ function getTypedData(root, database = adb) {
     var data = [];
     var l = database.length;
     console.info(`Start data collecting..."${root}".`);
-    for(i in database) {
+    for(var i in database) {
         piece = eval(`database[i]${root}`);
         getArrayWorkProgress(i, l, 5);
         if(piece instanceof Array) {
@@ -2252,7 +2357,7 @@ function calcDataEntries(root, database=adb) {
     var data = {};
     var l = database.length;
     console.info(`Start entry calculating..."${root}".`);
-    for(i in database) {
+    for(var i in database) {
         piece = eval(`database[i]${root}`);
         getArrayWorkProgress(i, l, 5);
         if(piece instanceof Array) {data = objectAddEntry(data, piece)}
@@ -2267,9 +2372,9 @@ function calcDataEntries(root, database=adb) {
 //
 function searchByTitle(request='', hard=false, db=adb) {
     var names = [], result = [], req = request.toLowerCase();
-    for(a in db) {
+    for(var a in db) {
         names = [].concat(db[a]['title'], db[a]['synonyms']);
-        for(t in names) {
+        for(var t in names) {
             if(stringIncludeRequest(names[t].toLowerCase(), req, hard)) {
                 result.push(db[a]); break
             }
@@ -2280,11 +2385,11 @@ function searchByTitle(request='', hard=false, db=adb) {
 function stringIncludeRequest(str, req, hard=false) {
     var arr = req.split(' ');
     if(hard) {
-        for(w in arr) {
+        for(var w in arr) {
             if(!str.includes(arr[w])) {return false}
         }; return true
     } else {
-        for(w in arr) {
+        for(var w in arr) {
             if(str.includes(arr[w])) {return true}
         }; return false
     }
@@ -2367,6 +2472,7 @@ function canvasActualSize() {
 // @EAG RESCALE METHODS
 //
 function globalRescale() {
+    lsSaveValue('scale', floatNumber(cvsscale.getFixed(), 1));
     setTimeout(() => {
         namebox.state = 'measure';
         imageLoadProgress.state = 'measure';
@@ -2388,18 +2494,15 @@ function fullAlign(align=new Vector2(0.5), size=new Vector2(0)) {
 };
 //
 let _currentAngle = 0;
-let _currentTranslate = new Vector2();
 function setRotation(anchor = new Vector2(), angle = 360) {
     _currentAngle += angle;
-    _currentTranslate = _currentTranslate.sumv(anchor);
     ctx.translate(anchor.x, anchor.y);
-    ctx.rotate((angle * Math.PI) / 180)
+    ctx.rotate((angle * Math.PI) / 180);
+    ctx.translate(-anchor.x, -anchor.y);
 };
 function resetRotation() {
-    ctx.translate(-_currentTranslate.x, -_currentTranslate.y);
     ctx.rotate((-_currentAngle * Math.PI) / 180);
     _currentAngle = 0;
-    _currentTranslate = new Vector2()
 };
 //
 function clipCanvas(size, pos = new Vector2()) {
@@ -2460,15 +2563,15 @@ function fillTextFast(pos, text) {
 //
 function fillTextArray(pos, [array, size], spacing=5) {
     if(ctx.textAlign === 'start') {
-        for(let i = 0; i < array.length; i++) {
+        for(var i = 0; i < array.length; i++) {
             ctx.fillText(array[i], pos.x, pos.y + (size.y + spacing) * (i+1))
         }
     } else if(ctx.textAlign === 'end') {
-        for(let i = 0; i < array.length; i++) {
+        for(var i = 0; i < array.length; i++) {
             ctx.fillText(array[i], pos.x + size.x, pos.y + (size.y + spacing) * (i+1))
         }
     } else {
-        for(let i = 0; i < array.length; i++) {
+        for(var i = 0; i < array.length; i++) {
             ctx.fillText(array[i], pos.x + size.x/2, pos.y + size.y * (i+1))
         }
     }
@@ -2554,10 +2657,10 @@ class Color {
             this.aM = this.aD * this.easer;
             this.dtime += deltaTime/1000;
         } else {
-            if(this.rM !== 0) {this.r += this.rD; this.rM = 0};
-            if(this.gM !== 0) {this.g += this.gD; this.gM = 0};
-            if(this.bM !== 0) {this.b += this.bD; this.bM = 0};
-            if(this.aM !== 0) {this.a += this.aD; this.aM = 0};
+            if(this.rM !== 0) {this.r += this.rD * this.ease(1); this.rM = 0};
+            if(this.gM !== 0) {this.g += this.gD * this.ease(1); this.gM = 0};
+            if(this.bM !== 0) {this.b += this.bD * this.ease(1); this.bM = 0};
+            if(this.aM !== 0) {this.a += this.aD * this.ease(1); this.aM = 0};
         }
     }
     alpha(alpha) {
@@ -2999,13 +3102,17 @@ class TagSwitcherShaped {
         if(this.tagstate !== tagSelection[this.tag]) {
             if(tagSelection[this.tag] === 'none') {
                 this.tap.move(height, 0.25, easeOutCirc);
-                this.shdw.fadeTo(colorMatrix(`rgba(255,63,255,0.4)`), 0.25)
+                this.shdw.fadeTo(colorMatrix(`rgba(255,63,255,0)`), 0.25)
             } else if(tagSelection[this.tag] === 'inc') {
                 this.tap.move(0, 0.25, easeOutCirc);
                 this.shdw.fadeTo(colorMatrix(`rgba(63,255,63,0.8)`), 0.25)
             } else {
-                if(tap === height) {this.tap.move(0, 0.25, easeOutCirc)} 
-                else {this.tap.move(height, 0.25, easeParabolaQuad)};
+                if(this.tagstate === 'none') {
+                    this.tap.move(0, 0.25, easeOutCirc);
+                } else {
+                    this.tap.set(0);
+                    this.tap.move(height, 0.25, easeParabolaQuad)
+                };
                 this.shdw.fadeTo(colorMatrix(`rgba(255,63,63,0.8)`), 0.25)
             };
             this.tagstate = tagSelection[this.tag]
@@ -3143,14 +3250,14 @@ function getTextMetrics(text) {
 };
 function getMaxTextWidth(array) {
     var w = getTextMetrics('.');
-    for(i in array) {
+    for(var i in array) {
         if(getTextMetrics(array[i]).x > w.x) {w = getTextMetrics(array[i])}
     };
     return w
 };
 function getMaxTextLength(array) {
     var w = 0;
-    for(i in array) {
+    for(var i in array) {
         if(array[i].length > w) {w = array[i].length}
     };
     return w
@@ -3267,11 +3374,10 @@ class TextBox {
         //
         // textbox fill
         while(this.state !== '') {
-            iters++;
             if(this.state === 'measure') {
                 this.measure = getTextMetrics(this.settext);
-                if(this.measure.x <= this.size.get().x || iters >= this.iterlimit) {
-                    this.strings.push(this.settext);
+                if(this.measure.x <= this.size.get().x) {
+                    if(iters <= this.iterlimit) {this.strings.push(this.settext)};
                     this.complet = this.strings;
                     this.strings = [];
                     this.settext = this.text;
@@ -3287,7 +3393,9 @@ class TextBox {
                     if(this.dissolving) {
                         this.dissolve.set(0.4);
                         this.dissolve.move(1, 0.2, easeInCirc)
-                    }
+                    };
+                    // end by iter limit
+                    if(iters > this.iterlimit) {break}
                 } else {
                     this.state = 'cut'
                 }
@@ -3304,6 +3412,7 @@ class TextBox {
                     this.state = 'measure'
                 }
             };
+            iters++
         };
         // ограничиваем ширину текста изменяя расстояние между знаками
         var letters = 0-((this.shadow.getFixed().x - this.shadow.get().x)/(getMaxTextLength(this.complet)-1));
@@ -3312,7 +3421,7 @@ class TextBox {
         // draw
         var p = this.pos.get();
         this.dissolving ? ctx.globalAlpha = this.dissolve.get() : false;
-        for(let i = 0; i < this.complet.length; i++) {
+        for(var i = 0; i < this.complet.length; i++) {
             ctx.fillText(this.complet[i], p.x, p.y + (this.spacing + this.measure.y) * i)
         };
         ctx.globalAlpha = 1;
@@ -3426,6 +3535,7 @@ let imageNotFound = invokeNewImage('images/notfound.png');
 //
 function invokeNewImage(src) {
     var image = new Image(); image.src = src;
+    // image.crossOrigin = 'anonymous';
     allInvokedImages.push(image);
     return image
 };
@@ -3439,6 +3549,7 @@ class imageFitFrame {
         this.fitsize = null;
         this.offset = new Vector2();
         this.bgColor = new Color(0,0,0,1);
+        this.winner = false;
         this.ratio = 1;
         this.alpha = 1;
         this.zoom = 1
@@ -3484,8 +3595,9 @@ class imageFitFrame {
             var border = fitImageBorder * cvsscale.get();
             ctx.globalAlpha = this.alpha;
             var glal = normalAlign(this.align, this.fitsize.sumxy(border).multxy(this.zoom));
+            this.winner ? visual.lightRing(glal.sumv(this.fitsize.multxy(this.zoom/2)), visual.lightDiam.get()*this.zoom) : false;
             fillRect(this.fitsize.multxy(this.zoom).sumxy(border*2), glal.minxy(border), this.bgColor.alpha(pref.bgalpha).getColor());
-            drawImageSized(this.image, glal, this.fitsize.multxy(this.zoom))
+            drawImageSized(this.image, glal, this.fitsize.multxy(this.zoom));
         }
     }
 };
@@ -3592,7 +3704,7 @@ let sites = {
         // подсчёт доступных ссылок
         sites.sources = getSiteSources(roulette.centerAnime['sources']);
         // вырубаем все
-        for(b in sites.buttons) {
+        for(var b in sites.buttons) {
             sites.buttons[b].state = 'unaval'
         };
         // врубаем доступные
@@ -3602,7 +3714,7 @@ let sites = {
         sites.actives['shikimori.one'] = sites.buttons['shikimori.one'];
         //
         var len = 1;
-        for(b in sites.sources) {
+        for(var b in sites.sources) {
             len++;
             sites.buttons[b].state = 'idle';
             sites.buttons[b].oldstate = 'idle';
@@ -3612,7 +3724,7 @@ let sites = {
         siteUpdateURLs(sites.sources);
         sites.resizeButtons();
         // возвращаем в центр недоступные
-        for(b in sites.buttons) {
+        for(var b in sites.buttons) {
             if(sites.buttons[b].state == 'unaval') {
                 sites.buttons[b].alpha.set(0);
                 // sites.buttons[b].pos.setv(sites.pos.sumxy(siteButtonSize/2, 0), siteButtonTime, easeInOutSine)
@@ -3620,7 +3732,7 @@ let sites = {
         };
         var xanchor = siteButtonSize * cvsscale.get() * (len/2);
         sites.len = len; len = 0;
-        for(b in siteSequence) {
+        for(var b in siteSequence) {
             if(sites.actives[siteSequence[b]] === undefined) {continue};
             sites.actives[siteSequence[b]].alpha.move(1, siteButtonTime);
             sites.poses[siteSequence[b]].applyMod();
@@ -3632,7 +3744,7 @@ let sites = {
     resizeButtons: () => {
         var xanchor = siteButtonSize * cvsscale.get() * (sites.len/2);
         var len = 0;
-        for(b in sites.actives) {
+        for(var b in sites.actives) {
             sites.poses[b].movexy(-xanchor + siteButtonSize * cvsscale.get() * len, 0, 0.25, easeOutCirc);
             sites.actives[b].sizedZoom(new Vector2(siteButtonSize * cvsscale.get()));
             len++
@@ -3643,7 +3755,7 @@ let sites = {
         // позиционирование
         sites.pos.setv(pos);
         // рисуем онли доступные кнопки
-        for(b in sites.actives) {
+        for(var b in sites.actives) {
             sites.poses[b].update();
             sites.actives[b].pos = sites.pos.sumv(sites.poses[b].get());
             sites.actives[b].draw()
@@ -3658,7 +3770,7 @@ let sites = {
     },
 };
 // удаление высоты у кнопок, функция при наведении
-for(b in sites.buttons) {
+for(var b in sites.buttons) {
     sites.buttons[b].height = 0;
 };
 sites.buttons['shikimori.one'].onhover      = () => {hoverHint.invoke(siteNames['shikimori.one'])};
@@ -3673,8 +3785,8 @@ sites.buttons['notify.moe'].onhover         = () => {hoverHint.invoke(siteNames[
 //
 function getSiteSources(siteArray) {
     var sources = {};
-    for(s in siteArray) {
-        for(n in siteNames) {
+    for(var s in siteArray) {
+        for(var n in siteNames) {
             if(siteArray[s].includes(n)) {sources[n] = siteArray[s]}
         }
     };
@@ -3696,6 +3808,7 @@ function siteUpdateURLs(sources) {
 //
 let tinfBoxSize = 250;
 let tinfBoxZoom = 1.2;
+let tinfBoxZoom2 = 0.8;
 let tinfSpacing = 5;
 let tinfTime = 0.3;
 let tinfHeaderSize = 24;
@@ -3804,11 +3917,13 @@ let tInfo = {
         // hide animation
         if((roulette.isempty || tInfo.hidereq) && !tInfo.hided) {
             tInfo.hided = true;
-            tInfo.zoom.move(tinfBoxZoom, srv.hideTime, easeOutCirc);
+            tInfo.zoom.set(1);
+            tInfo.zoom.move(tinfBoxZoom2, srv.hideTime, easeInCirc);
             tInfo.alpha.move(0, srv.hideTime, easeOutCirc)
         };
         if(!tInfo.hidereq && !roulette.isempty && tInfo.hided) {
             tInfo.hided = false;
+            tInfo.zoom.set(tinfBoxZoom);
             tInfo.zoom.move(1, srv.hideTime, easeOutCirc);
             tInfo.alpha.move(1, srv.hideTime, easeOutCirc)
         };
@@ -3847,7 +3962,7 @@ let tInfo = {
         // пресет
         scaleFont(tinfFontSize, 'Segoe UI', 'bold');
         if(tInfo.usePreset) {
-            fillTextFast(tInfo.posit(3).sumxy(tInfo.width/2, tInfo.height*0.7), textStringLimit(txt('infoPreset') + presetbase[presetSelected].name, tInfo.width));
+            fillTextFast(tInfo.posit(3).sumxy(tInfo.width/2, tInfo.height*0.7), textStringLimit(presetOnRoulette, tInfo.width));
             scaleFont(tinfFontSize, 'Segoe UI');
             fillTextFast(tInfo.posit(4).sumxy(tInfo.width/2, tInfo.height*0.5), filterChangesString());
         };
@@ -3983,7 +4098,9 @@ let tDesc = {
         scaleFont(descrFontSize, 'Segoe UI');
         if (tDesc.apply) {
             // var height;
-            [tDesc.desc, tDesc.height] = textWidthFit(jikan._response.data.synopsis, tInfo.box - (tInfo.spacing*2 + tDesc.fsize));
+            if(jikan._response !== null) {
+                [tDesc.desc, tDesc.height] = textWidthFit(jikan._response.data.synopsis, tInfo.box - (tInfo.spacing*2 + tDesc.fsize))
+            };
             // [tDesc.tdesc, tDesc.height] = textWidthFit(translator.single, tInfo.box - (tInfo.spacing*2 + tDesc.fsize));
             // tDesc.original ? null : tDesc.height = height
         }
@@ -4093,7 +4210,7 @@ let tDesc = {
         ctx.fillStyle = '#fff';
         ctx.textAlign = 'start';
         clipCanvas(tDesc.clip, tDesc.pos.sumxy(tInfo.spacing));
-        for(let i = 0; i < tDesc.showing.length; i++) {
+        for(var i = 0; i < tDesc.showing.length; i++) {
             if(i < start) {continue};
             if(i >= tail || tDesc.showing[i] === undefined) {break};
             fillTextFast(tDesc.pos.sumxy(tInfo.spacing).sumxy(0, -tDesc.scroll.get() + tDesc.height.y * (i+1)), tDesc.showing[i]);
@@ -4145,31 +4262,20 @@ let buttonDoRoll = new TextButtonShaped(shapeRectRounded, txt('rbRoll'), new Vec
 buttonDoRoll.onclick = () => {
     if(!roulette.hidemap) {
         rollBar.state = 'hide';
-        //
-        if(pref.rollNewTrack) {
-            buttonDoRoll.text = txt('rbWait');
-            musicRoll.oncanplay = () => {
-                playSound(sound['roll']);
-                roulette.doRoll(pref.rollTime, pref.rollSpeed);
-                srv.hideProgress.value = 0;
-                srv.hideProgress.move(1, srv.hideTime, easeInQuad);
-                srv.state = 'roll_start';
-                tInfo.hidereq = true;
-                buttonDoRoll.state = 'unaval';
-                musicRollVolume.reset();
-                musicRollVolume.move(1, 2, easeInOutSine);
-                //
-                setTimeout(() => {buttonDoRoll.text = txt('rbRoll')}, 2000);
-                // musicRoll.oncanplay = () => {musicRoll.play()}
-            }
-        } else {
+        buttonDoRoll.text = txt('rbWait');
+        musicRoll.oncanplay = () => {
             playSound(sound['roll']);
             roulette.doRoll(pref.rollTime, pref.rollSpeed);
             srv.hideProgress.value = 0;
             srv.hideProgress.move(1, srv.hideTime, easeInQuad);
             srv.state = 'roll_start';
             tInfo.hidereq = true;
-            buttonDoRoll.state = 'unaval'
+            buttonDoRoll.state = 'unaval';
+            musicRollVolume.reset();
+            musicRollVolume.move(1, 2, easeInOutSine);
+            visual.lightDiam.move(0, 0.25, easeInCirc);
+            //
+            setTimeout(() => {buttonDoRoll.text = txt('rbRoll')}, 2000)
         };
         musicRollStart()
     }
@@ -4370,7 +4476,7 @@ let musicLite = {
             hoverHint.invoke(txt('hintTrackName') + musicLite.fullname)};
         //
         ctx.textAlign = 'end';
-        musicLite.dur = musicNormalComplete ? musicNormal.duration : 0;
+        musicLite.dur = musicNormalComplete && musicNormal.duration !== NaN ? musicNormal.duration : 0;
         ctx.fillText(`${timeStringify(musicNormal.currentTime)} - ${timeStringify(musicLite.dur)}`,
         musicLite.pos.x + buttonsize + barsize.x, musicLite.pos.y + 20 * cvsscale.get());
         // load anim
@@ -4409,6 +4515,7 @@ let roulette = {
     hidemap: false,
     isempty: false,
     //
+    mapper: rouletteItemsMapper,
     winnerStyle: new Color(63, 255, 63, 1),
     nameboxcolor: new Color(255, 255, 255, 1),
     nameboxdef: new Color(255, 255, 255, 1),
@@ -4419,7 +4526,7 @@ let roulette = {
         lsSaveObject('roulette.anime', optimizeAnimeArray(roulette.anime));
         roulette.pics = [];
         //
-        for(let i=0; i<roulette.picsCount; i++) {
+        for(var i=0; i<roulette.picsCount; i++) {
             roulette.pics[i] = new Image();
             roulette.pics[i].onerror = () => {roulette.pics[i].src = 'images/notfound.png'};
             if(array[i]['picture'] !== undefined) {
@@ -4431,7 +4538,7 @@ let roulette = {
         }
     },
     setFrames: () => {
-        for(pic in roulette.pics) {
+        for(var pic in roulette.pics) {
             roulette.pics[pic].naturalHeight !== 0
             ? roulette.pics[pic] = new imageFitFrame(roulette.pics[pic])
             : roulette.pics[pic] = new imageFitFrame(imageNotFound);
@@ -4443,7 +4550,7 @@ let roulette = {
     },
     picsComplete: () => {
         var progress = 0;
-        for(pic in roulette.pics) {
+        for(var pic in roulette.pics) {
             if(roulette.pics[pic].complete) {progress++}
         };
         return progress
@@ -4479,6 +4586,7 @@ let roulette = {
     doRoll: (time, speed) => {
         if(roulette.winnerPos >= 0) {setTimeout(() => {
             roulette.pics[roulette.winnerPos].bgColor = new Color(0,0,0,1);
+            roulette.pics[roulette.winnerPos].winner = false;
             roulette.winnerPos = -1
         }, 500)};
         roulette.time = 0;
@@ -4524,7 +4632,7 @@ let roulette = {
                 roulette.time = roulette.atime;
                 console.log('Winner: '+roulette.catchWinner['title'] + '\n    ' + roulette.catchWinner['sources'][0]);
                 musicRollEnd();
-                setTimeout(() => {playSound(sound['winner'])}, 100);
+                rollWinner.invoke(roulette.centerAnime.title);
                 lsSaveObject('roulette.winner', [roulette.winnerPos, roulette.catchWinner])
             }
         };
@@ -4610,20 +4718,21 @@ let roulette = {
         } else if (roulette.picsCount == 1) {
             // в рулетке 1 тайтл
             roulette.hidemap = true;
-            var transform = rouletteItemsMapper(0.5);
+            var transform = roulette.mapper(0.5);
             var item = roulette.pics[0];
             item.align = transform.align.sumv(roulette.addAlign);
             item.zoom = transform.zoom * roulette.zoomMult;
             item.alpha = transform.alpha * roulette.alphaMult;
             item.bgcolor = roulette.winnerStyle;
+            item.winner = true;
             item.draw()
         } else {
             // подготавливаем картинки
-            for(let i = 0; i < pref.rollImages; i++) {
+            for(var i = 0; i < pref.rollImages; i++) {
                 var item, elem = Math.round(roulette.progress.get()) - Math.floor(pref.rollImages/2) + i;
                 elem = elem - Math.floor(elem / roulette.picsCount) * roulette.picsCount;
                 //
-                var transform = rouletteItemsMapper((i-depos+0.5)/pref.rollImages);
+                var transform = roulette.mapper((i-depos+0.5)/pref.rollImages);
                 if(pref.rollImages >= roulette.pics.length) {
                     item = roulette.pics[elem].copy()
                 } else {
@@ -4633,7 +4742,10 @@ let roulette = {
                 item.align = transform.align.sumv(roulette.addAlign);
                 item.zoom = transform.zoom * roulette.zoomMult;
                 item.alpha = transform.alpha * roulette.alphaMult;
-                if(elem === roulette.winnerPos) {item.bgColor = roulette.winnerStyle};
+                if(elem === roulette.winnerPos) {
+                    item.bgColor = roulette.winnerStyle;
+                    item.winner = true
+                };
                 roulette.sorted.push(item)
             };
             roulette.sorted.sort((a,b) => {
@@ -4644,7 +4756,7 @@ let roulette = {
                 }
             });
             //
-            for(a in roulette.sorted) {
+            for(var a in roulette.sorted) {
                 roulette.sorted[a].draw()
             }
         }
@@ -4690,6 +4802,25 @@ function rouletteItemsMapper(p) {
         tf.zoom *= 0.8 - 0.5 * ((p-0.6)*2.5);
         tf.alpha = 1 - (p-0.6)*2.5
     };
+    //
+    return tf
+};
+// bezier curve mapping method
+let _map1 = new Vector2(0.25, 0);
+let _map2 = new Vector2(0.75, 0);
+let _curve1 = new Vector2(-0.5, 0.35);
+let _curve2 = new Vector2(1.5, 0.35);
+//
+function rouletteItemsBezier(p) {
+    var tf = {align: new Vector2(), zoom: cvsscale.get(), alpha: 0};
+    // pos
+    tf.align = (_map1.multxy(Math.pow(1-p, 3))).sumv(_curve1.multxy(3*p*Math.pow(1-p, 2))).sumv(_curve2.multxy(3*p*p*(1-p))).sumv(_map2.multxy(p*p*p))
+    // zoom, alpha
+    // if(p > 0 && p <= 0.4) {tf.zoom *= 0.3 + 0.5 * (p*2.5); tf.alpha = p*2.5} 
+    // else if (p > 0.4 && p <= 0.6) {tf.zoom *= 0.8 + 0.2 * easeParabolaQuad((p-0.4)*5); tf.alpha = 1} 
+    // else {tf.zoom *= 0.8 - 0.5 * ((p-0.6)*2.5); tf.alpha = 1 - (p-0.6)*2.5};
+    tf.alpha = easeParabolaQuad(p);
+    tf.zoom = 0.2 + 0.6 * easeParabolaQuad(p);
     //
     return tf
 };
@@ -4791,6 +4922,13 @@ function screenLoading() {
         fillTextArray(center.sumxy(-fullsize.x/4, spacing*3), textWidthFit(txt('loadRecon'), fullsize.x/2), spacing/4)
     //
     } else if(sload.state === 'show') {
+        var scale = lsLoadValue('scale', null) === null
+        ? floatNumber(cvssize.y / 720, 1)
+        : lsLoadValue('scale', 1);
+        lsSaveValue('scale', scale);
+        cvsscale.set(scale);
+        globalRescale();
+        //
         sload.alpha.move(1, sload.time, easeInOutSine);
         imageLoadProgress.text = txt('loadJkrg');
         imageLoadProgress.shadow.x = imageLoadProgress.size.x;
@@ -5051,7 +5189,9 @@ function screenRoulette() {
             namebox.state = 'measure';
             srv.state = 'idle'
         }
-    }
+    };
+    // visuals
+    rollWinner.draw()
 };
 //
 // @EAG DEFAULT SCREEN BLOCKS
@@ -5255,7 +5395,7 @@ let filterCounterHeight = 60;
 function generatePresetButtons() {
     var measure, size;
     ctx.textAlign = 'center'; scaleFontObject(presetButtonFont);
-    for(key in presetbase) {
+    for(var key in presetbase) {
         measure = ctx.measureText(presetbase[key].name);
         size = new Vector2(Math.floor(measure.width), measure.fontBoundingBoxAscent).sumxy(filterButtonsSpacing*2);
         presetButtons[key] = new TextButtonShaped(shapeRectRounded, presetbase[key].name, size, 
@@ -5273,7 +5413,7 @@ presetButtons[presetSelected].initactivity = true;
 function generateTagButtons() {
     var measure, size;
     ctx.textAlign = 'center'; scaleFontObject(tagButtonsFont);
-    for(key in tagSelection) {
+    for(var key in tagSelection) {
         measure = ctx.measureText(tagbase[key].name);
         size = new Vector2(Math.floor(measure.width), measure.fontBoundingBoxAscent).sumxy(filterButtonsSpacing*2);
         tagButtons[key] = new TagSwitcherShaped(key);
@@ -5410,20 +5550,20 @@ function rescaleFilterButtons() {
     ctx.textAlign = 'center';
     // preset
     scaleFontObject(presetButtonFont);
-    for(key in presetbase) {
+    for(var key in presetbase) {
         measure = ctx.measureText(presetbase[key].name);
         presetButtons[key].size = new Vector2(Math.floor(measure.width), measure.fontBoundingBoxAscent).sumxy(spacing*2)
     };
     // tags
     scaleFontObject(tagButtonsFont);
-    for(key in tagbase) {
+    for(var key in tagbase) {
         measure = ctx.measureText(tagbase[key].name);
         tagButtons[key].size = new Vector2(Math.floor(measure.width), measure.fontBoundingBoxAscent).sumxy(spacing*2)
     };
     // sts
-    for(key in seasonButtons) {rescaleAnotherButton(seasonButtons, key)};
-    for(key in typeButtons) {rescaleAnotherButton(typeButtons, key)};
-    for(key in statusButtons) {rescaleAnotherButton(statusButtons, key)};
+    for(var key in seasonButtons) {rescaleAnotherButton(seasonButtons, key)};
+    for(var key in typeButtons) {rescaleAnotherButton(typeButtons, key)};
+    for(var key in statusButtons) {rescaleAnotherButton(statusButtons, key)};
     // other
     buttonFilterYearMin.size = filterPromptSize.multxy(cvsscale.get());
     buttonFilterYearMax.size = filterPromptSize.multxy(cvsscale.get());
@@ -5444,9 +5584,9 @@ function rescaleAnotherButton(object, key) {
 };
 //
 function actualizeFilterButtons() {
-    for(key in seasonButtons) {seasonButtons[key].active = filterDefault[key]};
-    for(key in typeButtons) {typeButtons[key].active = filterDefault[key]};
-    for(key in statusButtons) {statusButtons[key].active = filterDefault[key]};
+    for(var key in seasonButtons) {seasonButtons[key].active = filterDefault[key]};
+    for(var key in typeButtons) {typeButtons[key].active = filterDefault[key]};
+    for(var key in statusButtons) {statusButtons[key].active = filterDefault[key]};
     //
     buttonFilterYearMin.text = filterDefault['yearMin'];
     buttonFilterYearMax.text = filterDefault['yearMax'];
@@ -5482,10 +5622,10 @@ buttonFilterReset.waitanim = false;
 function tagSelectionPrepare() {
     tagSelection = JSON.parse(tagSelectionString);
     //
-    for(t in filterDefault.tagsIncluded) {
+    for(var t in filterDefault.tagsIncluded) {
         tagSelection[filterDefault.tagsIncluded[t]] = 'inc'
     };
-    for(t in filterDefault.tagsExcluded) {
+    for(var t in filterDefault.tagsExcluded) {
         tagSelection[filterDefault.tagsExcluded[t]] = 'exc';
         tagButtons[filterDefault.tagsExcluded[t]].tap.set(_imagebuttonheight*cvsscale.get()-1)
     }
@@ -5493,10 +5633,10 @@ function tagSelectionPrepare() {
 function tagSelectionParse(filter) {
     var tags = JSON.parse(tagSelectionString);
     //
-    for(t in filter.tagsIncluded) {
+    for(var t in filter.tagsIncluded) {
         tags[filter.tagsIncluded[t]] = 'inc'
     };
-    for(t in filter.tagsExcluded) {
+    for(var t in filter.tagsExcluded) {
         tags[filter.tagsExcluded[t]] = 'exc'
     };
     return tags
@@ -5504,7 +5644,7 @@ function tagSelectionParse(filter) {
 function animeFilterApply() {
     // сначала скормим выбранные тэги
     filterDefault.tagsIncluded = []; filterDefault.tagsExcluded = [];
-    for(t in tagSelection) {
+    for(var t in tagSelection) {
         if(tagSelection[t] === 'inc') {filterDefault.tagsIncluded.push(t)};
         if(tagSelection[t] === 'exc') {filterDefault.tagsExcluded.push(t)}
     };
@@ -5550,12 +5690,12 @@ let changeableValues = [
 function calcPresetChanges() {
     var changes = 0, p = JSON.parse(filterPresetOnly);
     // changeable
-    for(let i = 0; i < changeableValues.length; i++) {
+    for(var i = 0; i < changeableValues.length; i++) {
         if(filterDefault[changeableValues[i]] !== p[changeableValues[i]]) {changes++}
     };
     // tags
     var tagsp = tagSelectionParse(p), tagsf = tagSelectionParse(filterDefault);
-    for(key in tagsp) {
+    for(var key in tagsp) {
         if(tagsp[key] !== tagsf[key]) {changes++}
     };
     //
@@ -5616,7 +5756,7 @@ function screenAnimeFilter() {
     // кнопки пресетов
     [saf.presetpos, saf.height] = positionsWidthBox(presetButtons, saf.width, fbSpacing, saf.height, saf.scroll.get());
     scaleFontObject(presetButtonFont);
-    for(b in presetButtons) {
+    for(var b in presetButtons) {
         presetButtons[b].pos.setv(saf.presetpos[b].sumxy((cvssize.x - saf.width)/2 + cvsxoffset, fbSpacing));
         if(presetButtons[b].pos.y + presetButtons[b].size.y < 0) {continue};
         if(presetButtons[b].pos.y > cvssize.y) {continue};
@@ -5636,7 +5776,7 @@ function screenAnimeFilter() {
     // кнопки тэгов
     [saf.tagpos, saf.height] = positionsWidthBox(tagButtons, saf.width, fbSpacing*1.5, saf.height, saf.scroll.get());
     scaleFontObject(tagButtonsFont); ctx.textAlign = 'center';
-    for(b in tagButtons) {
+    for(var b in tagButtons) {
         tagButtons[b].pos.setv(saf.tagpos[b].sumxy((cvssize.x - saf.width)/2 + cvsxoffset, fbSpacing));
         if(tagButtons[b].pos.y + tagButtons[b].size.y < 0) {continue};
         if(tagButtons[b].pos.y > cvssize.y) {continue};
@@ -5648,7 +5788,7 @@ function screenAnimeFilter() {
     // сезоны
     [saf.tagpos, saf.height] = positionsWidthBox(seasonButtons, saf.width, fbSpacing, saf.height, saf.scroll.get());
     scaleFontObject(tagButtonsFont);
-    for(b in seasonButtons) {
+    for(var b in seasonButtons) {
         seasonButtons[b].pos.setv(saf.tagpos[b].sumxy((cvssize.x - saf.width)/2 + cvsxoffset, fbSpacing));
         if(seasonButtons[b].pos.y + seasonButtons[b].size.y < 0) {continue};
         if(seasonButtons[b].pos.y > cvssize.y) {continue};
@@ -5656,7 +5796,7 @@ function screenAnimeFilter() {
     };
     // типы
     [saf.tagpos, saf.height] = positionsWidthBox(typeButtons, saf.width, fbSpacing, saf.height, saf.scroll.get());
-    for(b in typeButtons) {
+    for(var b in typeButtons) {
         typeButtons[b].pos.setv(saf.tagpos[b].sumxy((cvssize.x - saf.width)/2 + cvsxoffset, fbSpacing));
         if(typeButtons[b].pos.y + typeButtons[b].size.y < 0) {continue};
         if(typeButtons[b].pos.y > cvssize.y) {continue};
@@ -5664,7 +5804,7 @@ function screenAnimeFilter() {
     };
     // статусы
     [saf.tagpos, saf.height] = positionsWidthBox(statusButtons, saf.width, fbSpacing, saf.height, saf.scroll.get());
-    for(b in statusButtons) {
+    for(var b in statusButtons) {
         statusButtons[b].pos.setv(saf.tagpos[b].sumxy((cvssize.x - saf.width)/2 + cvsxoffset, fbSpacing));
         if(statusButtons[b].pos.y + statusButtons[b].size.y < 0) {continue};
         if(statusButtons[b].pos.y > cvssize.y) {continue};
@@ -5691,13 +5831,14 @@ function screenAnimeFilter() {
     filterPrecount.update();
     scaleFontObject(titleCounterFont);
     fillRectRounded(new Vector2(saf.width, saf.precounter), (new Vector2(saf.xanchor + fbSpacing, fbSpacing)), saf.bgcolor, fbSpacing);
-    saf.precounter = filterPrecount.flag
+    if(filterPrecount.flag) {fillRectRounded(new Vector2(saf.width * Math.norma(filterPrecount.timeout*2), saf.precounter), (new Vector2(saf.xanchor + fbSpacing, fbSpacing)), `#0c05`, fbSpacing)};
+    saf.precounter = filterPrecount.flag || !filterPrecount.first
     ? fbSpacing + sbTextFit(filterPrecount.count, new Vector2(saf.xanchor + fbSpacing, fbSpacing), saf.width, fbSpacing, 0, '#ffff')
     : fbSpacing + sbTextFit(txt('filterCounter') + filterPrecount.count, new Vector2(saf.xanchor + fbSpacing, fbSpacing), saf.width, fbSpacing, 0, '#ffff')
 };
 function positionsWidthBox(array, width, spacing, height=0, scroll=0) {
     var pos = {}, size, px=0, py=height;
-    for(i in array) {
+    for(var i in array) {
         size = array[i].size;
         if(px === 0) {
             pos[i] = new Vector2(px, py - scroll);
@@ -5813,9 +5954,11 @@ let prefRenderText = '';
 let prefRenderFps = new ShapedSelectBar(new Vector2(prefOptionWidth*1.5, prefBarHeight), colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
 let prefRenderBack = new ShapedSelectBar(new Vector2(prefOptionWidth*1.5, prefBarHeight), colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
 let prefRenderQuality = new ShapedSelectBar(new Vector2(prefOptionWidth*1.5, prefBarHeight), colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
+let prefRenderScale = new ShapedSelectBar(new Vector2(prefOptionWidth*1.5, prefBarHeight), colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
 prefRenderFps.onset = (value) => {if(pref.lockfps) {prefSetValue('framerate', 30 + Math.round(value)*5); lockFpsSwitch(pref.framerate)}};
 prefRenderBack.onset = (value) => {prefSetValue('bgalpha', Math.round(value)/100)}; prefRenderBack.permanent = true; 
 prefRenderQuality.onset = (value) => {setRenderQuality(Math.round(value))};
+prefRenderScale.onset = (value) => {setTimeout(() => {cvsscale.move(floatNumber(value+0.5), 0.25, easeOutCirc); globalRescale()}, 250)};
 let prefRenderLockFps = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
 let prefRenderShowFps = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
 let prefRenderDevInfo = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
@@ -5830,6 +5973,9 @@ let prefRenderParallax = new TextButtonShaped(shapeRectRounded, '', new Vector2(
 prefRenderWallpaper.onclick = () => {setWallpaper(prompt(txt('filterWallpaper'), wallpaper.src))};
 prefRenderParallax.isSwitcher = true; prefRenderParallax.height = 0; prefRenderParallax.needshadow = false;
 prefRenderParallax.onclick = () => {prefSetValue('parallax', true)}; prefRenderParallax.ondeact = () => {prefSetValue('parallax', false)};
+let prefRenderVisual = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
+prefRenderVisual.onclick = prefVisualSwitch; prefRenderVisual.ondeact = prefVisualSwitch;
+prefRenderVisual.isSwitcher = true; prefRenderVisual.height = 0; prefRenderVisual.needshadow = false;
 // rescale
 function prefButtonsRescale() {
     // roll
@@ -5850,10 +5996,12 @@ function prefButtonsRescale() {
     prefRenderFps.size = new Vector2(prefOptionWidth*1.5, prefBarHeight).multxy(cvsscale.get());
     prefRenderBack.size = new Vector2(prefOptionWidth*1.5, prefBarHeight).multxy(cvsscale.get());
     prefRenderQuality.size = new Vector2(prefOptionWidth*1.5, prefBarHeight).multxy(cvsscale.get());
+    prefRenderScale.size = new Vector2(prefOptionWidth*1.5, prefBarHeight).multxy(cvsscale.get());
     prefRenderLockFps.size = new Vector2(prefOptionWidth/2, prefButtonHeight).multxy(cvsscale.get());
     prefRenderWallpaper.size = new Vector2(prefOptionWidth, prefButtonHeight*1.2).multxy(cvsscale.get());
     prefRenderParallax.size = new Vector2(prefOptionWidth/2, prefButtonHeight).multxy(cvsscale.get());
     // other
+    prefRenderVisual.size = new Vector2(prefOptionWidth/2, prefButtonHeight).multxy(cvsscale.get());
     prefRenderShowFps.size = new Vector2(prefOptionWidth/2, prefButtonHeight).multxy(cvsscale.get());
     prefRenderDevInfo.size = new Vector2(prefOptionWidth/2, prefButtonHeight).multxy(cvsscale.get());
 };
@@ -5861,6 +6009,7 @@ function prefButtonsRescale() {
 function actualPrefRender() {
     prefRenderFps.update((pref.framerate - 30)/5, 34);
     prefRenderBack.update(pref.bgalpha*100, 100);
+    prefRenderScale.update(cvsscale.get()-0.5, 3.5);
     if(!pref.imageSmoothing) {
         prefRenderQuality.update(0, 3);
         prefRenderText = txt('pstDisable')
@@ -5879,7 +6028,8 @@ function actualPrefRender() {
     prefRenderLockFps.active = pref.lockfps;
     prefRenderParallax.active = pref.parallax;
     prefRenderShowFps.active = pref.showFPS;
-    prefRenderDevInfo.active = pref.showDebugInfo
+    prefRenderDevInfo.active = pref.showDebugInfo;
+    prefRenderVisual.active = pref.visual;
 };
 //
 function setRenderQuality(value) {
@@ -5961,7 +6111,7 @@ function screenPreferences() {
     // ЯЗЫК
     scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
     sbVoidPrefix(allTranslations.head(), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get())
-    for(elem in prefLanguages) {
+    for(var elem in prefLanguages) {
         prefLanguages[elem].pos.setxy(spref.xanchor+spref.width - (spacing*2 + prefLangButtons.x) * Number(+elem+1) + spacing, spref.height+spacing - spref.scroll.get());
         prefLanguages[elem].sizedZoom(prefLangButtons.multxy(cvsscale.get()));
         prefLanguages[elem].draw()
@@ -5970,6 +6120,7 @@ function screenPreferences() {
     // НАСТРОЙКИ РУЛЕТКИ
     actualPrefRoulette();
     scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
+    sbBlockHint.text = txt('hintRoll');
     spref.height += sbTextHeader(txt('prefRoll'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
     spref.height += sbSelectbarPrefix(txt('prefRTime'), Math.round(prefRouletteTime.point())+5, prefRouletteTime, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
@@ -5994,6 +6145,8 @@ function screenPreferences() {
     sbBlockHint.text = txt('hintNewTrack');
     spref.height += sbButtonPrefix(txt('prefANew'), prefAudioNewTrack, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     spref.height += sbButtonPrefix(txt('prefAShow'), prefAudioShowPlayer, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+    sbBlockHint.text = txt('hintAudioVisual');
+    spref.height += sbButtonPrefix(txt('prefVisual'), prefRenderVisual, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     // НАСТРОЙКИ ОТРИСОВКИ
     actualPrefRender();
     scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
@@ -6004,6 +6157,8 @@ function screenPreferences() {
     spref.height += sbSelectbarPrefix(txt('prefRFPS'), Math.round(prefRenderFps.point())*5 + 30, prefRenderFps, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     spref.height += sbSelectbarPrefix(txt('prefRSmooth'), prefRenderText, prefRenderQuality, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     spref.height += sbSelectbarPrefix(txt('prefRShadow'), Math.round(prefRenderBack.point())/100, prefRenderBack, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+    sbBlockHint.text = txt('hintPrefScale');
+    spref.height += sbSelectbarPrefix(txt('prefScaleSet'), `x`+floatNumber(cvsscale.get(), 1), prefRenderScale, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     sbBlockHint.text = txt('hintBackgroundURL') + wallpaper.src;
     spref.height += sbButtonPrefix(textStringLimit(txt('prefRBG') + wallpaper.src, spref.width - (prefOptionWidth*cvsscale.get() + spacing*2)), prefRenderWallpaper, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     spref.height += _imagebuttonheight;
@@ -6051,7 +6206,6 @@ function transitionScreen() {
         tss.waitfunc = () => {
             ctx.fillRect(0, fullsize.y * (1 - tss.progress.get()), fullsize.x, fullsize.y * tss.progress.get());
             if(tss.progress.get() >= 1) {
-                resetEventThread();
                 activeScreen = tss.screen;
                 tss.state = 'openshow'
             }
@@ -6083,7 +6237,6 @@ function transitionScreen() {
         tss.waitfunc = () => {
             ctx.fillRect(0, 0, fullsize.x, fullsize.y * tss.progress.get());
             if(tss.progress.get() >= 1) {
-                resetEventThread();
                 activeScreen = tss.screen;
                 tss.state = 'closeshow'
             }
@@ -6118,30 +6271,155 @@ function requestScreen(screen, open=true) {
     open ? tss.state = 'openhide' : tss.state = 'closehide'
 };
 //
+// @EAG WINNER ANIMATION
+//
+let rollWinner = {
+    state: 'none',
+    //
+    bg: new Color(0,0,0,0),
+    text: new Color(0,220,0,0),
+    blink: new Vector1(0),
+    zoom: new Vector1(1),
+    anchor: new Vector2(0.5),
+    //
+    waiter: 1,
+    str: [],
+    font: 'Segoe UI',
+    fsize: 60,
+    //
+    effvec: new Vector1(0),
+    effect: () => {
+        var style = ctx.createLinearGradient(0, 0, cvssize.x, cvssize.y);
+        const p = rollWinner.effvec.get();
+        const s = 0.2;
+        style.addColorStop(0, 'rgba(0,220,0,1)');
+        //
+        style.addColorStop(0.001+Math.norma(0.998*p-s), 'rgba(0,220,0,1)');
+        style.addColorStop(0.001+Math.norma(0.998*p-s/2), '#ffff');
+        style.addColorStop(0.001+0.998*p, 'rgba(0,220,0,1)');
+        //
+        style.addColorStop(1, 'rgba(0,220,0,1)');
+        return style
+    },
+    //
+    invoke: (name) => {
+        if(rollWinner.state === 'none') {
+            scaleFont(rollWinner.fsize, rollWinner.font, 'bold');
+            rollWinner.str = textWidthFit(String(name).toLocaleUpperCase(), cvssize.x*0.9, 10*cvsscale.get());
+            rollWinner.waiter = 1 + (rollWinner.str[0].length-1) * 0.75;
+            rollWinner.state = 'dark';
+            rollWinner.bg = new Color(0,0,0,0);
+            rollWinner.text = new Color(0,220,0,0);
+            rollWinner.text.ease = easeInQuad;
+            rollWinner.blink = new Vector1(0);
+            rollWinner.zoom = new Vector1(20);
+            rollWinner.effvec = new Vector1(0);
+        }
+    },
+    //
+    draw: () => {
+        if(rollWinner.state !== 'none') {
+            // update
+            rollWinner.bg.update();
+            rollWinner.text.update();
+            rollWinner.blink.update();
+            rollWinner.zoom.update();
+            rollWinner.effvec.update();
+            // draw
+            fillRect(fullsize, new Vector2(), rollWinner.bg.getColor());
+            ctx.fillStyle = rollWinner.text.getColor();
+            ctx.textAlign = 'center';
+            ctx.letterSpacing = `${rollWinner.zoom.get()}px`;
+            const spacing = 10*cvsscale.get();
+            const [fit, fitsize] = rollWinner.str;
+            const pos = normalAlign(rollWinner.anchor, fitsize.sumxy(0, spacing*fit.length).multxy(1, fit.length));
+            scaleFont(rollWinner.fsize * rollWinner.zoom.get(), rollWinner.font, 'bold');
+            fillTextArray(pos, rollWinner.str, 5 * cvsscale.get());
+            ctx.letterSpacing = '0px';
+            //
+            if(rollWinner.state === 'dark') {
+                rollWinner.bg.fadeTo(new Color(0,0,0,0.5), 0.5);
+                rollWinner.text.fadeTo(new Color(0,220,0,1), 1);
+                rollWinner.zoom.move(1, 0.5, easeOutExpo);
+                rollWinner.state = 'wait';
+                setTimeout(() => {rollWinner.state = 'blink'}, 1000);
+            //
+            } else if(rollWinner.state === 'blink'){
+                rollWinner.state = 'wait';
+                playSound(sound['winner']);
+                rollWinner.text.getColor = rollWinner.effect;
+                rollWinner.effvec.move(1, rollWinner.waiter, easeInOutSine);
+                setTimeout(() => {rollWinner.state = 'hide'}, rollWinner.waiter*1000);
+            //
+            } else if(rollWinner.state === 'hide') {
+                rollWinner.text = new Color(0,220,0,1);
+                rollWinner.text.ease = easeOutCirc;
+                rollWinner.text.fadeTo(new Color(0,220,0,0), 0.5);
+                rollWinner.bg.fadeTo(new Color(0,0,0,0), 0.5);
+                rollWinner.state = 'wait';
+                visual.lightDiam.move(fitFrameSize.y*1.6, 1, easeOutCirc)
+                setTimeout(() => {rollWinner.state = 'none'}, 1100)
+            }
+        }
+    },
+};
+//
+// @eag VISUAL EFFECTS
+//
+let winnerLightRing = invokeNewImage('images/light.png');
+//
+let visual = {
+    // caching
+    stars: [],
+    // light ring
+    lightAngle1: 0,
+    lightAngle2: 180,
+    lightDiam: new Vector1(fitFrameSize.y*1.6),
+    lightRing: (center, radius) => {
+        visual.lightDiam.update();
+        setRotation(center, visual.lightAngle1);
+        drawImageSized(winnerLightRing, center.minxy(radius/2), new Vector2(radius));
+        ctx.resetTransform();
+        setRotation(center, visual.lightAngle2);
+        drawImageSized(winnerLightRing, center.minxy(radius/2), new Vector2(radius));
+        ctx.resetTransform();
+        //
+        visual.lightAngle1 += visual.lightAngle1 < 360 ? (deltaTime/1000) * 45 : -360;
+        visual.lightAngle2 -= visual.lightAngle2 > 0 ? (deltaTime/1000) * 30 : -360
+    },
+    // layers @RELEASE
+    backgroundLayer: () => {
+        if(pref.visual) {
+            musicAnalysis.update();
+            musicEqualizer.draw()
+        }
+    },
+};
+//
 // @EAG WALLPAPER IMAGE
 //
 let wallpaper = new Image();
 let wallpaperbase = [
-    '1Vms2RLx82NUKreiDxmmQLv3fD-87XlMM', 
-    '1ZpoUGc4GDB_BNI70I_uQEq7PsbzERpI5',
-    '1ecD4IWwzis4Cd1rpITZRcHBorKUm2qQY', 
-    '1YtlziStVpf17_0C1zCtYz_E2efUGvEYt',
-    '1XMwpoYMTP7stprsuCTe-uFwveXiXIxqC', 
-    '1XrEUNnEEb5t-oB9NRsK-g4ssM0PcNZ6A',
-    '12-zKGioSwrkF2I0AP1TYMckuEc7EcdQd', 
-    '1U8hD1wef0yWQbpBiUo6ur20y4PdEgpDy',
-    '1V1z15_uWfU41CjgRFjP2_OxmBv8hI8Px', 
-    '1EKW-y834w3tvo3ZSiEeEUr58n0nOKjpq'
+    '1Vms2RLx82NUKreiDxmmQLv3fD-87XlMM',    // пять невест
+    '1ZpoUGc4GDB_BNI70I_uQEq7PsbzERpI5',    // повар боец сома
+    '1ecD4IWwzis4Cd1rpITZRcHBorKUm2qQY',    // дракон горничная
+    '1YtlziStVpf17_0C1zCtYz_E2efUGvEYt',    // школа дхд
+    '1XMwpoYMTP7stprsuCTe-uFwveXiXIxqC',    // сакурасо
+    '12-zKGioSwrkF2I0AP1TYMckuEc7EcdQd',    // кейон
+    '1V1z15_uWfU41CjgRFjP2_OxmBv8hI8Px',    // спай фемили
+    '1EKW-y834w3tvo3ZSiEeEUr58n0nOKjpq',    // вайолетт
 ];
 // это зачатки видео на заднем фоне, пока что сложно и лень
 // let wallvideo = document.createElement('video');
 // wallvideo.src = '';
 // wallvideo.preload = 'auto';
-// wallvideo.loop = true;
+// wallvideo.onended = () => {wallvideo.pause()};
 let wlpsize = new Vector2();
 let parallaxSize = new Vector2();
 let parallaxOffset = new Vector2();
 let oldwallpaper = randomWallpaperGD();
+let _wphide = new Vector1(1);
+let _wphided = true;
 let wallerror = null;
 wallpaper.src = lsLoadString('wallpaper', randomWallpaperGD());
 wallpaper.onerror = () => {
@@ -6154,7 +6432,16 @@ wallpaper.onerror = () => {
 };
 //
 function setWallpaper(src) {
-    wallpaper.src = src
+    oldwallpaper = wallpaper.src;
+    wallpaper.src = src !== null ? src : randomWallpaperGD();
+    wallpaper.onerror = () => {
+        wallpaper.src = oldwallpaper;
+        wallpaper.onerror = () => {
+            wallpaper.src = '';
+            lsSaveValue('wallpaper', randomWallpaperGD());
+            wallerror = true
+        }
+    }
 };
 function randomWallpaperGD(apply = false) {
     const prefix = 'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=';
@@ -6193,17 +6480,36 @@ function updateWallSize() {
 //
 function wallpaperImage() {
     if(!wallpaper.complete || sload.state === 'startup' || sload.state === 'timeout' || wallerror) {
-        fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), staticBgcolor)
+        fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), staticBgcolor);
+        if(!_wphided) {
+            _wphide.set(1);
+            _wphided = true;
+            drawWallpaper = drawWallpaperInit
+        }
     } else {
-        updateWallSize();
-        drawImageSized(wallpaper, fullAlign(new Vector2(0.5), wlpsize).sumv(parallaxOffset), wlpsize);
-        fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), '#0004')
+        drawWallpaper()
     };
     // if(!wallvideo.paused) {
     //     [wallvideo.width, wallvideo.height] = [wlpsize.x, wlpsize.y];
     //     drawImageSized(wallvideo, fullAlign(new Vector2(0.5), wlpsize).sumv(parallaxOffset), wlpsize);
     // }
 };
+//
+function drawWallpaperInit() {
+    if(_wphided) {_wphide.move(0, 1, easeInOutSine); _wphided=false};
+    _wphide.update();
+    updateWallSize();
+    drawImageSized(wallpaper, fullAlign(new Vector2(0.5), wlpsize).sumv(parallaxOffset), wlpsize);
+    fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), '#0004');
+    fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), `rgba(11,11,18,${_wphide.get()})`)
+    setTimeout(() => {drawWallpaper = drawWallpaperNormal}, 1200)
+};
+function drawWallpaperNormal() {
+    updateWallSize();
+    drawImageSized(wallpaper, fullAlign(new Vector2(0.5), wlpsize).sumv(parallaxOffset), wlpsize);
+    fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), '#0004')
+};
+let drawWallpaper = drawWallpaperInit;
 //
 // @EAG RENDER ALL
 //
@@ -6252,7 +6558,7 @@ function developInfo() {
         var limit = bytesStringify(performance.memory.jsHeapSizeLimit);
         var total = bytesStringify(performance.memory.totalJSHeapSize);
         var usage = bytesStringify(performance.memory.usedJSHeapSize);
-        //
+        // @RELEASE
         fillRectRounded(new Vector2(devinfoValues.width, devinfoValues.height), new Vector2(devinfoValues.xanchor, devinfoValues.offset), '#0029', devinfoValues.margin);
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(1)), 'FPS: '+FPS, '#fff', 'bold 16px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(2)), 'memLimit: '+limit, '#fcc', 'bold 12px Consolas');
@@ -6278,6 +6584,7 @@ function render() {
     jikan._update();
     // draw
     wallpaperImage();
+    visual.backgroundLayer();
     activeScreen();
     transitionScreen();
     hoverHint.draw();
