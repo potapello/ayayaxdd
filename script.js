@@ -2411,8 +2411,8 @@ let casTimeout = 0.25;
 let casResized = new Vector2();
 let cvsField = 0;
 function canvasActualSize() {
-    const doc = new Vector2(document.documentElement.clientWidth, document.documentElement.clientHeight);
-    // const doc = new Vector2(window.innerWidth, window.innerHeight);
+    // const doc = new Vector2(document.documentElement.clientWidth, document.documentElement.clientHeight);
+    const doc = new Vector2(window.innerWidth, window.innerHeight);
     // doc.y
     if(casState === 'idle') {
         if(ctx.canvas.width  != doc.x || ctx.canvas.height != doc.y) {
