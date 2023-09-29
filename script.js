@@ -2411,40 +2411,43 @@ let casTimeout = 0.25;
 let casResized = new Vector2();
 let cvsField = 0;
 function canvasActualSize() {
+    const doc = new Vector2(document.documentElement.clientWidth, document.documentElement.clientHeight);
+    // const doc = new Vector2(window.innerWidth, window.innerHeight);
+    // doc.y
     if(casState === 'idle') {
-        if(ctx.canvas.width  != window.innerWidth || ctx.canvas.height != window.innerHeight) {
+        if(ctx.canvas.width  != doc.x || ctx.canvas.height != doc.y) {
             casState = 'moved'
         };
-        if(!docsize.condAND(new Vector2(window.innerWidth, window.innerHeight)) && docsize.time == 0) {
-            docsize.movexy(window.innerWidth, window.innerHeight, 0.25, easeOutQuint);
-            ctx.canvas.width = window.innerWidth;
-            ctx.canvas.height = window.innerHeight;
+        if(!docsize.condAND(new Vector2(doc.x, doc.y)) && docsize.time == 0) {
+            docsize.movev(doc, 0.25, easeOutQuint);
+            ctx.canvas.width = doc.x;
+            ctx.canvas.height = doc.y;
         }
         //
     } else if (casState === 'moved') {
         casTimeout = 0.25;
-        if(casResized.x  == window.innerWidth && casResized.y == window.innerHeight) {
+        if(casResized.x  == doc.x && casResized.y == doc.y) {
             casState = 'timeout'
         };
-        casResized.setxy(window.innerWidth, window.innerHeight)
+        casResized.setv(doc)
         //
     } else if (casState === 'timeout') {
-        if(casResized.x  != window.innerWidth || casResized.y != window.innerHeight) {
+        if(casResized.x  != doc.x || casResized.y != doc.y) {
             casState = 'moved'
         }
         casTimeout -= deltaTime/1000;
         //
         if(casTimeout <= 0) {casState = 'resize'; casTimeout = 0}
     } else if (casState === 'resize') {
-        ctx.canvas.width = window.innerWidth;
-        ctx.canvas.height = window.innerHeight;
-        docsize.movexy(window.innerWidth, window.innerHeight, 0.25, easeOutQuint);
+        ctx.canvas.width = doc.x;
+        ctx.canvas.height = doc.y;
+        docsize.movev(doc, 0.25, easeOutQuint);
         casState = 'idle'
     } else if (casState === 'init') {
         if(casTimeout > 0) {
-            ctx.canvas.width = window.innerWidth;
-            ctx.canvas.height = window.innerHeight;
-            docsize.movexy(window.innerWidth, window.innerHeight, 0.01);
+            ctx.canvas.width = doc.x;
+            ctx.canvas.height = doc.y;
+            docsize.movev(doc, 0.01);
         } else {
             casState = 'idle'
         };
@@ -2466,7 +2469,7 @@ function canvasActualSize() {
             cvssize.setxy(fullsize.y*2, fullsize.y)
         }
     }
-    cvsscale.update();
+    cvsscale.update()
 };
 //
 // @EAG RESCALE METHODS
