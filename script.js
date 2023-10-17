@@ -1,23 +1,4 @@
-// Copyright 2023 Ilya Potapello
-
-// Permission is hereby granted, free of charge, to any person obtaining a copy 
-// of this software and associated documentation files (the “Software”), to deal 
-// in the Software without restriction, including without limitation the rights to 
-// use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
-// of the Software, and to permit persons to whom the Software is furnished to do 
-// so, subject to the following conditions:
-
-// The above copyright notice and this permission notice shall be included in all 
-// copies or substantial portions of the Software.
-
-// THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
-// INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
-// PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
-// HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF 
-// CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE 
-// OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-var cvs = document.getElementById("ayayaxdd");
+﻿var cvs = document.getElementById("ayayaxdd");
 var ctx = cvs.getContext("2d");
 // focus stopper
 let windowVisibility = false;
@@ -42,14 +23,14 @@ function databaseShorter() {
 //
 let $appInfo = {
     // main
-    version: '1.0 beta',
-    date: '19 Sep 2023',
+    version: '1.1 beta',
+    date: '17 Oct 2023',
     name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
     fullname: 'AYAYA - Anime Roulette',
     author: 'by potapello',
     // other
     codename: 'ayayaxdd', // EAG? в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
-    cleft: 'ayayaxdd 1.0 beta',
+    cleft: 'ayayaxdd 1.1 beta',
     cright: 'created by potapello',
 };
 //
@@ -611,6 +592,7 @@ function inputListener() {
     } else {
         if(mouse.holdTicks != _holdTicks) {
             mouse.holdTicks = _holdTicks;
+            // focus
             mouse.click = true
         };
         if(mouse.holded) {mouse.holded = false}
@@ -636,7 +618,7 @@ function promptNumber(text, min, max, actual) {
     if(p === 'NaN' || p === 'null') {return actual}
     else {p = Number(p)};
     return p < min ? min : p > max ? max : p
-}; 
+};
 //
 // @EAG OTHER CLASSES
 //
@@ -697,7 +679,7 @@ let sound = {
     'player': new Audio('sounds/player.ogg'),
 };
 let music = [
-    //['src', rolltime],
+    //['src', rolltime, 'name'],
     ['audio/music1.ogg', 61, 'Kuhaku Gokko - Lil\'b'],
     ['audio/music2.ogg', 49, 'Miku Sawai - Gomen ne, Iiko ja Irarenai'],
     ['audio/music3.ogg', 17, 'DUSTCELL - Narazumono'],
@@ -721,6 +703,10 @@ let music = [
     ['audio/music21.ogg', 27, 'Kessoku Band - Seishun Complex'],
     ['audio/music22.ogg', 51, 'Perfume - Pick Me Up'],
     ['audio/music23.ogg', 23, 'Nightcore - Everytime We Touch'],
+    ['audio/music24.ogg', 11, 'beatMARIO - Night of Nights'],
+    ['audio/music25.ogg', 48, 'FELT - Summer Fever'],
+    ['audio/music26.ogg', 20.5, 'SEREBRO - Мало тебя (speed up)'],
+    ['audio/music27.ogg', 50, 'Touhou - Bad Apple!!'],
 ];
 //
 let musicNormal = new Audio();
@@ -1189,6 +1175,52 @@ function prefVisualSwitch() {
     }
 };
 //
+// @EAG SESSION STORAGE
+//
+let session = sessionStorage;
+let sessionLimit = (4 * 1024 * 1024) - 1;
+let sessionPref = 'eagsession_';
+//
+function sesWrite(key, value) {
+    session.setItem(String(key), String(value))
+};
+function sesRead(key, def = null) {
+    if(session[String(key)] !== undefined) {
+        return session[String(key)]
+    } else {
+        return def
+    }
+};
+//
+function getSessionSize() {
+    var size = 0;
+    for(var k in session) {
+        size += String(session[k]).length
+    };
+    return size * 2
+};
+function getLocalSize() {
+    var size = 0;
+    for(var k in localStorage) {
+        size += String(localStorage[k]).length
+    };
+    return size * 2
+};
+// session optimizer
+function sessionOptimize() {
+    var allk = [];
+    if(getSessionSize() >= sessionLimit) {
+        for(var k in session) {
+            allk.push(k)
+        };
+        allk = allk.splice(0, allk.length/2);
+        for(var k in allk) {
+            delete session[allk[k]]
+        }
+    }
+};
+setInterval(() => {sessionOptimize()}, 60000);
+//
 // @EAG SAVE OPTIMIZATION
 //
 function optimizeAnimeObject(object) {
@@ -1343,6 +1375,7 @@ let _TextTranslations = {
         descWork: 'Переводим... ',
         descRoll: 'Рулетка крутится...',
         descTrailer: '[Трейлер]',
+        descNoTrailer: 'Трейлер не найден...',
         // single words
         wordError: 'Ошибка',
         wordOriginal: '[Оригинал]',
@@ -1357,13 +1390,15 @@ let _TextTranslations = {
         promIntLess: 'Введите целое число, меньше чем',
         promIntOver: 'Введите целое число, больше чем',
         promHoverCopy: 'Нажмите, чтобы скопировать название',
+        promFloatLess: 'Введите число с точностью до десятых (пример - "1.5"), меньше чем',
+        promFloatOver: 'Введите число с точностью до десятых (пример - "8.5"), больше чем',
         // filter
         filterApplyPreset: 'Применить',
         filterWallpaper: 'Вставьте ссылку на изображение или нажмите "Отмена" для случайного изображения из заранее подготовленных...',
         filterDiap: 'Диапазоны',
         filterYear: 'Год выхода (0 - 2023)',
         filterEps: 'Кол-во серий (1 - 9999)',
-        filterScore: 'Ср. оценка (0 - 100)',
+        filterScore: 'Ср. оценка (0 - 10)',
         filterScoreAllow: 'Учитывать оценки MAL',
         filterSTS: 'Сезоны, типы и статусы',
         filterTags: 'Тэги',
@@ -1379,8 +1414,8 @@ let _TextTranslations = {
         loadGen: `Генерируем рулетку...`,
         loadDone: `Готово!`,
         loadFirstEvent: `Нажмите в любую область экрана для продолжения...`,
-        loadNoCon: `Ошибка загрузки ресурсов!`,
-        loadRecon: `При попытке загрузки онлайн-ресурса возникла ошибка. Пожалуйста, проверьте соединение с интернетом и перезагрузите страницу.`,
+        loadNoCon: `Нет соединения с интернетом!`,
+        loadRecon: `Пожалуйста, проверьте соединение с интернетом и перезагрузите страницу.`,
         // presetinfo
         prinIncludes: 'Включения:', prinExcludes: 'Исключения:', prinPreset: 'Пресет: ', prinEps: ' Серии: ',
         prinYears: '. Года выхода: ', prinScore: '. Ср. оценка: ', prinMultiplier: '. Множитель:',
@@ -1565,6 +1600,7 @@ let _TextTranslations = {
         descWork: 'Translating... ',
         descRoll: 'Roulette is spinning...',
         descTrailer: '[Trailer]',
+        descNoTrailer: 'Trailer not found...',
         // single words
         wordError: 'Error',
         wordOriginal: '[Original]',
@@ -1579,13 +1615,15 @@ let _TextTranslations = {
         promIntLess: 'Enter an integer less than',
         promIntOver: 'Enter an integer greater than',
         promHoverCopy: 'Click to copy the name',
+        promFloatLess: 'Enter a number with precision to tenths (example - "1.5"), less than',
+        promFloatOver: 'Enter a number with precision to tenths (example - "8.5"), over than',
         // filter
         filterApplyPreset: 'Apply',
         filterWallpaper: 'Insert a URL link to the image or click "Cancel" for a random image from the pre-prepared ones...',
         filterDiap: 'Ranges',
         filterYear: 'Year of release (0 - 2023)',
         filterEps: 'Episodes (1 - 9999)',
-        filterScore: 'Avg. score (0 - 100)',
+        filterScore: 'Avg. score (0 - 10)',
         filterScoreAllow: 'Take into account the MAL rating',
         filterSTS: 'Seasons, types & statuses',
         filterTags: 'Tags',
@@ -1601,8 +1639,8 @@ let _TextTranslations = {
         loadGen: `Generating roulette...`,
         loadDone: `Success!`,
         loadFirstEvent: `Tap anywhere on the screen to continue...`,
-        loadNoCon: `Resource download error!`,
-        loadRecon: `An error occurred while trying to download an online resource. Please check your internet connection and reload the page.`,
+        loadNoCon: `No internet connection!`,
+        loadRecon: `Please check your internet connection and reload the page.`,
         // presetinfo
         prinIncludes: 'Includes:', prinExcludes: 'Excludes:', prinPreset: 'Preset: ', prinEps: ' Episodes: ',
         prinYears: '. Years: ', prinScore: '. Avg. score: ', prinMultiplier: '. Multiplier:',
@@ -2208,7 +2246,14 @@ let jikan = {
             }
         }
     },
-    _send: () => {
+    _cache: (mal_id) => {
+        jikan._error = false;
+        jikan._waitResponse = false;
+        jikan._request = () => {};
+        jikan._result = jikan._response = JSON.parse(sesRead('jikan'+mal_id));
+        jikan._loaded = true
+    },
+    _send: (mal_id) => {
         jikan._loaded = false;
         jikan._error = false;
         jikan._result = 'wait';
@@ -2225,6 +2270,7 @@ let jikan = {
                     jikan._error = true;
                     jikan._result = `failed`;
                 } else {
+                    sesWrite(`jikan${mal_id}`, JSON.stringify(jikan._xhr.response));
                     jikan._result = jikan._response = jikan._xhr.response;
                     jikan._loaded = true;
                 }
@@ -2247,11 +2293,15 @@ let jikan = {
     //
     stats: (mal_id) => {
         jikan._xhr.open("GET", jikan._prefix + mal_id + '/statistics');
-        jikan._send()
+        jikan._send(mal_id)
     },
     full: (mal_id) => {
-        jikan._xhr.open("GET", jikan._prefix + mal_id + '/full');
-        jikan._send()
+        if(sesRead('jikan'+mal_id) !== null) {
+            jikan._cache(mal_id)
+        } else {
+            jikan._xhr.open("GET", jikan._prefix + mal_id + '/full');
+            jikan._send(mal_id)
+        }
     },
 };
 //
@@ -2432,7 +2482,6 @@ let cvsField = 0;
 function canvasActualSize() {
     // const doc = new Vector2(document.documentElement.clientWidth, document.documentElement.clientHeight);
     const doc = new Vector2(window.innerWidth, window.innerHeight);
-    // doc.y
     if(casState === 'idle') {
         if(ctx.canvas.width  != doc.x || ctx.canvas.height != doc.y) {
             casState = 'moved'
@@ -3190,7 +3239,7 @@ class ShapedSelectBar {
         this.back.update();
         // shapes
         this.shadow = shapeRectRounded(this.pos, this.size, this.radius * cvsscale.get());
-        this.shape = shapeRectRounded(this.pos.sumxy(this.spacing * cvsscale.get()), this.size.minxy(this.spacing*2 * cvsscale.get()).multxy(this.pointer, 1), this.radius * cvsscale.get())
+        this.shape = shapeRectRounded(this.pos.sumxy(this.spacing * cvsscale.get()), this.size.minxy(this.spacing*2 * cvsscale.get()).multxy(Math.norma(this.pointer), 1), this.radius * cvsscale.get())
         this.state = shapeCollisionState(this.shadow, false);
         // control
         if(!this.mod) {this.pointer = this.progress};
@@ -3378,7 +3427,14 @@ class TextBox {
             maxwidth.x + this.margin.x*2, 
             (this.measure.y * this.complet.length) + (this.spacing * this.complet.length) + this.margin.y*2
         );
-    };
+    }
+    clear() {
+        this.state = '';
+        this.complet = [''];
+        this.strings = [];
+        this.text = ``;
+        this.settext = ``;
+    }
     draw() {
         var pointer = 0, iters = 0;
         // update all
@@ -4007,14 +4063,14 @@ let tInfo = {
 let descrFontFamily = 'Segoe UI';
 let descrFontSize = 13;
 let descrFontSpacing = 0.2;
-let descrWait = 1;
+let descrWaiting = 1;
 //
 let descrTransFunctions = {
     'get-ru': () => {
         tDesc.scroll.set(0);
         if(!tDesc.terror) {
             playSound(sound['player']);
-            translator.ru(jikan._response.data.synopsis);
+            translator.ru(tDesc.data.synopsis);
             tDesc.translate = false;
             tDesc.original = false;
             tDesc.tstate = 'work';
@@ -4058,7 +4114,7 @@ let descrWatchTrailer = new TextButtonShaped(shapeRectRounded, txt('descTrailer'
     colorMapMatrix(`rgba(0,0,0,0)#rgba(0,0,0,0)#rgba(0,0,0,0)#rgba(0,0,0,0))`));
 descrWatchTrailer.onclick = () => {
     if(!musicNormal.paused) {onhideMusicPaused = true; musicNormalPause(2)};
-    window.open(jikan._result.data.trailer.url);
+    window.open(tDesc.data.trailer.url);
 };
 descrWatchTrailer.height = 0; descrWatchTrailer.state = `unaval`;
 //
@@ -4069,9 +4125,10 @@ let tDesc = {
     spacing: 0,
     fsize: 0,
     //
+    data: {},
     malid: null,
     desc: [txt('descNone')],
-    height: new Vector2(),
+    height: new Vector2(0,14*cvsscale.get()),
     //
     full: 0,
     scroll: new Vector1(),
@@ -4080,11 +4137,11 @@ let tDesc = {
     //
     original: true,
     showing: [],
-    alpha: new Vector1(0),
+    alpha: new Vector1(1),
     //
-    wait: 0,
     request: true,
     apply: true,
+    waiting: 0.5,
     //
     translate: false,
     tstate: 'idle',
@@ -4094,13 +4151,13 @@ let tDesc = {
     newDesc: () => {
         descrWatchTrailer.state = `unaval`;
         decsrTranslate.state = 'unaval';
-        if(!roulette.winnerCentered()) {
-            if(pref.autoScroll && roulette.dragged === false) {
-                tDesc.desc = [txt('descRoll')];
-                tDesc.request = false;
-                return
-            }
-        };
+        // if(!roulette.winnerCentered()) {
+        //     if(pref.autoScroll && roulette.dragged === false) {
+        //         tDesc.desc = [txt('descRoll')];
+        //         tDesc.request = false;
+        //         return
+        //     }
+        // };
         tDesc.malid = malAnimeID(roulette.centerAnime.sources);
         tDesc.scroll.set(0);
         tDesc.apply = true;
@@ -4109,8 +4166,8 @@ let tDesc = {
             tDesc.request = false;
             return
         } else {
+            tDesc.waiting = Number(descrWaiting);
             tDesc.desc = [txt('descWait')];
-            tDesc.wait = Number(descrWait);
             tDesc.request = true
         }
     },
@@ -4121,9 +4178,9 @@ let tDesc = {
         if (tDesc.apply) {
             // var height;
             if(jikan._response !== null) {
-                [tDesc.desc, tDesc.height] = textWidthFit(jikan._response.data.synopsis, tInfo.box - (tInfo.spacing*2 + tDesc.fsize))
+                [tDesc.desc, tDesc.height] = textWidthFit(tDesc.data.synopsis, tDesc.size - (tInfo.spacing*2 + tDesc.fsize))
             };
-            // [tDesc.tdesc, tDesc.height] = textWidthFit(translator.single, tInfo.box - (tInfo.spacing*2 + tDesc.fsize));
+            // [tDesc.tdesc, tDesc.height] = textWidthFit(translator.single, tDesc.size - (tInfo.spacing*2 + tDesc.fsize));
             // tDesc.original ? null : tDesc.height = height
         }
     },
@@ -4141,6 +4198,7 @@ let tDesc = {
     draw: () => {
         // scale
         tDesc.fsize = descrFontSize * cvsscale.get();
+        tDesc.size = tinfBoxSize * cvsscale.get();
         // обновления, позиция, задний фон
         tDesc.alpha.update();
         tDesc.scroll.update();
@@ -4151,13 +4209,37 @@ let tDesc = {
         ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
         scaleFont(tinfHeaderSize, 'Segoe UI', 'bold');
         fillTextFast(tDesc.pos.sumxy(tInfo.box/2, -tInfo.spacing*2)  , txt('descHead'));
-        // получаем данные
-        tDesc.wait > 0 ? tDesc.wait -= deltaTime : tDesc.wait = 0;
-        if(tDesc.request && tDesc.wait <= 0) {
-            tDesc.request = false;
-            tDesc.apply = false;
-            jikan.full(tDesc.malid)
+        // ожидаем перед отправкой запроса
+        if(tDesc.request) {
+            if(sesRead('jikan'+tDesc.malid) !== null) {
+                tDesc.data = JSON.parse(sesRead('jikan'+tDesc.malid)).data;
+                scaleFont(descrFontSize, 'Segoe UI');
+                [tDesc.desc, tDesc.height] = textWidthFit(tDesc.data.synopsis, tDesc.size - (tInfo.spacing*2 + tDesc.fsize));
+                tDesc.alpha.set(0.5);
+                tDesc.alpha.move(1, 0.25, easeInCirc);
+                tDesc.scroll.set(0);
+                // хаваем ссылку на трейлер
+                if(tDesc.data.trailer.url !== null) {
+                    descrWatchTrailer.state = `idle`
+                };
+                decsrTranslate.state = 'idle';
+                tDesc.request = false
+            }
+            else if(roulette.progress.isMoving() || roulette.speed.get() !== 0) {
+                tDesc.desc = [txt('descRoll')]
+            } else {
+                if(tDesc.waiting > 0) {
+                    tDesc.desc = [txt('descWait')];
+                    tDesc.waiting -= deltaTime/1000
+                } else {
+                    tDesc.request = false;
+                    tDesc.apply = false;
+                    tDesc.desc = [txt('descWait')];
+                    jikan.full(tDesc.malid)
+                }
+            }
         };
+        // получаем данные
         if(!tDesc.apply && jikan._loaded) {
             tDesc.apply = true;
             decsrTranslate.state = 'idle'
@@ -4165,13 +4247,14 @@ let tDesc = {
                 tDesc.desc = [txt('descNone')];
                 decsrTranslate.state = 'unaval'
             } else {
+                tDesc.data = jikan._response.data;
                 scaleFont(descrFontSize, 'Segoe UI');
-                [tDesc.desc, tDesc.height] = textWidthFit(jikan._response.data.synopsis, tInfo.box - (tInfo.spacing*2 + tDesc.fsize));
+                [tDesc.desc, tDesc.height] = textWidthFit(tDesc.data.synopsis, tDesc.size - (tInfo.spacing*2 + tDesc.fsize));
                 tDesc.alpha.set(0);
                 tDesc.alpha.move(1, 0.25);
                 tDesc.scroll.set(0);
                 // хаваем ссылку на трейлер
-                if(jikan._result.data.trailer.url !== null) {
+                if(tDesc.data.trailer.url !== null) {
                     descrWatchTrailer.state = `idle`
                 }
             }
@@ -4187,7 +4270,7 @@ let tDesc = {
         tDesc.indicate = [tDesc.scroll.getFixed() + tDesc.clip.y < tDesc.full, tDesc.scroll.getFixed() > 0];
         // скроллинг
         if(mouse.pos.overAND(tDesc.pos) && mouse.pos.lessAND(tDesc.pos.sumxy(tInfo.box))) {
-            // паузим рулетку, ещё раз запрашиваем описание если стоп был и продолжаем
+            // паузим рулетку, ещё раз запрашиваем описание если стоп был
             if(tDesc.desc[0] == txt('descRoll')) {
                 tDesc.newDesc();
                 tDesc.release()
@@ -4238,36 +4321,39 @@ let tDesc = {
             fillTextFast(tDesc.pos.sumxy(tInfo.spacing).sumxy(0, -tDesc.scroll.get() + tDesc.height.y * (i+1)), tDesc.showing[i]);
         };
         clipRestore();
-        // ctx.globalAlpha = tInfo.alpha.get();
-        // кнопка перевода
-        // decsrTranslate.size.setxy(tInfo.box/3, tDesc.fsize);
-        // decsrTranslate.pos = tDesc.pos.sumxy(tInfo.box).minv(decsrTranslate.size).minxy(tInfo.spacing, tInfo.spacing*2);
-        // decsrTranslate.draw();
-        // перевод текста
-        // if(!tDesc.original && !tDesc.translate && !tDesc.terror) {
-        //     if(tDesc.tstate === 'work') {
-        //         tDesc.tdesc = [txt('descWork') + translator.getProgress()];
-        //         if(translator.state === 'idle') {
-        //             if(translator.error) {
-        //                 tDesc.original = true;
-        //                 tDesc.terror = true;
-        //                 decsrTranslate.text = txt('wordError');
-        //                 tDesc.tstate = 'error';
-        //             } else {
-        //                 scaleFont(descrFontSize, 'Segoe UI');
-        //                 [tDesc.tdesc, tDesc.height] = textWidthFit(translator.single, tInfo.box - (tInfo.spacing*2 + tDesc.fsize));
-        //                 tDesc.alpha.set(0);
-        //                 tDesc.alpha.move(1, 0.25);
-        //                 tDesc.scroll.set(0);
-        //                 decsrTranslate.onclick = descrTransFunctions['orig'];
-        //                 decsrTranslate.text = txt('wordOriginal');
-        //                 decsrTranslate.state = 'idle';
-        //                 tDesc.translate = true;
-        //                 tDesc.tstate = 'ok'
-        //             }
-        //         }
-        //     }
-        // }
+        if(pref.language !== 'en') {
+            ctx.globalAlpha = tInfo.alpha.get();
+            // кнопка перевода
+            ctx.textAlign = 'center';
+            decsrTranslate.size.setxy(tInfo.box/3, tDesc.fsize);
+            decsrTranslate.pos = tDesc.pos.sumxy(tInfo.box/2, tInfo.box).minxy(tInfo.spacing+decsrTranslate.size.x/2, tInfo.spacing*2+decsrTranslate.size.y);
+            decsrTranslate.draw();
+            // перевод текста
+            if(!tDesc.original && !tDesc.translate && !tDesc.terror) {
+                if(tDesc.tstate === 'work') {
+                    tDesc.tdesc = [txt('descWork') + translator.getProgress()];
+                    if(translator.state === 'idle') {
+                        if(translator.error) {
+                            tDesc.original = true;
+                            tDesc.terror = true;
+                            decsrTranslate.text = txt('wordError');
+                            tDesc.tstate = 'error';
+                        } else {
+                            scaleFont(descrFontSize, 'Segoe UI');
+                            [tDesc.tdesc, tDesc.height] = textWidthFit(translator.single, tDesc.size - (tInfo.spacing*2 + tDesc.fsize));
+                            tDesc.alpha.set(0);
+                            tDesc.alpha.move(1, 0.25);
+                            tDesc.scroll.set(0);
+                            decsrTranslate.onclick = descrTransFunctions['orig'];
+                            decsrTranslate.text = txt('wordOriginal');
+                            decsrTranslate.state = 'idle';
+                            tDesc.translate = true;
+                            tDesc.tstate = 'ok'
+                        }
+                    }
+                }
+            }
+        };
         ctx.globalAlpha = 1
     }
 };
@@ -4920,7 +5006,7 @@ function screenLoading() {
     sload.alpha.update();
     fillRect(fullsize, normalAlign(new Vector2(0.5), fullsize), dynamicBgcolor.alpha(sload.alpha.get()).getColor());
     //
-    if(wallerror) {
+    if(!navigator.onLine && !firstMouseEvent) {
         sload.alpha.move(1, sload.time, easeInOutSine);
         sload.state = 'timeout'
     };
@@ -5010,7 +5096,9 @@ function screenLoading() {
             setTimeout(() => {sload.state = 'loadend'}, sload.time*1000)
         }
     } else if(sload.state === 'loadend') {
-        if(!firstMouseEvent) {imageLoadProgress.text = txt('loadFirstEvent')};
+        if(!firstMouseEvent) {
+            imageLoadProgress.text = txt('loadFirstEvent')
+        };
         if(roulette.complete) {
             if((mouse.click && mouse.pos.overSAND(new Vector2()) && mouse.pos.lessSAND(cvssize)) || firstMouseEvent) {
                 roulette.progress.set(-20);
@@ -5032,7 +5120,8 @@ function screenLoading() {
                 sload.state = 'none';
                 staticBgcolor = sload.bgcolor;
                 setTimeout(() => {
-                    imageLoadProgress.text = '';
+                    imageLoadProgress.clear();
+                    // imageLoadProgress.draw();
                     sload.head = txt('eagFilter');
                     sload.ayaya.src = imageChangeFilter.src;
                     sload.headsize = 36
@@ -5552,7 +5641,7 @@ colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba
 colorMapMatrix(`rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`));
 buttonFilterScoreMin.onclick = () => {
     playSound(sound['prompt']);
-    filterDefault['scoreMin'] = promptNumber(`${txt('promIntLess')} ${filterDefault['scoreMax']*10}.`, 0, filterDefault['scoreMax']*10-1, filterDefault['scoreMin']*10)/10;
+    filterDefault['scoreMin'] = floatNumber(promptNumber(`${txt('promFloatLess')} ${filterDefault['scoreMax']}.`, 0, floatNumber(filterDefault['scoreMax']-0.1, 1), filterDefault['scoreMin']), 1);
     filterPrecount.request();
     lsSaveObject('filterDefault', filterDefault)
 };
@@ -5561,7 +5650,7 @@ colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba
 colorMapMatrix(`rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`));
 buttonFilterScoreMax.onclick = () => {
     playSound(sound['prompt']);
-    filterDefault['scoreMax'] = promptNumber(`${txt('promIntOver')} ${filterDefault['scoreMin']*10}.`, filterDefault['scoreMin']*10+1, 100, filterDefault['scoreMax']*10)/10;
+    filterDefault['scoreMax'] = floatNumber(promptNumber(`${txt('promFloatOver')} ${filterDefault['scoreMin']}.`, floatNumber(filterDefault['scoreMin']+0.1, 1), 10, filterDefault['scoreMax']), 1);
     filterPrecount.request();
     lsSaveObject('filterDefault', filterDefault)
 };
@@ -5687,6 +5776,8 @@ function animeFilterApply() {
     };
     lsSaveObject('filterDefault', filterDefault);
     localStorage.removeItem(savePrefix+'roulette.winner');
+    // дебаг автопрокрутки после апплая
+    roulette.pause(100);
     // переключаем экран
     sload.state = 'loadnew';
     requestScreen(screenLoading)
@@ -6138,7 +6229,7 @@ function screenPreferences() {
         prefLanguages[elem].sizedZoom(prefLangButtons.multxy(cvsscale.get()));
         prefLanguages[elem].draw()
     };
-    spref.height += prefLangButtons.y;
+    spref.height += prefLangButtons.y + spacing*2;
     // НАСТРОЙКИ РУЛЕТКИ
     actualPrefRoulette();
     scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
@@ -6192,7 +6283,7 @@ function screenPreferences() {
     // О ПРОГРАММЕ
     // scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
     // spref.height += sbTextHeader(txt('prefAbout'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    spref.height += spacing;
+    spref.height += spacing*3;
     scaleFont(32, 'Segoe UI', 'bold');
     spref.height += sbTextHeader($appInfo.fullname, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     scaleFont(24, 'Segoe UI');
@@ -6291,6 +6382,78 @@ function transitionScreen() {
 function requestScreen(screen, open=true) {
     tss.screen = screen;
     open ? tss.state = 'openhide' : tss.state = 'closehide'
+};
+//
+// @EAG SCREEN DB SEARCH
+//
+let sDBs = {
+    string: '',
+    max: 50,
+    result: [],
+    //
+    images: [],
+    spacing: 10,
+    //
+    offset: 0,
+    scroll: new Vector1(),
+    //
+    find: (req, hard) => {
+        sDBs.string = req;
+        var res = searchByTitle(req, hard);
+        if(!res) {return} else {
+            sDBs.result = res.splice(0, sDBs.max);
+            sDBs.images = [];
+            for(var r in sDBs.result) {
+                sDBs.images[r] = new Image();
+                sDBs.images[r].onerror = () => {sDBs.images[r].src = 'images/notfound.png'};
+                sDBs.images[r].src = sDBs.result[r].picture
+            }
+        }
+    },
+};
+sDBs.result.length = sDBs.max;
+//
+let promptAnimeSearch = new TextButtonShaped(shapeRectRounded, 'Искать', new Vector2(300, 40), colorMapMatrix(prefTextPalette), colorMapMatrix(prefPromptPalette));
+promptAnimeSearch.onclick = () => {sDBs.find(prompt('Введите название тайтла...', sDBs.string))};
+//
+function screenDBSearch() {
+    // bg
+    fillRect(cvssize.multxy(0.8, 1), new Vector2(cvsxoffset + cvssize.x*0.1, 0), `0,0,0,${pref.bgalpha}`);
+    // scroll
+    sDBs.scroll.update();
+    if(cvssize.y >= sDBs.offset) {sDBs.scroll.set(0)}
+    else {
+        if(sDBs.scroll.get() < sDBs.offset - cvssize.y && wheelState === 'btm') {
+            sDBs.scroll.move(Math.floor(sDBs.scroll.getFixed())+spref.sensivity, 0.5, easeOutExpo)} 
+        else if(sDBs.scroll.get() > 0 && wheelState === 'top') {
+            sDBs.scroll.move(Math.floor(sDBs.scroll.getFixed())-spref.sensivity, 0.5, easeOutExpo)};
+        if(sDBs.scroll.get() < 0) {sDBs.scroll.set(0)};
+        if(sDBs.scroll.get() > sDBs.offset - cvssize.y) {sDBs.scroll.set(sDBs.offset - cvssize.y)}
+    };
+    sDBs.offset = Number(sDBs.spacing);
+    var scroll = sDBs.scroll.get();
+    // find
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    scaleFont(16, 'Segoe UI');
+    promptAnimeSearch.size = new Vector2(prefOptionWidth, prefButtonHeight*1.2).multxy(cvsscale.get());
+    promptAnimeSearch.pos.setxy(fullsize.x/2 - promptAnimeSearch.size.x/2, sDBs.offset - scroll);
+    promptAnimeSearch.draw();
+    sDBs.offset += sDBs.spacing + promptAnimeSearch.size.y;
+    // draw titles
+    scaleFont(24, 'Segoe UI Light');
+    if(sDBs.images[0] !== undefined) {
+        for(var a in sDBs.images) {
+            if(a >= sDBs.max) {break};
+            if(!sDBs.images[a].complete) {continue};
+            var imgsize = new Vector2(sDBs.images[a].naturalWidth, sDBs.images[a].naturalHeight);
+            sDBs.offset += 24 * cvsscale.get();
+            fillTextFast(new Vector2(fullsize.x/2, sDBs.offset - scroll), textStringLimit(sDBs.result[a].title, cvssize.x*0.8 - sDBs.spacing*3));
+            sDBs.offset += sDBs.spacing*1.5;
+            drawImage(sDBs.images[a], new Vector2(fullsize.x/2 - imgsize.x/2, sDBs.offset - scroll));
+            sDBs.offset += imgsize.y + sDBs.spacing;
+        }
+    };
 };
 //
 // @EAG WINNER ANIMATION
@@ -6524,7 +6687,7 @@ function drawWallpaperInit() {
     drawImageSized(wallpaper, fullAlign(new Vector2(0.5), wlpsize).sumv(parallaxOffset), wlpsize);
     fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), '#0004');
     fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), `rgba(11,11,18,${_wphide.get()})`)
-    setTimeout(() => {drawWallpaper = drawWallpaperNormal}, 1200)
+    setTimeout(() => {drawWallpaper = drawWallpaperNormal; _wphided=false}, 1200)
 };
 function drawWallpaperNormal() {
     updateWallSize();
@@ -6560,7 +6723,7 @@ pref.lockfps ? lockFpsSwitch(pref.framerate) : lockFpsSwitch();
 //
 let devinfoValues = {
     width: 300,
-    height: 82,
+    height: 94,
     offset: 12,
     margin: 4,
     xanchor: 12,
@@ -6572,7 +6735,7 @@ let devinfoValues = {
 function developInfo() {
     if(pref.showDebugInfo) {
         //
-        mouse.pos.x > fullsize.x/2 
+        mouse.pos.x > fullsize.x/2
         ? devinfoValues.xanchor = devinfoValues.offset
         : devinfoValues.xanchor = fullsize.x - (devinfoValues.width + devinfoValues.offset);
         devinfoValues.text = devinfoValues.xanchor + devinfoValues.margin;
@@ -6588,8 +6751,9 @@ function developInfo() {
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(4)), 'roulette: '+Math.floor(roulette.progress.get()*10)/10+'/'+(roulette.picsCount-1), '#ffc', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(5)), 'full: '+Math.floor(fullsize.x)+'x'+Math.floor(fullsize.y) + ', cvs: '+Math.floor(cvssize.x)+'x'+Math.floor(cvssize.y), '#ccf', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(6)), 'scale: '+floatNumber(cvsscale.get(), 2), '#cfc', 'bold 12px Consolas');
+        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(7)), 'session: '+bytesStringify(getSessionSize())+ ` (${floatNumber(getSessionSize()/sessionLimit*100, 1)}%)`, '#fc7', 'bold 12px Consolas');
         //
-        graphFPS.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(7)), 3, 0);
+        graphFPS.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(8)), 3, 0);
         ctx.textAlign = 'start';
     } else if(pref.showFPS) {
         fillText(new Vector2(14, 30), 'FPS: '+FPS, '#fff', 'bold 16px Consolas');
