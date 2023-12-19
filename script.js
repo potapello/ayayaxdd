@@ -7511,7 +7511,7 @@ buttonEditorUpload.needshadow = false; buttonEditorUpload.waitanim = false;
 buttonEditorDownload.onhover = () => {
     if(edList.edited.list.length == 0) {hoverHint.invoke(txt('editorDownloadEmpty'), '#f94')}
 };
-buttonEditorDownload.onclick = () => {if(edList.edited.list.length == 0) {edList.downloadJSON()}};
+buttonEditorDownload.onclick = () => {if(edList.edited.list.length > 0) {edList.downloadJSON()}};
 buttonEditorUpload.onclick = () => {edList.uploadJSON()};
 //
 function animeSStateEditor(header, fbSpacing, swidth, xanchor) {
