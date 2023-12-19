@@ -1,4 +1,18 @@
-﻿var cvs = document.getElementById("ayayaxdd");
+﻿/*===============================================================================================*/
+//  AYAYA - Anime Roulette (WIP)
+//      An application for getting random anime from a list randomly generated 
+//      or manually assembled.
+//  Copyright (C) 2023  Ilya 'potapello' Potapov
+//  Repository -> https://github.com/potapello/ayayaxdd
+//  License -> GNU General Public License v3.0
+//  License URL -> https://github.com/potapello/ayayaxdd/blob/main/LICENSE
+/*===============================================================================================*/
+//  This program based on -> anime-offline-database (by manami-project)
+//  GitHub Repository -> https://github.com/manami-project/anime-offline-database
+//  License -> GNU Affero General Public License v3.0
+//  License URL -> https://github.com/manami-project/anime-offline-database/blob/master/LICENSE 
+/*===============================================================================================*/
+var cvs = document.getElementById("ayayaxdd");
 var ctx = cvs.getContext("2d");
 // focus stopper
 let windowVisibility = false;
@@ -22,15 +36,17 @@ function databaseShorter() {
 // @EAG SUMMARY
 //
 let $appInfo = {
-    // main
-    version: '1.1 beta',
-    date: '17 Oct 2023',
+    // main @rel
+    version: '1.2 beta',
+    date: '20-12-2023',
     name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
     fullname: 'AYAYA - Anime Roulette',
-    author: 'by potapello',
+    author: 'potapello',
+    license: 'GNU General Public License v3.0',
+    licenseURL: 'https://github.com/potapello/ayayaxdd/blob/main/LICENSE',
     // other
     codename: 'ayayaxdd', // EAG? в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
-    cleft: 'ayayaxdd 1.1 beta',
+    cleft: 'ayayaxdd 1.2 beta',
     cright: 'created by potapello',
 };
 //
@@ -163,6 +179,7 @@ function findCent(array) {
 };
 //
 let graphFPS = new Graph('FPS', 80, 100);
+let graphClipSync = new Graph('VcSO', 50, 300);
 //
 // @EAG VECTOR1 CLASS
 //
@@ -511,7 +528,7 @@ document.addEventListener('touchmove', (e) => {
             mouse.oldtouch[1].y - e.changedTouches[1].clientY
         ];
         if(scroll[0] > 0 && scroll[1] > 0) {
-            touchScroll = (scroll[0] + scroll[1]) / 2 * cvsscale.get()
+            touchScroll = (scroll[0] + scroll[1]) / 2 * _scaleDynamic
         };
         //
         mouse.oldtouch[0].setxy(e.changedTouches[0].x, e.changedTouches[0].y);
@@ -524,6 +541,7 @@ document.addEventListener('touchend', (e) => {mouse.press = false});
 // @EAG KEYBOARD INPUT
 //
 let keyboard = {};
+let cheatPrompt = [];
 function keyPressed(key = String()) {
     if(keyboard[key] === undefined) {
         return false
@@ -548,8 +566,8 @@ function inputListener() {
     // KEYBOARD
     if(keyboard.EVENT !== undefined) {
         // scaling
-        if(keyPressed('+') || keyPressed('=')) {cvsscale.getFixed() < 3.9 ? cvsscale.move(cvsscale.getFixed()+0.1, 0.25, easeOutCirc) : false; globalRescale()};
-        if(keyPressed('-')) {cvsscale.getFixed() >= 0.6 ? cvsscale.move(cvsscale.getFixed()-0.1, 0.25, easeOutCirc) : false; globalRescale()};
+        if(keyPressed('+') || keyPressed('=')) {_scaleFixed < 3.9 ? cvsscale.move(_scaleFixed+0.1, 0.25, easeOutCirc) : false; globalRescale()};
+        if(keyPressed('-')) {_scaleFixed >= 0.6 ? cvsscale.move(_scaleFixed-0.1, 0.25, easeOutCirc) : false; globalRescale()};
         // return to roulette screen
         if(keyPressed('Escape') || mouse.preview) {
             mouse.preview = false;
@@ -576,6 +594,10 @@ function inputListener() {
             };
             if(keyPressed('Enter')) {mnMenu.apply = true} 
             else if(keyPressed('1')) {mnMenu.plan = true}
+        };
+        if(keyPressed('~')) {
+            cheatPrompt = String(prompt('Write a command...')).split(' ');
+            checkCheatPrompt()
         };
         // end
         keyboard = {}
@@ -608,7 +630,118 @@ function inputListener() {
     };
     // calc mouse delta
     mouse.delta = mouse.pos.minv(mouse.old);
-    mouse.old.setv(mouse.pos)
+    mouse.old.setv(mouse.pos);
+    // detect file manager results
+    if(fileManager.result != null && fileManager.result != false) {
+        if(fileManager.onupload != null) {fileManager.onupload(); fileManager.onupload = null}
+    }
+};
+//
+// @EAG LOCAL FILE MANAGER
+//
+let fileManager = {
+    // blobs
+    createBlobJSON: (data) => {
+        return new Blob([data], { type: "application/json" })
+    },
+    createBlobText: (data) => {
+        return new Blob([data], { type: "text/plain" })
+    },
+    // download
+    downloadJSON: (name, data) => {
+        const a = document.createElement("a");
+        const file = fileManager.createBlobJSON(JSON.stringify(data));
+        const url = window.URL.createObjectURL(file);
+        a.href = url;
+        a.download = String(name) + ".json";
+        a.click()
+    },
+    downloadText: (name, text) => {
+        const a = document.createElement("a");
+        const file = fileManager.createBlobText(String(text));
+        const url = window.URL.createObjectURL(file);
+        a.href = url;
+        a.download = String(name) + ".txt";
+        a.click()
+    },
+    // upload
+    request: false,
+    result: null,
+    message: '',
+    input: document.createElement('input'),
+    onupload: null,
+    // upl text
+    uploadText: (maxsize = powsOfTwo['20']) => {
+        fileManager.input = document.createElement('input');
+        fileManager.input.type = 'file';
+        //
+        fileManager.request = true,
+        fileManager.result = false,
+        //
+        fileManager.input.onchange = () => {
+            //
+            var file = fileManager.input.files[0];
+            if(file.type === 'text/plain' && file.size <= maxsize) {
+                var reader = new FileReader();
+                reader.readAsText(file);
+                //
+                reader.onload = function() {
+                    fileManager.result = reader.result;
+                    fileManager.request = false;
+                    fileManager.message = 'Success';
+                    console.info('FileManager: '+fileManager.message)
+                };
+                reader.onerror = function() {
+                    fileManager.result = reader.error;
+                    fileManager.request = false;
+                    fileManager.message = 'Reader error';
+                    console.error('FileManager: '+fileManager.message)
+                }
+            } else {
+                fileManager.result = null;
+                fileManager.request = false;
+                fileManager.message = 'File type is not [text/plain] OR size of the uploaded file is larger than the specified maximum';
+                console.warn('FileManager: '+fileManager.message)
+            };
+        };
+        fileManager.input.click()
+    },
+    // upl json
+    uploadJSON: (maxsize = powsOfTwo['20']) => {
+        fileManager.input = document.createElement('input');
+        fileManager.input.type = 'file';
+        //
+        fileManager.request = true,
+        fileManager.result = false,
+        //
+        fileManager.input.onchange = () => {
+            //
+            var file = fileManager.input.files[0];
+            if(file.type === 'application/json' && file.size <= maxsize) {
+                var reader = new FileReader();
+                reader.readAsText(file);
+                //
+                reader.onload = function() {
+                    fileManager.result = JSON.parse(reader.result);
+                    fileManager.request = false;
+                    fileManager.message = 'Success';
+                    console.info('FileManager: '+fileManager.message)
+                };
+                reader.onerror = function() {
+                    fileManager.result = reader.error;
+                    fileManager.request = false;
+                    fileManager.message = 'Reader error';
+                    console.error('FileManager: '+fileManager.message)
+                }
+            } else {
+                fileManager.result = null;
+                fileManager.request = false;
+                fileManager.message = 'File type is not [text/plain] OR size of the uploaded file is larger than the specified maximum';
+                console.warn('FileManager: '+fileManager.message)
+            };
+        };
+        fileManager.input.click()
+    },
 };
 //
 // @EAG PROMPT FUNCTIONS
@@ -618,6 +751,101 @@ function promptNumber(text, min, max, actual) {
     if(p === 'NaN' || p === 'null') {return actual}
     else {p = Number(p)};
     return p < min ? min : p > max ? max : p
+};
+//
+// @EAG CHEAT COMMANDS
+//
+function checkCheatPrompt() {
+    if(activeScreen == screenRoulette && roulette.catchWinner !== true) {
+        for(var key in _cheats) {
+            if(cheatPrompt[0] == key) {
+                _cheats[key](cheatPrompt); 
+                break
+            }
+        }
+    }
+};
+function cheater(cheat) {
+    if(cheat == null) {return};
+    cheatPrompt = cheat.split(' ');
+    checkCheatPrompt()
+};
+//
+let _cheats = {
+    values: {},
+    'winner': () => {
+        if(!roulette.hidemap) {
+            if(roulette.winnerPos >= 0) {
+                if(roulette.pics[roulette.winnerPos] !== undefined) {
+                    roulette.pics[roulette.winnerPos].bgColor = new Color(0,0,0,1);
+                    roulette.pics[roulette.winnerPos].winner = false;
+                    roulette.winnerPos = -1
+                }
+            };
+            //
+            roulette.speed.reset();
+            roulette.catchWinner = roulette.centerItem();
+            roulette.winnerPos = roulette.centerNumber();
+            roulette.nameboxcolor = roulette.winnerStyle;
+            lsSaveObject('roulette.winner', [roulette.winnerPos, roulette.catchWinner])
+        }
+    },
+    'delete-title': () => {
+        if(!roulette.hidemap) {
+            var title = roulette.centerNumber();
+            if(roulette.winnerPos == title) {
+                localStorage.removeItem(savePrefix+'roulette.winner');
+                roulette.catchWinner = false;
+                roulette.winnerPos = -1
+            };
+            roulette.anime.splice(title, 1);
+            roulette.pics.splice(title, 1);
+            roulette.picsCount -= 1;
+        }
+    },
+    'save-roulette': () => {
+        lsSaveObject('roulette.anime', optimizeAnimeArray(roulette.anime))
+    },
+    'hard-reset': () => {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.open(window.location.href);
+        window.close()
+    },
+    'botagiri': () => {
+        pref.playClip = true;
+        musicNormalVolume.move(0, 1, easeInOutSine);
+        setTimeout(() => {musicNormal.pause()}, 1000);
+        clipmainOnCanPlay = () => {
+            videoClipPlay();
+            roulette.doRoll(clipmainTime, pref.rollSpeed, false);
+            srv.hideProgress.value = 0;
+            srv.hideProgress.move(1, srv.hideTime, easeInQuad);
+            srv.state = 'roll_start';
+            tInfo.hidereq = true;
+            buttonDoRoll.state = 'unaval';
+            musicNormalVolume.reset();
+            visual.lightDiam.move(0, 0.25, easeInCirc);
+            //
+            setTimeout(() => {buttonDoRoll.text = txt('rbRoll')}, 2000)
+        };
+        videoClipSet(new videoClip(['audio/clip1.ogg', 0, 'Shikitashi - Botagiri (YTPMV)'], 0, 63.1,   '1zJClTrta3u_PYZh1LLW240-qzb4q7Aqy'))
+    },
+    'clip': (args) => {
+        if(args[1] === undefined) {return};
+        if(String(Number(args[1])) == 'NaN') {return};
+        var number = Number(args[1]);
+        if(number < 0 || number >= clips.length) {return};
+        _clipSelected = number;
+        playSound(sound['taginc'])
+    },
+    'snowflakes': (args) => {
+        if(args[1] === undefined) {return};
+        if(String(Number(args[1])) == 'NaN') {return};
+        var number = Number(args[1]);
+        snowflake.count = number < 0 ? 0 : number > 1024 ? 1024 : number;
+        resetSnowflakes()
+    },
 };
 //
 // @EAG OTHER CLASSES
@@ -663,6 +891,117 @@ function bytesStringify(bytes) {
     }
 };
 //
+// @EAG VIDEO CLIP CLASS
+//
+const _gdPrefix = 'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=';
+class videoClip {
+    constructor(music, video_anchor, time, video_url) {
+        this.m = music;
+        this.v = [_gdPrefix + video_url, video_anchor];
+        this.time = time;
+    }
+};
+//
+let _musictimestamp = 0;
+let _cliptimestamp = 0;
+function videoClipPlay(time = 1) {
+    clipmainPlay = true;
+    clipmainAlpha.set(0);
+    clipmainAlpha.move(1, time, easeInOutSine);
+    clipmain.play();
+    //
+    musicNormalVolume.move(0, time, easeInOutSine);
+    musicRollVolume.set(0);
+    musicRollVolume.move(1, time, easeInOutSine);
+    musicRoll.play();
+    //
+    setTimeout(() => {
+        musicNormal.pause();
+    }, 1000*time);
+    // initial sync
+    setTimeout(videoClipSync, _videoclipsyncrate);
+};
+function videoClipCan() {
+    return clipmainLoaded && musicrollLoaded
+};
+let _videoclipsyncrate = 2000;
+function videoClipSync() {
+    if(Math.abs((clipmain.currentTime - _cliptimestamp) - (musicRoll.currentTime - _musictimestamp)) > 0.1) {
+        console.log(`Sync clip... (offset: ${(clipmain.currentTime - _cliptimestamp) - (musicRoll.currentTime - _musictimestamp)})`);
+        musicRoll.currentTime = _musictimestamp + (clipmain.currentTime - _cliptimestamp) + 0.05;
+        setTimeout(videoClipSync, _videoclipsyncrate)
+    } else {console.info('Clip sync stopped.')}
+}
+function videoClipSet(clip) {
+    //
+    musicrollLoaded = false;
+    musicRoll.src = clip.m[0];
+    _musictimestamp = musicRoll.currentTime = clip.m[1];
+    clipmainName = clip.m[2];
+    musicRoll.oncanplay = () => {musicrollLoaded = true};
+    //
+    clipmainLoaded = false;
+    clipmain = document.createElement('video');
+    clipmain.src = clip.v[0];
+    _cliptimestamp = clipmain.currentTime = clip.v[1];
+    clipmainTime = clip.time;
+    clipmain.preload = 'auto';
+    clipmain.oncanplay = () => {clipmainLoaded = true};
+    clipmain.onended = () => {clipmain.pause()};
+    //
+    clipWaiting = clipTimeout;
+};
+function videoClipEnd(time = 1) {
+    //
+    clipmainPlay = false;
+    musicLite.name = clipmainName;
+    musicNormal.pause();
+    musicNormal.src = String(musicRoll.src);
+    if(pref.bgmusic > 0) {musicNormal.play()};
+    musicNormal.currentTime = Number(String(musicRoll.currentTime));
+    musicRollVolume.move(0, time, easeInOutSine);
+    clipmainAlpha.move(0, time, easeInOutSine);
+    setTimeout(() => {
+        musicNormalVolume.move(1, time, easeInOutSine);
+        musicRoll.pause();
+        clipmain.pause()
+    }, time*1000)
+};
+function videoClipUnload(time = 1) {
+    rollBar.state = 'show';
+    buttonDoRoll.text = txt('rbRoll');
+    musicLite.show();
+    musicLite.wait = false;
+    //
+    clipmainPlay = false;
+    clipmainOnCanPlay = null;
+    musicNormal.pause();
+    if(pref.bgmusic > 0) {musicNormal.play()};
+    musicRoll.oncanplay = () => {};
+    clipmain.oncanplay = () => {};
+    musicRollVolume.set(0);
+    clipmainAlpha.set(0);
+    musicNormalVolume.move(1, time, easeInOutSine);
+    //
+    console.error('Clip downloading time out! (20 s.)\nTry roll again OR disable \'Videoclips\' in Options.')
+};
+//
+let clipmain = document.createElement('video');
+clipmain.src = '';
+clipmain.preload = 'auto';
+clipmain.onended = () => {clipmain.pause()};
+//
+let clipmainLoaded = false;
+let musicrollLoaded = false;
+let clipmainTime = 0;
+let clipmainAlpha = new Vector1(0);
+let clipmainName = '';
+let clipmainPlay = false;
+let clipmainOnCanPlay = null;
+//
+let clipWaiting = 20;
+let clipTimeout = 20;
+//
 // @EAG ALL AUDIO DATA
 //
 let sound = {
@@ -680,11 +1019,12 @@ let sound = {
 };
 let music = [
     //['src', rolltime, 'name'],
+    // music
     ['audio/music1.ogg', 61, 'Kuhaku Gokko - Lil\'b'],
     ['audio/music2.ogg', 49, 'Miku Sawai - Gomen ne, Iiko ja Irarenai'],
     ['audio/music3.ogg', 17, 'DUSTCELL - Narazumono'],
     ['audio/music4.ogg', 0, 'Cagayake! - GIRLS'],
-    ['audio/music5.ogg', 35, 'bulow - Revolver'],
+    ['audio/music5.ogg', 35, 'bulow - Revolver'], // над заменить, нахуй оно тут? 
     ['audio/music6.ogg', 0, 'Aoi Yuki - Los! Los! Los!'],
     ['audio/music7.ogg', 41, 'Ado - AntiSystem\'s'],
     ['audio/music8.ogg', 44, 'Kenshi Yonezu - KICK BACK'],
@@ -692,29 +1032,80 @@ let music = [
     ['audio/music10.ogg', 0, 'Uesaka Sumire - Inner Urge'],
     ['audio/music11.ogg', 47.5, 'Kanako Itou - Fatima'],
     ['audio/music12.ogg', 36, 'Kanako Itou - Hacking to the Gate'],
-    ['audio/music13.ogg', 0, 'ZOE, Jododo - Lighting'],
+    ['audio/music13.ogg', 0, 'ZOE, Jododo - Lighting'], // мб поискать нарезочку из игры
     ['audio/music14.ogg', 0, 'Ikimono Gakari - Blue Bird'],
     ['audio/music15.ogg', 46, 'Uverworld - Touch off'],
     ['audio/music16.ogg', 55, 'Masayuki Suzuki - Love Dramatic'],
-    ['audio/music17.ogg', 0, 'Takuma Terashima - Nameless story'],
+    ['audio/music17.ogg', 0, 'Takuma Terashima - Nameless story'], // мб оп
     ['audio/music18.ogg', 42, 'Konomi Suzuki - Redo'],
     ['audio/music19.ogg', 34, 'Huwie Ishizaki - Wasuregataki'],
     ['audio/music20.ogg', 49, 'yama - Shikisai'],
     ['audio/music21.ogg', 27, 'Kessoku Band - Seishun Complex'],
-    ['audio/music22.ogg', 51, 'Perfume - Pick Me Up'],
-    ['audio/music23.ogg', 23, 'Nightcore - Everytime We Touch'],
-    ['audio/music24.ogg', 11, 'beatMARIO - Night of Nights'],
+    ['audio/music22.ogg', 51, 'Perfume - Pick Me Up'], // поискать надо
+    ['audio/music23.ogg', 23, 'Nightcore - Everytime We Touch'], // искать надо
+    ['audio/music24.ogg', 11, 'beatMARIO - Night of Nights'], // искать надо
     ['audio/music25.ogg', 48, 'FELT - Summer Fever'],
     ['audio/music26.ogg', 20.5, 'SEREBRO - Мало тебя (speed up)'],
     ['audio/music27.ogg', 50, 'Touhou - Bad Apple!!'],
+    // bloody stream - жёжё оп, с клипом
+    // guren no yumiya - титосы оп, с клипом
+];
+// 
+let cliponly = [
+    ['audio/clip1.ogg', 31, 'Shikitashi - Botagiri (YTPMV)'],
+    ['audio/clip2.ogg', 55, 'skwd - Aquarius (YTPMV)'],
+    music[26], // тайминг прост 1 и тот же, нхй ещ рз не буд писать, и так NASRAL
+    ['audio/clip3.ogg', 35, 'skwd - Point of no return (YTPMV)'],
+    ['audio/clip4.ogg', 78, 'beoh - Yuyushiki Factory (YTPMV)'],
+    ['audio/music4.ogg', 53.7, 'Cagayake! - GIRLS'],
+    ['audio/music7.ogg', 51.2, 'Ado - AntiSystem\'s'],
+    ['audio/music10.ogg', 10.85, 'Uesaka Sumire - Inner Urge'],
+    ['audio/music8.ogg', 38.05, 'Kenshi Yonezu - KICK BACK'],
+    ['audio/music11.ogg', 0.2, 'Kanako Itou - Fatima'],
+    ['audio/music12.ogg', 48.5, 'Kanako Itou - Hacking to the Gate'],
+    ['audio/clip5.weba', 0, 'aku rin - INTR (YTPMV)'],
+    ['audio/clip6.weba', 0, 'aku rin - HTDN (YTPMV)'],
+    ['audio/clip7.weba', 0, 'beoh - Old Castle Baby (YTPMV)'],
+];
+//
+let _clipSelected = null;
+let clips = [
+    // new videoClip(music[x], rolltime, lifetime, 'key'), (* = ytpmv)
+    new videoClip(cliponly[0], 31, 32.1,    '1zJClTrta3u_PYZh1LLW240-qzb4q7Aqy'), // botagiri *
+    new videoClip(cliponly[1], 55, 37,      '1W2FWAN_xPb2SR3ZGIS5K336mdWzjbDpe'), // aquarius *
+    new videoClip(cliponly[2], 21.35, 35.4, '18jL8uof6s4iuByj3JIOKu4HfFAKZyigZ'), // bad apple
+    new videoClip(cliponly[3], 35, 43.2,    '1ZUowAnm0Nis8VXk-g7i5uwwWNVw0tXLZ'), // point of no k-on *
+    new videoClip(cliponly[4], 78, 38.8,    '1i1Ixlydmfz1ZUC9ORarvAEU5XtBD7hFC'), // yuyushiki factory *
+    new videoClip(cliponly[5], 48, 36,      '1iYfburpiJRM3tULXwueCmroxIeKR__hB'), // k-on op
+    new videoClip(cliponly[6], 51, 37,      '1qnLjwU6-IlOkfqFtrxoQeXZbIFfW-rPj'), // ado antisystem
+    new videoClip(cliponly[7], 6, 28.5,     '1bXG8gE5krgS0UNarA_DqYvM03LT32zm6'), // shimoneta ed
+    new videoClip(cliponly[8], 38, 34,      '1kgyFPsTo0l0IdXaHZ-bVtxg96KuftrJh'), // kick back
+    new videoClip(cliponly[9], 0, 69.5,     '1ZPwaLRh_vexoJ5pueWclUDClJSSY5H5O'), // fatima
+    new videoClip(cliponly[10], 48, 40,     '1x8z3fSUvxqfbWwNUZ0OUuuzxM4vL7zc8'), // gate 1
+    new videoClip(cliponly[11], 0, 26.5,    '1GJWncomoVaN-_oOw-77K066zwPHORB7j'), // INTR *
+    new videoClip(cliponly[12], 0, 37,      '1IWK9gonuimByli7BzVvuUa-o-boMLFlu'), // HTDN *
+    new videoClip(cliponly[13], 0, 46.4,    '1oVxmcF3IGKnSGyOKlgscaOhQjyuPfhWm'), // old castle baby *
+    // nasruto
+    // neverland
+    // kaguya 1 op
+    // re zero
+    // bocchi
+    // jojo
+    // titosy ebat'
+    // минимум 9 ещё будет catDespair SnowTime
 ];
 //
 let musicNormal = new Audio();
 let musicRoll = new Audio();
 let musicNormalVolume = new Vector1(0);
 let musicRollVolume = new Vector1(0);
-musicNormal.oncanplay = () => {if(pref.bgmusic > 0) {musicNormal.play()}};
-musicRoll.oncanplay = () => {musicRoll.play()};
+musicNormal.oncanplay = () => {
+    if(pref.bgmusic > 0) {
+        musicNormal.play()
+    };
+    musicNormal.oncanplay = () => {}
+};
+musicRoll.oncanplay = () => {};
 let musicRollPrefound = null;
 let musicNormalLoop = false;
 let musicNormalComplete = false;
@@ -736,7 +1127,6 @@ function musicInitialize() {
     if(pref.bgmusic > 0) {musicNormal.play()};
     // @RELEASE
     updateMusic = updateMusicCache;
-    // setTimeout(() => {musicAnalysis.init()}, 3000);
     musicAnalysis.init();
     musicInitialize = () => {}
 };
@@ -744,6 +1134,7 @@ function updateMusic() {};
 function updateMusicCache() {
     musicNormalVolume.update();
     musicRollVolume.update();
+    clipmainAlpha.update();
     musicNormal.volume = (pref.bgmusic / 100) * musicNormalVolume.get();
     musicRoll.volume = (pref.rollmusic / 100) * musicRollVolume.get();
     // check
@@ -776,11 +1167,32 @@ function updateMusicCache() {
             buttonPauseTrack.state = 'idle';
         }, 2000);
     };
+    // лупим ролл музыку
     if(musicRoll.duration === musicRoll.currentTime) {
         musicRollVolume.reset();
         musicRollVolume.move(0, 2, easeInOutSine);
         musicRoll.currentTime = 0;
         musicRoll.play()
+    };
+    // подготовка клипа
+    if(clipmainTime > 0 && clipmainPlay) {
+        if(clipmainLoaded && musicrollLoaded) {
+            if(!clipmain.paused) {clipmainTime -= deltaTime/1000};
+        }
+    } else {
+        if(clipmainPlay) {videoClipEnd()}
+    };
+    if(clipmainOnCanPlay !== null) {
+        if(clipmainLoaded && musicrollLoaded) {
+            clipmainOnCanPlay();
+            clipmainOnCanPlay = null
+        };
+        //
+        clipWaiting -= deltaTime/1000;
+        if(clipWaiting <= 0) {
+            videoClipUnload();
+        }
+
     }
 };
 //
@@ -936,11 +1348,11 @@ let mnMenu = {
                 }
             };
             // scale + position
-            mnMenu.pos = normalAlign(mnMenu.anchor, mnMenu.size);
-            const spacing = mnMenu.spacing * cvsscale.get();
-            const fsize = mnMenu.fsize * cvsscale.get();
+            mnMenu.pos = normalAlign(mnMenu.anchor, mnMenu.size).sumxy(0, musicLite.offset.get());
+            const spacing = mnMenu.spacing * _scaleDynamic;
+            const fsize = mnMenu.fsize * _scaleDynamic;
             // tracknames, markup
-            mnMenu.size.x = musicMenuWidth * cvsscale.get();
+            mnMenu.size.x = musicMenuWidth * _scaleDynamic;
             mnMenu.size.y = fsize * 5 + spacing * 5;
             // draw
             ctx.globalAlpha = mnMenu.alpha.get();
@@ -1041,6 +1453,10 @@ let musicEqualizer = {
 //
 // @EAG FILTER DEFAULT
 //
+let filterAttempts = 0;
+let filterAttemptTags = false;
+let filterAttRange = new Range(0, 4);
+//
 let filterDefault = {
     //tags
     tagsIncluded: [],
@@ -1092,6 +1508,7 @@ let pref = {
     rollTime: 30,       // 30
     rollSpeed: 40,
     rouletteItems: 50,
+    rouletteItemsMax: 200,
     rollImages: 13,
     showMap: false,     // --not use
     showNSFW: false,
@@ -1102,7 +1519,7 @@ let pref = {
     lockfps: true,
     framerate: 90,        
     bgalpha: 0.7,
-    scale: 1,
+    scale: 4,
     // audio
     sound: 8,
     bgmusic: 6,
@@ -1112,6 +1529,8 @@ let pref = {
     // visual
     visual: false,
     visualQuality: 128, // 2^n
+    playClip: true,
+    snowflakes: true,
     // other
     language: 'en',
     parallax: true,
@@ -1161,6 +1580,8 @@ function lsLoadObject(name, def=null) {
 for(var key in pref) {
     pref[key] = lsLoadValue(`pref.${key}`, pref[key])
 };
+filterAttempts = lsLoadValue('filterAttempts', 0);
+filterAttemptTags = lsLoadValue('filterAttemptTags', false);
 // pref visual
 let _prefVisuals = pref.visual;
 function prefVisualSwitch() {
@@ -1247,8 +1668,9 @@ let _TextTranslations = {
         eagName: 'Аниме Рулетка',
         eagFilter: 'Фильтруем Аниме',
         eagEmpty: 'Рулетка пуста!',
-        eagOther: 'Проект основан на оффлайн базе данных аниме (\"Offline Anime Database\") от manami-project. Также используются некоторые API: Jikan REST API, Microsoft Text Translator (через restapi.com).',
+        eagBased: 'Проект основан на оффлайн базе данных аниме (\"Offline Anime Database\") от manami-project.',
         eagThanks: 'Спасибо за использование :)',
+        eagAbout: 'Приложение для генерации рандомного аниме из списков, случайно сгенерированных или собранных вручную.',
         // lang
         langWarn: 'Требуется перезагрузка!',
         // tagnames
@@ -1386,6 +1808,8 @@ let _TextTranslations = {
         wordApply: 'Применить',
         wordFiltrate: 'Фильтр!',
         wordReset: 'Сбросить',
+        wordApp: 'Приложение',
+        wordDatabase: 'Датабаза',
         // prompts
         promIntLess: 'Введите целое число, меньше чем',
         promIntOver: 'Введите целое число, больше чем',
@@ -1408,6 +1832,33 @@ let _TextTranslations = {
         filterFindNone: 'Ни одного тайтла, прошедшего по условиям фильтра, не найдено! Фильтр восстановлен до настроек пресета.',
         filterCounter: 'Кол-во тайтлов, проходящих по условиям: ',
         filterFirstChange: 'Измените что-нибудь для подсчёта...',
+        filterAttempts: 'Игнорирование условий (0 - 4)',
+        filterStateFilter: 'Рандом',
+        filterStateArrays: 'Списки',
+        filterStateEditor: 'Редактор',
+        filterStateBrowser: 'Поиск',
+        filterBrowserFind: 'Искать',
+        filterBrowserPrompt: 'Введите название тайтла, который хотите найти...',
+        filterAttTags: 'Только для тэгов',
+        // browser, arrays
+        browserEnter: 'Ввести', browserPage: 'Страница', browserNext: 'Вперёд', browserPrev: 'Назад',
+        browserAddNote: 'Зажмите, чтобы добавить тайтл в редактируемый список',
+        browserAlreadyNote: 'Тайтл уже в редактируемом списке',
+        browserNoResult: 'Нет ни одного результата по запросу: ',
+        browserResultCount: ' результатов по запросу: ',
+        // editor
+        editorDeleteNote: 'Зажмите, чтобы удалить тайтл из списка',
+        editorClaimRoulette: 'Взять с рулетки',
+        editorListClear: 'Удалить все тайтлы из редактируемого списка?',
+        editorApplyEmpty: 'Отправлять на рулетку нечего - редактируемый список пуст!',
+        editorDownloadEmpty: 'Нечего скачивать - редактируемый список пуст!',
+        editorUploadEmpty: 'В загруженном файле не найдено ни одного тайтла!',
+        editorCompatibilityWarn_1: 'Версии компонентов, на которых был сделан загруженный список аниме и текущие версии отличаются:',
+        editorCompatibilityWarn_2: 'Это может вызвать некоторые проблемы, тайтлы в датабазе придётся искать по названиям (DBID могут отличаться). Продолжайте, если знаете, что делаете.',
+        editorUploadOverwrite: 'Для загрузки новых тайтлов необходимо удалить старые. Продолжить?',
+        editorDownloadJSON: 'Скачать .json',
+        editorUploadJSON: 'Загрузить .json',
+        editorJSON: 'Списки в JSON формате',
         // load
         loadJkrg: `Думаем...`,
         loadPics: `Грузим картинки...`,
@@ -1448,6 +1899,12 @@ let _TextTranslations = {
         prefVersion: 'Версия: ',
         prefAbout: 'О проекте',
         prefVisual: 'Визуализация музыки',
+        prefPlayClip: 'Показывать видеоклип*',
+        prefLanguage: 'Язык',
+        prefOthers: 'Прочее',
+        prefRecovery: 'Восстановление',
+        prefResetDefault: 'Настройки по умолчанию',
+        prefResetStorage: 'Удалить все данные',
         // prefsets
         pstDisable: 'Выкл.', pstLow: 'Низко', pstMedium: 'Средне', pstHigh: 'Высоко', pstChange: 'Сменить',
         // hints
@@ -1466,14 +1923,23 @@ let _TextTranslations = {
         hintAudioVisual: 'Визуализация звука снизу во всю внутреннюю ширину интерфейса.',
         hintRoll: 'На низких значениях времени и скорости будет слабый рандом. Рекомендуемое время = 20-60, скорость не меньше 20.',
         hintPrefScale: 'Множитель размера всех элементов интерфейса. Можно настраивать кнопками "+" и "-".',
+        hintAttempts: 'Количество условий, которые фильтр сможет проигнорировать.',
+        hintAudioClips: 'Экспериментальная функция (требует хорошего подключения к интернету). Воспроизводит ролик к треку вместо заднего фона во время прокрута. Настройка времени рулетки игнорируется.',
+        hintAttTags: 'Опция "Игнорирование условий" будет использована только для тэгов.',
+        hintResetStorage: 'Удалить все накопленные данные из localStorage. Это касается настроек, аниме на рулетке, фильтра, сохранённых списков и т.п.',
+        hintClaimRoulette: 'Взять все тайтлы с рулетки',
+        hintAwaitingClip: 'Грузим видео с музычкой ...',
+        hintAwaitingMusic: 'Грузим музыку ...',
+        hintOpenURL: 'Нажмите, чтобы открыть в новой вкладке: ',
     },
     'en': {
         // global
         eagName: 'Anime Roulette',
         eagFilter: 'Filtering Anime',
         eagEmpty: 'Roulette is empty!',
-        eagOther: 'The project is based on an \"Offline Anime Database\" by manami-project. Some APIs are also used: Jikan REST API, Microsoft Text Translator (via restapi.com).',
+        eagBased: 'The project is based on an \"Offline Anime Database\" by manami-project. Some APIs are also used: Jikan REST API, Microsoft Text Translator (via restapi.com).',
         eagThanks: 'Thanks for using :)',
+        eagAbout: 'An application for getting random anime from a list randomly generated or manually assembled.',
         // lang
         langWarn: 'A reboot is required!',
         // tagnames
@@ -1611,6 +2077,8 @@ let _TextTranslations = {
         wordApply: 'Apply',
         wordFiltrate: 'Filter!',
         wordReset: 'Reset',
+        wordApp: 'App',
+        wordDatabase: 'Database',
         // prompts
         promIntLess: 'Enter an integer less than',
         promIntOver: 'Enter an integer greater than',
@@ -1633,6 +2101,33 @@ let _TextTranslations = {
         filterFindNone: 'Not a single title that passed the filter conditions was found! The filter has been restored to the preset settings.',
         filterCounter: 'Number of filtered anime: ',
         filterFirstChange: 'Precounter is waiting for changes...',
+        filterAttempts: 'Ignore conditions (0 - 4)',
+        filterStateFilter: 'Random',
+        filterStateArrays: 'Arrays',
+        filterStateEditor: 'Editor',
+        filterStateBrowser: 'Search',
+        filterBrowserFind: 'Find',
+        filterBrowserPrompt: 'Enter the name of the title you want to find...',
+        filterAttTags: 'Only for tags',
+        // browser & arrays
+        browserEnter: 'Enter', browserPage: 'Page', browserNext: 'Next', browserPrev: 'Prev',
+        browserAddNote: 'Hold for add title to editable list',
+        browserAlreadyNote: 'Title is already in editable list!',
+        browserNoResult: 'There are no results for the query: ',
+        browserResultCount: ' results for the query: ',
+        // editor
+        editorDeleteNote: 'Hold for delete title from list',
+        editorClaimRoulette: 'Claim roll',
+        editorListClear: 'Delete all titles from the edited list?',
+        editorApplyEmpty: 'There is nothing to send to roulette - the editable list is empty!',
+        editorDownloadEmpty: 'There is nothing to download - the editable list is empty!',
+        editorUploadEmpty: 'No titles were found in the uploaded file!',
+        editorCompatibilityWarn_1: 'The versions of the components on which the downloaded anime list was made and the current versions differ:',
+        editorCompatibilityWarn_2: 'This may cause some problems, the titles in the database will have to be searched by name (DBID\'s may differ). Go ahead if you know what you\'re doing.',
+        editorUploadOverwrite: 'To download new titles, you need to delete the old ones. Continue?',
+        editorDownloadJSON: 'Download .json',
+        editorUploadJSON: 'Upload .json',
+        editorJSON: 'Lists in JSON format',
         // load
         loadJkrg: `Thinkge...`,
         loadPics: `Loading pictures...`,
@@ -1673,6 +2168,12 @@ let _TextTranslations = {
         prefVersion: 'Version: ',
         prefAbout: 'About the project',
         prefVisual: 'Music visualization',
+        prefPlayClip: 'Show Video clip*',
+        prefLanguage: 'Language',
+        prefOthers: 'Other',
+        prefRecovery: 'Recovery',
+        prefResetDefault: 'Default settings',
+        prefResetStorage: 'Delete all data',
         // prefsets
         pstDisable: 'Off', pstLow: 'Low', pstMedium: 'Medium', pstHigh: 'High', pstChange: 'Change',
         // hints
@@ -1691,6 +2192,14 @@ let _TextTranslations = {
         hintAudioVisual: 'Visualization of the sound at the bottom of the entire width of the interface.',
         hintRoll: 'At low values of time and speed, there will be a weak random. Recommended time = 20-60, speed not less than 20.',
         hintPrefScale: 'Multiplier of the size of all interface elements. You can configure it using the "+" and "-" buttons.',
+        hintAttempts: 'The number of conditions that the filter can ignore.',
+        hintAudioClips: 'Experimental feature (requires a good internet connection). Plays the video to the track instead of the background while the roulette is running. The roulette time setting is ignored.',
+        hintAttTags: 'The "Ignore conditions" option will be used only for tags.',
+        hintResetStorage: 'Delete all accumulated data from localStorage. This applies to settings, roulette anime, filter, saved lists, etc.',
+        hintClaimRoulette: 'Take all titles from the roulette',
+        hintAwaitingClip: 'Waiting for music & video ...',
+        hintAwaitingMusic: 'Waiting for music ...',
+        hintOpenURL: 'Click to open in a new tab: ',
     },
 };
 //
@@ -2098,16 +2607,18 @@ function filterAnimeTag(animetag, array) {
     return false
 };
 function filterIncludeTags(included, array) {
+    var err = 0;
     for(var i in included) {
-        if(!filterAnimeTag(included[i], array)) {return false} else {continue}
+        if(!filterAnimeTag(included[i], array)) {err++} else {continue}
     }
-    return true
+    return err
 };
 function filterExcludeTags(excluded, array) {
+    var err = 0;
     for(var i in excluded) {
-        if(filterAnimeTag(excluded[i], array)) {return false} else {continue}
+        if(filterAnimeTag(excluded[i], array)) {err++} else {continue}
     }
-    return true
+    return err
 };
 // filter precounting by all changes
 let filterPrecount = {
@@ -2152,12 +2663,25 @@ function getArrayWorkProgress(iter, length, step) {
 //
 // @EAG LIST GETTER FUNCTIONS
 //
+function _attemptAny(x=1) {
+    if(filterAttemptTags) {return true} else {
+        _filterHaveAttempts-=x;
+        return _filterHaveAttempts < 0
+    }
+};
+function _attemptTags(x=1) {
+    _filterHaveAttempts-=x;
+    return _filterHaveAttempts < 0
+};
+let _filterHaveAttempts = 0;
+//
 function getListFiltered(filter = filterDefault) {
     var list = [], anime;
     for(var i in adb) {
         anime = adb[i];
+        _filterHaveAttempts = Number(filterAttempts);
         // sort by episodes
-        if(anime['episodes'] < filter.episodeMin || anime['episodes'] > filter.episodeMax) {continue};
+        if(anime['episodes'] < filter.episodeMin || anime['episodes'] > filter.episodeMax) {if(_attemptAny()){continue}};
         // sort by score, if allowed
         if(filter.scoreAllow) {
             const anime_id = malAnimeID(anime.sources);
@@ -2167,17 +2691,17 @@ function getListFiltered(filter = filterDefault) {
                 const score = adb_ratings[anime_id]['score'];
                 if(score == 'None' || score == undefined) {continue}
                 else {
-                    if(score < filter.scoreMin) {continue};
-                    if(score > filter.scoreMax) {continue};
+                    if(score < filter.scoreMin) {if(_attemptAny()){continue}};
+                    if(score > filter.scoreMax) {if(_attemptAny()){continue}};
                 }
             }
         };
         // sort by year
-        if(anime['animeSeason']['year'] > filter.yearMax || anime['animeSeason']['year'] < filter.yearMin) {continue};
+        if(anime['animeSeason']['year'] > filter.yearMax || anime['animeSeason']['year'] < filter.yearMin) {if(_attemptAny()){continue}};
         // sort by include/exclude tags
         if(anime['tags'].length > 0) {
-            if(!filterIncludeTags(filter.tagsIncluded, anime['tags'])) {continue};
-            if(!filterExcludeTags(filter.tagsExcluded, anime['tags'])) {continue};
+            if(_attemptTags(filterIncludeTags(filter.tagsIncluded, anime['tags']))) {continue};
+            if(_attemptTags(filterExcludeTags(filter.tagsExcluded, anime['tags']))) {continue};
         } else {
             if(!filter.tagsUndefined) {continue}
         };
@@ -2185,25 +2709,25 @@ function getListFiltered(filter = filterDefault) {
         if(!filter.NSFW && filterAnimeTag('allnsfw', anime['tags'])) {continue};
         // sort by season
         const season = anime['animeSeason']['season'];
-        if(!filter.seasonSpring && season == 'SPRING') {continue};
-        if(!filter.seasonSummer && season == 'SUMMER') {continue};
-        if(!filter.seasonFall && season == 'FALL') {continue};
-        if(!filter.seasonWinter && season == 'WINTER') {continue};
-        if(!filter.seasonUndefined && season == 'UNDEFINED') {continue};
+        if(!filter.seasonSpring && season == 'SPRING') {if(_attemptAny()){continue}};
+        if(!filter.seasonSummer && season == 'SUMMER') {if(_attemptAny()){continue}};
+        if(!filter.seasonFall && season == 'FALL') {if(_attemptAny()){continue}};
+        if(!filter.seasonWinter && season == 'WINTER') {if(_attemptAny()){continue}};
+        if(!filter.seasonUndefined && season == 'UNDEFINED') {if(_attemptAny()){continue}};
         // sort by status
         const stat = anime['status'];
-        if(!filter.statusFinished && stat == 'FINISHED') {continue};
-        if(!filter.statusUpcoming && stat == 'UPCOMING') {continue};
-        if(!filter.statusOngoing && stat == 'ONGOING') {continue};
-        if(!filter.statusUnknown && stat == 'UNKNOWN') {continue};
+        if(!filter.statusFinished && stat == 'FINISHED') {if(_attemptAny()){continue}};
+        if(!filter.statusUpcoming && stat == 'UPCOMING') {if(_attemptAny()){continue}};
+        if(!filter.statusOngoing && stat == 'ONGOING') {if(_attemptAny()){continue}};
+        if(!filter.statusUnknown && stat == 'UNKNOWN') {if(_attemptAny()){continue}};
         // sort by type
         const type = anime['type'];
-        if(!filter.typeMovie && type == 'MOVIE') {continue};
-        if(!filter.typeTV && type == 'TV') {continue};
-        if(!filter.typeONA && type == 'ONA') {continue};
-        if(!filter.typeOVA && type == 'OVA') {continue};
-        if(!filter.typeSpecial && type == 'SPECIAL') {continue};
-        if(!filter.typeUnknown && type == 'UNKNOWN') {continue};
+        if(!filter.typeMovie && type == 'MOVIE') {if(_attemptAny()){continue}};
+        if(!filter.typeTV && type == 'TV') {if(_attemptAny()){continue}};
+        if(!filter.typeONA && type == 'ONA') {if(_attemptAny()){continue}};
+        if(!filter.typeOVA && type == 'OVA') {if(_attemptAny()){continue}};
+        if(!filter.typeSpecial && type == 'SPECIAL') {if(_attemptAny()){continue}};
+        if(!filter.typeUnknown && type == 'UNKNOWN') {if(_attemptAny()){continue}};
         //
         list.push(anime)
     };
@@ -2220,6 +2744,172 @@ function randomItemsFrom(array, count) {
         return arrayShuffle(list)
     };
     return arrayShuffle(items)
+};
+//
+// @EAG ANIME LIST CLASS
+//
+class animeList {
+    constructor(name = 'AnimeListName') {
+        this.list = [];
+        // list = [adb_id, ...]
+        // meta
+        this.name = name;
+        this.desc = '';
+        this.color = `#fff`;
+        // compatibility
+        this.compat = {
+            version: '1.0',
+            adb: adb_information.lastUpdate,
+            app: $appInfo.version,
+        };
+        this.timestamp = {
+            created: (new Date()).toLocaleDateString() + ' ' + (new Date()).toLocaleTimeString(),
+            lastChange: (new Date()).toLocaleDateString() + ' ' + (new Date()).toLocaleTimeString(),
+        };
+        // null if no preset
+        this.presetname = null;
+        // ranges
+        this.rangesMode = 'auto'; // auto, manual
+        this.eps = new Range(-1, 1);
+        this.years = new Range(-1, 1);
+        this.scores = new Range(-1, 1);
+    }
+    //
+    updateTimestamp() {
+        this.timestamp.lastChange = (new Date()).toLocaleDateString() + ' ' + (new Date()).toLocaleTimeString()
+    }
+    compatibility() {
+        var status = {app: true, adb: true, version: this.compat.version};
+        if(this.compat.adb != adb_information.lastUpdate) {status.adb = false};
+        if(this.compat.app != $appInfo.version) {status.app = false};
+        return status
+    }
+    //
+    updateRangesSingle(item) {
+        if(this.rangesMode == 'auto') {
+            this.updateTimestamp();
+            var anime = item;
+            var malid = malAnimeID(anime.sources);
+            if(malid == null) {anime.score = null}
+            else if(adb_ratings[malid] == undefined) {anime.score = null}
+            else {anime.score = String(adb_ratings[malid].score)};
+            //
+            if(String(Number(anime.episodes)) !== 'NaN') {
+                if(this.eps.min == -1) {
+                    this.eps.min = Number(anime.episodes);
+                    this.eps.max = Number(anime.episodes)
+                } else {
+                    if(anime.episodes > this.eps.max) {this.eps.max = Number(anime.episodes)}
+                    else if(anime.episodes < this.eps.min) {this.eps.min = Number(anime.episodes)}
+                }
+            };
+            //
+            if(anime.animeSeason.year != null && String(Number(anime.animeSeason.year)) !== 'NaN') {
+                if(this.years.min == -1) {
+                    this.years.min = Number(anime.animeSeason.year);
+                    this.years.max = Number(anime.animeSeason.year)
+                } else {
+                    if(anime.animeSeason.year > this.years.max) {this.years.max = Number(anime.animeSeason.year)}
+                    else if(anime.animeSeason.year < this.years.min) {this.years.min = Number(anime.animeSeason.year)}
+                }
+            };
+            //
+            if(anime.score !== null) {
+                if(String(Number(anime.score)) !== 'NaN') {
+                    if(this.scores.min == -1) {
+                        this.scores.min = Number(anime.score);
+                        this.scores.max = Number(anime.score)
+                    } else {
+                        if(anime.score > this.scores.max) {this.scores.max = Number(anime.score)}
+                        else if(anime.score < this.scores.min) {this.scores.min = Number(anime.score)}
+                    }
+                }
+            }
+        }
+    }
+    updateRangesAll() {
+        if(this.rangesMode == 'auto') {
+            this.eps = new Range(-1, 1);
+            this.years = new Range(-1, 1);
+            this.scores = new Range(-1, 1);
+            //
+            for(var i in this.list) {
+                this.updateRangesSingle(adb[this.list[i]])
+            }
+        }
+    }
+    //
+    parse(string) {
+        var obj = JSON.parse(string);
+        this.list = obj.list !== undefined ? obj.list : this.list;
+        this.name = obj.name !== undefined ? obj.name : this.name;
+        this.desc = obj.desc !== undefined ? obj.desc : this.desc;
+        this.color = obj.color !== undefined ? obj.color : this.color;
+        this.compat = obj.compat !== undefined ? obj.compat : this.compat;
+        this.timestamp = obj.timestamp !== undefined ? obj.timestamp : this.timestamp;
+        //
+        this.presetname = obj.presetname !== undefined ? obj.presetname : this.presetname;
+        this.rangesMode = obj.rangesMode !== undefined ? obj.rangesMode : this.rangesMode;
+        this.eps = obj.eps !== undefined ? obj.eps : this.eps;
+        this.years = obj.years !== undefined ? obj.years : this.years;
+        this.scores = obj.scores !== undefined ? obj.scores : this.scores;
+    }
+    stringify() {
+        return JSON.stringify(this)
+    }
+    //
+    newEntry(adb_id) {
+        // test for repeat
+        for(var key in this.list) {
+            if(this.list[key] == adb_id) {return false}
+        };
+        // test for exist
+        if(adb[adb_id] !== undefined) {
+            this.list.push(String(adb_id));
+            this.updateRangesSingle(adb[adb_id]);
+            return true
+        } else {
+            return false
+        }
+    }
+    deleteEntry(adb_id) {
+        for(var k in this.list) {
+            if(this.list[k] == adb_id) {
+                this.deleteKey(Number(k));
+                break
+            }
+        }
+    }
+    deleteKey(key) {
+        var d = this.list.splice(key, 1);
+        this.updateRangesAll();
+        return d
+    }
+    //
+    getAnime() {
+        var anime = [];
+        for(var key in this.list) {
+            anime.push(adb[this.list[key]])
+        };
+        return anime
+    }
+    //
+    compressArray(array) {
+        this.list = [];
+        for(var a in array) {
+            if(array[a].dbid !== undefined) {
+                this.list.push(array[a].dbid)
+            } else {
+                var dbid = getAnimeDBID(array[a]);
+                if(dbid !== null) {
+                    this.list.push(dbid)
+                } else {
+                    console.warn(`Title by DBID #${dbid} not found!`)
+                }
+            }
+        };
+        this.updateRangesAll()
+    }
 };
 //
 // @EAG JIKAN REST API
@@ -2241,7 +2931,7 @@ let jikan = {
             if(jikan._timeout > 0) {
                 jikan._timeout -= deltaTime
             } else {
-                jikan._request(); 
+                jikan._request();
                 jikan._waitResponse = false
             }
         }
@@ -2440,11 +3130,14 @@ function calcDataEntries(root, database=adb) {
 // @EAG BROWSE DB METHODS
 //
 function searchByTitle(request='', hard=false, db=adb) {
-    var names = [], result = [], req = request.toLowerCase();
+    var names = [], item = {}, result = [], req = request.toLowerCase();
     for(var a in db) {
         names = [].concat(db[a]['title'], db[a]['synonyms']);
         for(var t in names) {
             if(stringIncludeRequest(names[t].toLowerCase(), req, hard)) {
+                item = db[a];
+                if(!pref.showNSFW && filterAnimeTag('allnsfw', item['tags'])) {break};
+                item.dbid = Number(a);
                 result.push(db[a]); break
             }
         }
@@ -2472,7 +3165,10 @@ let cvssize = new Vector2();
 let fullsize = new Vector2();
 let cvsorient = 'album';
 let cvsxoffset = 0;
+//
 let cvsscale = new Vector1(1);
+let _scaleFixed = 1;
+let _scaleDynamic = 1;
 //
 let casState = 'idle';
 let casscale = new Vector2();
@@ -2537,14 +3233,16 @@ function canvasActualSize() {
             cvssize.setxy(fullsize.y*2, fullsize.y)
         }
     }
-    cvsscale.update()
+    cvsscale.update();
+    _scaleFixed = cvsscale.getFixed();
+    _scaleDynamic = cvsscale.get()
 };
 //
 // @EAG RESCALE METHODS
 //
 function globalRescale() {
-    lsSaveValue('scale', floatNumber(cvsscale.getFixed(), 1));
     setTimeout(() => {
+        lsSaveValue('scale', floatNumber(_scaleFixed, 1));
         namebox.state = 'measure';
         imageLoadProgress.state = 'measure';
         if(hoverHint.alpha.get() > 0) {hoverHint.main.state = 'measure'};
@@ -2604,13 +3302,13 @@ function fillRect(size, pos=new Vector2(), color='#000') {
 function fillRectFast(size, pos=new Vector2()) {
     ctx.fillRect(pos.x, pos.y, size.x, size.y)
 };
-function fillRectRounded(size, pos=new Vector2(), color='#000', radius=12*cvsscale.get()) {
+function fillRectRounded(size, pos=new Vector2(), color='#000', radius=12*_scaleDynamic) {
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.roundRect(pos.x, pos.y, size.x, size.y, [radius]);
     ctx.fill();
 };
-function fillRectRoundedFrame(size, pos=new Vector2(), color='#000', radius=12*cvsscale.get()) {
+function fillRectRoundedFrame(size, pos=new Vector2(), color='#000', radius=12*_scaleDynamic) {
     ctx.strokeStyle = color;
     ctx.beginPath();
     ctx.roundRect(pos.x, pos.y, size.x, size.y, [radius]);
@@ -2937,11 +3635,11 @@ class TextButtonShaped {
             this.tap.update();
             // scaling
             var size = this.size.get();
-            var height = this.height * cvsscale.get();
-            var tap = this.tap.get() * cvsscale.get();
+            var height = this.height * _scaleDynamic
+            var tap = this.tap.get() * _scaleDynamic;
             //
-            this.shape = this.shapefunc(this.pos.get().sumxy(0, tap), size, [12 * cvsscale.get()]);
-            this.shadow = this.shapefunc(this.pos.get().sumxy(0, tap+1), size.sumxy(0, height-tap), [12 * cvsscale.get()]);
+            this.shape = this.shapefunc(this.pos.get().sumxy(0, tap), size, [12 * _scaleDynamic]);
+            this.shadow = this.shapefunc(this.pos.get().sumxy(0, tap+1), size.sumxy(0, height-tap), [12 * _scaleDynamic]);
             //
             if(this.state !== 'unaval') {
                 if(!this.initactivity) {this.state = shapeCollisionState(this.shadow, false)}
@@ -3024,7 +3722,7 @@ class ImageButtonShaped {
         this.shapefunc = shape; this.image = image; this.spacing = spacing;
         this.shapecm = colormap_shape;
         this.shadowclr = colormap_shape.idle.light(50).getColor();
-        this.shapesize = new Vector2(this.image.naturalWidth, this.image.naturalHeight).sumv(this.spacing);
+        this.shapesize = new Vector2();
         this.pos = new Vector2();
         this.alpha = new Vector1(1);
         this.height = _imagebuttonheight-1;
@@ -3042,6 +3740,7 @@ class ImageButtonShaped {
         this.zoom = new Vector2(1);
         this.locked = false;
         this.waitanim = true;
+        this.needshadow = true;
         this.ondeact = () => {};
         this.onclick = () => {};
         this.onhover = () => {};
@@ -3103,7 +3802,7 @@ class ImageButtonShaped {
             // draw
             const oldalp = ctx.globalAlpha;
             ctx.globalAlpha = ctx.globalAlpha * this.alpha.get();
-            fillShape(this.shadow, this.shadowclr);
+            this.needshadow ? fillShape(this.shadow, this.shadowclr) : null;
             fillShape(this.shape, this.shapeclr);
             this.imagepos = this.pos.get().sumv(this.spacing.get()).sumxy(0, this.tap.get());
             drawImageSized(this.image, this.imagepos, this.shapesize.minv(this.spacing.get().multxy(2)));
@@ -3145,11 +3844,11 @@ class TagSwitcherShaped {
         this.shdw.update();
         this.text = tagbase[this.tag].name;
         // scale
-        var height = this.height * cvsscale.get();
-        var tap = this.tap.get() * cvsscale.get();
+        var height = this.height * _scaleDynamic;
+        var tap = this.tap.get() * _scaleDynamic;
         //
-        this.shape = this.shapefunc(this.pos.get().sumxy(0, tap), this.size.get(), [12 * cvsscale.get()]);
-        this.shadow = this.shapefunc(this.pos.get().sumxy(0, tap+1), this.size.get().sumxy(0, height-tap), [12 * cvsscale.get()]);
+        this.shape = this.shapefunc(this.pos.get().sumxy(0, tap), this.size.get(), [12 * _scaleDynamic]);
+        this.shadow = this.shapefunc(this.pos.get().sumxy(0, tap+1), this.size.get().sumxy(0, height-tap), [12 * _scaleDynamic]);
         this.state = shapeCollisionState(this.shadow, false);
         //
         if(this.state !== this.oldstate) {
@@ -3222,6 +3921,8 @@ class ShapedSelectBar {
         this.maxvalue = 1;
         this.progress = 0;
         this.pointer = 0;
+        this.visual = new Vector1();
+        this.visAlias = false;
         this.state = 'idle';
         this.mod = false;
         this.permanent = false;
@@ -3237,9 +3938,15 @@ class ShapedSelectBar {
     draw() {
         this.fore.update();
         this.back.update();
+        this.visual.update();
+        // shape alias
+        if(this.visAlias) {
+            var vis = Math.round(Math.norma(this.pointer) * this.maxvalue) / this.maxvalue;
+            if(this.visual.getFixed() !== vis) {this.visual.move(vis, 0.2, easeInOutCubic)}} 
+        else {this.visual.set(Math.norma(this.pointer))};
         // shapes
-        this.shadow = shapeRectRounded(this.pos, this.size, this.radius * cvsscale.get());
-        this.shape = shapeRectRounded(this.pos.sumxy(this.spacing * cvsscale.get()), this.size.minxy(this.spacing*2 * cvsscale.get()).multxy(Math.norma(this.pointer), 1), this.radius * cvsscale.get())
+        this.shadow = shapeRectRounded(this.pos, this.size, this.radius * _scaleDynamic);
+        this.shape = shapeRectRounded(this.pos.sumxy(this.spacing * _scaleDynamic), this.size.minxy(this.spacing*2 * _scaleDynamic).multxy(this.visual.get(), 1), this.radius * _scaleDynamic)
         this.state = shapeCollisionState(this.shadow, false);
         // control
         if(!this.mod) {this.pointer = this.progress};
@@ -3294,17 +4001,118 @@ class ShapedSelectBar {
     } 
 };
 //
+// @EAG SHAPED HOLDBUTTON
+//
+let _holdbuttonbhvr = {
+    time: '1000',
+    ease: easeInOutSine,
+};
+class ShapedHoldButton {
+    constructor(shape, size, colormap_shape) {
+        this.shapefunc = shape; this.size = size; this.shapecm = colormap_shape;
+        this.shadowclr = colormap_shape.idle.light(50).getColor();
+        this.progclr = colormap_shape.click.getColor();
+        this.grad = ctx.createLinearGradient(0,0,0,0);
+        this.pos = new Vector2();
+        this.alpha = new Vector1(1);
+        this.height = 5;
+        this.tap = new Vector1(0);
+        this.shapeclr = `rgba(255,255,255,1)`;
+        this.shape = new Path2D();
+        this.shadow = new Path2D();
+        this.state = 'idle';
+        this.aval = true;
+        this.locked = false;
+        this.needshadow = true;
+        this.time = _holdbuttonbhvr.time;
+        this.dtime = Number(_holdbuttonbhvr.time);
+        this.operate = false;
+        this.progress = Number(0);
+        this.onact = () => {};
+        this.onhide = () => {};
+        this.onshow = () => {};
+        this.onhover = () => {};
+        this.onpress = () => {};
+    }
+    draw() {
+        if(this.aval) {
+            // update all
+            this.pos.update();
+            this.size.update();
+            this.alpha.update();
+            this.tap.update();
+            // scaling
+            var size = this.size.get();
+            var height = this.height * _scaleDynamic
+            var tap = this.tap.get() * _scaleDynamic;
+            //
+            this.shape = this.shapefunc(this.pos.get().sumxy(0, tap), size, [12 * _scaleDynamic]);
+            this.shadow = this.shapefunc(this.pos.get().sumxy(0, tap+1), size.sumxy(0, height-tap), [12 * _scaleDynamic]);
+            this.state = shapeCollisionState(this.shadow, false);
+            //
+            if(this.state !== 'unaval') {
+                if(this.state !== 'idle') {
+                    this.onhover();
+                    if(mouse.press) {
+                        this.shapecm.setState('hover', 0.25);
+                        this.dtime > 0 ? this.dtime -= deltaTime : this.dtime = 0;
+                        this.onpress();
+                        //
+                        if(this.dtime <= 0 && !this.operate) {
+                            this.operate = true;
+                            this.tap.set(0);
+                            this.tap.move(height, 0.25, easeOutCirc);
+                            this.onact()
+                        }
+                    } else {
+                        this.shapecm.setState('idle', 0.25);
+                        if(this.dtime < Number(this.time) && !this.operate) {
+                            this.dtime += deltaTime;
+                            if(this.dtime > Number(this.time)) {this.dtime = Number(this.time)}
+                        }
+                    }
+                } else {
+                    this.shapecm.setState('idle', 0.25);
+                    if(!this.operate) {
+                        this.dtime = Number(this.time);
+                    }
+                }
+            } else {this.shapecm.setState('unaval', 0.25)};
+            //
+            this.shapecm.update();
+            this.shapecm.alphaMult(this.alpha);
+            this.shapeclr = this.shapecm.get();
+            this.progress = 1 - (this.dtime / Number(this.time));
+            // gradient
+            this.grad = ctx.createLinearGradient(this.pos.x, 0, this.pos.x+this.size.x, 0);
+            this.grad.addColorStop(0, this.progclr);
+            this.grad.addColorStop(Math.norma(this.progress), this.progclr);
+            this.grad.addColorStop(Math.norma(this.progress+0.001), this.shapeclr);
+            this.grad.addColorStop(1, this.shapeclr);
+            // draw
+            this.needshadow ? fillShape(this.shadow, this.shadowclr):null;
+            fillShape(this.shape, this.grad);
+        }
+    }
+    // внешняя разблокировка после активации
+    unblock() {
+        this.operate = false;
+        this.dtime = Number(this.time);
+        this.tap.move(0, 0.25, easeOutCirc)
+    }
+};
+//
 // @EAG TEXT METHODS
 //
 function scaleFont(size, font, style=false) {
     ctx.font = style !== false
-    ? `${style} ${size * cvsscale.get()}px ${font}`
-    : `${size * cvsscale.get()}px ${font}`
+    ? `${style} ${size * _scaleDynamic}px ${font}`
+    : `${size * _scaleDynamic}px ${font}`
 };
 function scaleFontObject(fontobject) {
     ctx.font = fontobject.style !== false
-    ? `${fontobject.style} ${fontobject.size * cvsscale.get()}px ${fontobject.font}`
-    : `${fontobject.size * cvsscale.get()}px ${fontobject.font}`
+    ? `${fontobject.style} ${fontobject.size * _scaleDynamic}px ${fontobject.font}`
+    : `${fontobject.size * _scaleDynamic}px ${fontobject.font}`
 };
 //
 function setTextStyle(size, family, color=colorMatrix(`rgba(255,255,255,1)`), align, style=false) {
@@ -3530,7 +4338,7 @@ let hoverHint = {
     box: 320,
     margin: new Vector2(5),
     fit: new Vector2(),
-    offset: 15,
+    offset: 25,
     pose: new Vector2(),
     //
     font: 'Segoe UI Light',
@@ -3558,7 +4366,7 @@ let hoverHint = {
             ctx.globalAlpha = Math.norma(hoverHint.scaletime*3);
             scaleFont(24, 'Segoe UI', 'bold');
             ctx.textAlign = 'end'; ctx.fillStyle = '#cfc';
-            fillTextFast(normalAlign(new Vector2(0.99, 0.01)).sumxy(0, 32 * cvsscale.get()), txt('prefScale') + floatNumber(cvsscale.get(), 2));
+            fillTextFast(normalAlign(new Vector2(0.99, 0.01)).sumxy(0, 32 * _scaleDynamic), txt('prefScale') + floatNumber(_scaleDynamic, 2));
             ctx.globalAlpha = 1;
         };
         // set
@@ -3570,26 +4378,27 @@ let hoverHint = {
         hoverHint.alpha.update();
         hoverHint.cd -= deltaTime/1000;
         scaleFont(hoverHint.fsize, hoverHint.font);
+        var hoff = getTextMetrics('|').y;
         ctx.globalAlpha = hoverHint.alpha.get();
         hoverHint.main.text = hoverHint.text;
-        hoverHint.fit = hoverHint.main.shadow.getFixed();
+        hoverHint.fit = hoverHint.main.shadow.get();
         // moving alpha
         if(hoverHint.text == '' && hoverHint.alpha.getFixed() !== 0) {hoverHint.alpha.move(0, hoverHint.time, easeInOutCubic)};
         if(hoverHint.alpha.get() > 0) {
             // scale
-            hoverHint.main.size.x = hoverHint.box * cvsscale.getFixed();
-            hoverHint.main.margin = hoverHint.margin.multxy(cvsscale.get());
-            var offset = hoverHint.offset * cvsscale.get();
+            hoverHint.main.size.x = hoverHint.box * _scaleFixed;
+            hoverHint.main.margin = hoverHint.margin.multxy(_scaleDynamic);
+            var offset = hoverHint.offset * _scaleDynamic;
             // get pos
             mouse.pos.x + offset + hoverHint.fit.x > cvssize.x
-            ? hoverHint.pose.x = mouse.pos.x - hoverHint.fit.x
+            ? hoverHint.pose.x = cvssize.x - hoverHint.fit.x
             : hoverHint.pose.x = mouse.pos.x + offset;
-            mouse.pos.y + offset + hoverHint.fit.y > cvssize.y
-            ? hoverHint.pose.y = mouse.pos.y - hoverHint.fit.y
-            : hoverHint.pose.y = mouse.pos.y + getTextMetrics(hoverHint.text).y;
+            mouse.pos.y + hoverHint.fit.y + offset > cvssize.y
+            ? hoverHint.pose.y = cvssize.y - hoverHint.fit.y + hoff
+            : hoverHint.pose.y = mouse.pos.y + offset + hoff;
             // draw
             hoverHint.main.pos = hoverHint.pose;
-            hoverHint.main.spacing = hoverHint.spacing * cvsscale.get();
+            hoverHint.main.spacing = hoverHint.spacing * _scaleDynamic;
             ctx.textAlign = 'start';
             hoverHint.main.castShadow();
             ctx.fillStyle = hoverHint.color;
@@ -3611,9 +4420,14 @@ let allInvokedImages = [];
 // for predict 404
 let imageNotFound = invokeNewImage('images/notfound.png');
 //
+let imageWorkInProgress = invokeNewImage('images/wip.png');
+let imageWIPSize = new Vector2();
+imageWorkInProgress.onload = () => {
+    imageWIPSize.setxy(imageWorkInProgress.naturalWidth, imageWorkInProgress.naturalHeight)
+};
+//
 function invokeNewImage(src) {
     var image = new Image(); image.src = src;
-    // image.crossOrigin = 'anonymous';
     allInvokedImages.push(image);
     return image
 };
@@ -3670,7 +4484,7 @@ class imageFitFrame {
             if(this.image.naturalHeight <= 0) {this.image.src = imageNotFound.src};
             if(this.fitsize === null) {this.fit()};
             // draw frame
-            var border = fitImageBorder * cvsscale.get();
+            var border = fitImageBorder * _scaleDynamic;
             ctx.globalAlpha = this.alpha;
             var glal = normalAlign(this.align, this.fitsize.sumxy(border).multxy(this.zoom));
             this.winner ? visual.lightRing(glal.sumv(this.fitsize.multxy(this.zoom/2)), visual.lightDiam.get()*this.zoom) : false;
@@ -3726,7 +4540,7 @@ let siteButtonTime = 0.3;
 //
 function sitesButtonShape(pos, size) {
     var shape = new Path2D();
-    shape.roundRect(pos.x, pos.y, size.x, size.y, 4 * cvsscale.getFixed());
+    shape.roundRect(pos.x, pos.y, size.x, size.y, 4 * _scaleFixed);
     return shape
 };
 // постоянные кнопки
@@ -3808,23 +4622,23 @@ let sites = {
                 // sites.buttons[b].pos.setv(sites.pos.sumxy(siteButtonSize/2, 0), siteButtonTime, easeInOutSine)
             }
         };
-        var xanchor = siteButtonSize * cvsscale.get() * (len/2);
+        var xanchor = siteButtonSize * _scaleDynamic * (len/2);
         sites.len = len; len = 0;
         for(var b in siteSequence) {
             if(sites.actives[siteSequence[b]] === undefined) {continue};
             sites.actives[siteSequence[b]].alpha.move(1, siteButtonTime);
             sites.poses[siteSequence[b]].applyMod();
-            sites.poses[siteSequence[b]].movexy(-xanchor + siteButtonSize * cvsscale.get() * len, 0, siteButtonTime, easeInOutSine);
+            sites.poses[siteSequence[b]].movexy(-xanchor + siteButtonSize * _scaleDynamic * len, 0, siteButtonTime, easeInOutSine);
             len++
         }
     },
     //
     resizeButtons: () => {
-        var xanchor = siteButtonSize * cvsscale.get() * (sites.len/2);
+        var xanchor = siteButtonSize * _scaleDynamic * (sites.len/2);
         var len = 0;
         for(var b in sites.actives) {
-            sites.poses[b].movexy(-xanchor + siteButtonSize * cvsscale.get() * len, 0, 0.25, easeOutCirc);
-            sites.actives[b].sizedZoom(new Vector2(siteButtonSize * cvsscale.get()));
+            sites.poses[b].movexy(-xanchor + siteButtonSize * _scaleDynamic * len, 0, 0.25, easeOutCirc);
+            sites.actives[b].sizedZoom(new Vector2(siteButtonSize * _scaleDynamic));
             len++
         }
     },
@@ -3922,15 +4736,19 @@ function rbChangesText(count) {
     lsSaveValue('filterChangesText', count)
 };
 function filterChangesString() {
-    return Number(filterChangesText) == 0
+    return Number(tInfo.meta.changes) == 0
     ? txt('infoNoChanges')
-    : txt('infoChangesCount') + filterChangesText;
+    : txt('infoChangesCount') + tInfo.meta.changes;
+};
+//
+let _tinfoMetaDefault = {
+    usePreset: true, object: presetbase['Дефолтный'], changes: 0
 };
 //
 let tInfo = {
     //
-    spacing: tinfSpacing * cvsscale.get(),
-    box: tinfBoxSize * cvsscale.get(),
+    spacing: tinfSpacing * _scaleDynamic,
+    box: tinfBoxSize * _scaleDynamic,
     zoom: new Vector1(tinfBoxZoom),
     alpha: new Vector1(0),
     hidereq: false,
@@ -3938,13 +4756,13 @@ let tInfo = {
     //
     anchor: new Vector2(0.05, 0.95),
     pos: new Vector2(),
-    height: (tinfBoxSize * cvsscale.get() - (tinfSpacing * cvsscale.get() * 9)) / 8,
-    width: tinfBoxSize * cvsscale.get() - (tinfSpacing * cvsscale.get() * 2),
+    height: (tinfBoxSize * _scaleDynamic - (tinfSpacing * _scaleDynamic * 9)) / 8,
+    width: tinfBoxSize * _scaleDynamic - (tinfSpacing * _scaleDynamic * 2),
     //
     title: null,
     rating: null,
     updater: tinfTime,
-    usePreset: true,
+    meta: lsLoadObject('tinfoMeta', _tinfoMetaDefault),
     //
     episodes: new Vector1(0),
     episodest: '',
@@ -4009,10 +4827,10 @@ let tInfo = {
         tInfo.alpha.update();
         // позиция, бг
         ctx.globalAlpha = tInfo.alpha.get();
-        tInfo.spacing = tinfSpacing * cvsscale.get();
-        tInfo.box = tinfBoxSize * tInfo.zoom.get() * cvsscale.get();
+        tInfo.spacing = tinfSpacing * _scaleDynamic;
+        tInfo.box = tinfBoxSize * tInfo.zoom.get() * _scaleDynamic;
         tInfo.pos = normalAlign(tInfo.anchor, new Vector2(tInfo.box));
-        fillRectRounded(new Vector2(tInfo.box), tInfo.pos, `rgba(0,0,0,${pref.bgalpha})`, 10*cvsscale.get());
+        fillRectRounded(new Vector2(tInfo.box), tInfo.pos, `rgba(0,0,0,${pref.bgalpha})`, 10*_scaleDynamic);
         // размеры элементов
         tInfo.height = (tInfo.box - tInfo.spacing * 9) / 8,
         tInfo.width = tInfo.box - tInfo.spacing * 2,
@@ -4039,11 +4857,15 @@ let tInfo = {
         fillTextFast(tInfo.posit(2).sumxy(tInfo.width*0.75, tInfo.height*0.7), tInfo.status);
         // пресет
         scaleFont(tinfFontSize, 'Segoe UI', 'bold');
-        if(tInfo.usePreset) {
-            fillTextFast(tInfo.posit(3).sumxy(tInfo.width/2, tInfo.height*0.7), textStringLimit(presetOnRoulette, tInfo.width));
+        if(tInfo.meta.usePreset) {
+            fillTextFast(tInfo.posit(3).sumxy(tInfo.width/2, tInfo.height*0.7), textStringLimit(tInfo.meta.object.name, tInfo.width));
             scaleFont(tinfFontSize, 'Segoe UI');
             fillTextFast(tInfo.posit(4).sumxy(tInfo.width/2, tInfo.height*0.5), filterChangesString());
-        };
+        } else {
+            fillTextFast(tInfo.posit(3).sumxy(tInfo.width/2, tInfo.height*0.7), textStringLimit(tInfo.meta.object.name, tInfo.width));
+            scaleFont(tinfFontSize, 'Segoe UI');
+            fillTextFast(tInfo.posit(4).sumxy(tInfo.width/2, tInfo.height*0.5), tInfo.meta.object.timestamp.created);
+        }
         // MAL оценки
         scaleFont(tinfFontSize, 'Segoe UI', 'bold');
         fillTextFast(tInfo.posit(5).sumxy(tInfo.width*0.5, tInfo.height*0.7), txt('malHead'));
@@ -4063,7 +4885,7 @@ let tInfo = {
 let descrFontFamily = 'Segoe UI';
 let descrFontSize = 13;
 let descrFontSpacing = 0.2;
-let descrWaiting = 1;
+let descrWaiting = 0.5;
 //
 let descrTransFunctions = {
     'get-ru': () => {
@@ -4121,14 +4943,14 @@ descrWatchTrailer.height = 0; descrWatchTrailer.state = `unaval`;
 let tDesc = {
     anchor: new Vector2(0.95),
     pos: new Vector2(),
-    size: tinfBoxSize * cvsscale.get(),
+    size: tinfBoxSize * _scaleDynamic,
     spacing: 0,
     fsize: 0,
     //
     data: {},
     malid: null,
     desc: [txt('descNone')],
-    height: new Vector2(0,14*cvsscale.get()),
+    height: new Vector2(0,14*_scaleDynamic),
     //
     full: 0,
     scroll: new Vector1(),
@@ -4151,13 +4973,6 @@ let tDesc = {
     newDesc: () => {
         descrWatchTrailer.state = `unaval`;
         decsrTranslate.state = 'unaval';
-        // if(!roulette.winnerCentered()) {
-        //     if(pref.autoScroll && roulette.dragged === false) {
-        //         tDesc.desc = [txt('descRoll')];
-        //         tDesc.request = false;
-        //         return
-        //     }
-        // };
         tDesc.malid = malAnimeID(roulette.centerAnime.sources);
         tDesc.scroll.set(0);
         tDesc.apply = true;
@@ -4173,15 +4988,15 @@ let tDesc = {
     },
     //
     resize: () => {
-        descrWatchTrailer.size = new Vector2(tinfBoxSize/3, descrFontSize).multxy(cvsscale.get());
+        descrWatchTrailer.size = new Vector2(tinfBoxSize/3, descrFontSize).multxy(_scaleDynamic);
         scaleFont(descrFontSize, 'Segoe UI');
         if (tDesc.apply) {
-            // var height;
+            var height;
             if(jikan._response !== null) {
-                [tDesc.desc, tDesc.height] = textWidthFit(tDesc.data.synopsis, tDesc.size - (tInfo.spacing*2 + tDesc.fsize))
+                [tDesc.desc, tDesc.height] = textWidthFit(tDesc.data.synopsis, tDesc.size - (tInfo.spacing*2 + tDesc.fsize));
+                [tDesc.tdesc, height] = textWidthFit(translator.single, tDesc.size - (tInfo.spacing*2 + tDesc.fsize));
+                tDesc.original ? null : tDesc.height = height
             };
-            // [tDesc.tdesc, tDesc.height] = textWidthFit(translator.single, tDesc.size - (tInfo.spacing*2 + tDesc.fsize));
-            // tDesc.original ? null : tDesc.height = height
         }
     },
     //
@@ -4197,14 +5012,14 @@ let tDesc = {
     //
     draw: () => {
         // scale
-        tDesc.fsize = descrFontSize * cvsscale.get();
-        tDesc.size = tinfBoxSize * cvsscale.get();
+        tDesc.fsize = descrFontSize * _scaleDynamic;
+        tDesc.size = tinfBoxSize * _scaleDynamic;
         // обновления, позиция, задний фон
         tDesc.alpha.update();
         tDesc.scroll.update();
         tDesc.pos = normalAlign(tDesc.anchor, new Vector2(tInfo.box));
         ctx.globalAlpha = tInfo.alpha.get();
-        fillRectRounded(new Vector2(tInfo.box), tDesc.pos, `rgba(0,0,0,${pref.bgalpha})`, 10*cvsscale.get());
+        fillRectRounded(new Vector2(tInfo.box), tDesc.pos, `rgba(0,0,0,${pref.bgalpha})`, 10*_scaleDynamic);
         // заголовок
         ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
         scaleFont(tinfHeaderSize, 'Segoe UI', 'bold');
@@ -4371,21 +5186,52 @@ buttonDoRoll.onclick = () => {
     if(!roulette.hidemap) {
         rollBar.state = 'hide';
         buttonDoRoll.text = txt('rbWait');
-        musicRoll.oncanplay = () => {
-            playSound(sound['roll']);
-            roulette.doRoll(pref.rollTime, pref.rollSpeed);
-            srv.hideProgress.value = 0;
-            srv.hideProgress.move(1, srv.hideTime, easeInQuad);
-            srv.state = 'roll_start';
-            tInfo.hidereq = true;
-            buttonDoRoll.state = 'unaval';
-            musicRollVolume.reset();
-            musicRollVolume.move(1, 2, easeInOutSine);
-            visual.lightDiam.move(0, 0.25, easeInCirc);
+        musicLite.hide();
+        musicLite.wait = true;
+        if(!pref.playClip) {
+            musicRoll.oncanplay = () => {
+                playSound(sound['roll']);
+                roulette.doRoll(pref.rollTime, pref.rollSpeed);
+                srv.hideProgress.value = 0;
+                srv.hideProgress.move(1, srv.hideTime, easeInQuad);
+                srv.state = 'roll_start';
+                tInfo.hidereq = true;
+                buttonDoRoll.state = 'unaval';
+                musicRollVolume.reset();
+                musicRollVolume.move(1, 2, easeInOutSine);
+                visual.lightDiam.move(0, 0.25, easeInCirc);
+                musicLite.wait = false;
+                //
+                setTimeout(() => {buttonDoRoll.text = txt('rbRoll')}, 2000)
+            };
+            musicRollStart()
+        } else {
+            clipmainOnCanPlay = () => {
+                videoClipPlay();
+                playSound(sound['roll']);
+                roulette.doRoll(clipmainTime, pref.rollSpeed, false);
+                srv.hideProgress.value = 0;
+                srv.hideProgress.move(1, srv.hideTime, easeInQuad);
+                srv.state = 'roll_start';
+                tInfo.hidereq = true;
+                buttonDoRoll.state = 'unaval';
+                musicNormalVolume.move(0, 1, easeInOutSine);
+                visual.lightDiam.move(0, 0.25, easeInCirc);
+                musicLite.wait = false;
+                //
+                setTimeout(() => {
+                    buttonDoRoll.text = txt('rbRoll');
+                    musicNormal.pause()
+                }, 2000)
+            };
             //
-            setTimeout(() => {buttonDoRoll.text = txt('rbRoll')}, 2000)
-        };
-        musicRollStart()
+            if(_clipSelected !== null && clips[_clipSelected] !== undefined) {
+                videoClipSet(clips[_clipSelected]);
+                _clipSelected = null
+            } else {
+                videoClipSet(clips[Math.floor(Math.random()*(clips.length-0.001))])
+            }
+        }
     }
 };
 buttonDoRoll.waitanim = false;
@@ -4412,7 +5258,7 @@ let rollBar = {
     hide: new Vector2(0.5, 1.2),
     //
     pos: new Vector2(),
-    size: new Vector2(cvssize.x * 0.45, rbBodyHeight*cvsscale.get()),
+    size: new Vector2(cvssize.x * 0.45, rbBodyHeight*_scaleDynamic),
     alpha: new Vector1(0),
     spacing: 0,
 
@@ -4422,18 +5268,18 @@ let rollBar = {
     //
     draw: () => {
         // scale
-        rollBar.spacing = rbSpacing * cvsscale.get();
+        rollBar.spacing = rbSpacing * _scaleDynamic;
         // update
         rollBar.anchor.update();
         rollBar.alpha.update();
         ctx.globalAlpha = rollBar.alpha.get();
         // размеры и задний фон
-        rollBar.size.setxy(cvssize.x * 0.45, rbBodyHeight * cvsscale.get());
+        rollBar.size.setxy(cvssize.x * 0.45, rbBodyHeight * _scaleDynamic);
         rollBar.pos = normalAlign(rollBar.anchor.get(), rollBar.size);
         rbRollWidth = (rollBar.size.y - rollBar.spacing*2)*2 + rollBar.spacing;
         // рисуем
         if(rollBar.state !== 'init' && rollBar.state !== 'invis') {
-            fillRectRounded(rollBar.size, rollBar.pos, `rgba(0,0,0,${pref.bgalpha})`, 10*cvsscale.get());
+            fillRectRounded(rollBar.size, rollBar.pos, `rgba(0,0,0,${pref.bgalpha})`, 10*_scaleDynamic);
             // крутить
             ctx.textAlign = 'center';
             scaleFont(36, 'Arial', 'bold');
@@ -4524,7 +5370,7 @@ mlcMusicBar.onset = (value) => {if(musicNormalComplete && pref.bgmusic > 0) {
 }};
 mlcMusicBar.onhover = (value) => {
     ctx.fillStyle = '#fff'; ctx.textAlign = 'end'; scaleFont(12, 'Consolas');
-    ctx.fillText(timeStringify(musicNormalComplete ? value : 0), mouse.pos.x-(2*cvsscale.get()), mlcMusicBar.pos.y+mlcBarSize.y+(14*cvsscale.get()))
+    ctx.fillText(timeStringify(musicNormalComplete ? value : 0), mouse.pos.x-(2*_scaleDynamic), mlcMusicBar.pos.y+mlcBarSize.y+(14*_scaleDynamic))
 };
 mlcMusicBar.permanent = false;
 //
@@ -4538,17 +5384,59 @@ let musicLite = {
     name: '', old: '',
     fullname: '',
     //
+    active: false,
+    offset: new Vector1(),
+    //
+    wait: false,
+    walpha: new Vector1(0),
+    //
+    hide: () => {
+        const time = 0.3;
+        musicLite.offset.set(0);
+        musicLite.offset.move(musicLite.size.y*-2, time, easeInQuad);
+        setTimeout(() => {
+            musicLite.active = false
+        }, time*1100);
+    },
+    show: () => {
+        musicLite.active = true;
+        musicLite.offset.set(musicLite.size.y*-2);
+        musicLite.offset.move(0, 0.3, easeOutCirc)
+    },
+    //
     draw: () => {
-        if(pref.playerShow) {musicLite.drawfunc()}
+        // отрисовка плеера
+        if(pref.playerShow && musicLite.active) {musicLite.drawfunc()};
+        // отрисовка ожидания
+        musicLite.walpha.update();
+        if(musicLite.wait && musicLite.walpha.getFixed() == 0) {musicLite.walpha.move(1,1,easeInCirc)};
+        if(!musicLite.wait && musicLite.walpha.getFixed() == 1) {musicLite.walpha.move(0,0.5,easeOutCirc)};
+        //
+        if(musicLite.walpha.get() > 0) {
+            var wtext = pref.playClip
+            ? txt('hintAwaitingClip')
+            : txt('hintAwaitingMusic');
+            ctx.globalAlpha = musicLite.walpha.get();
+            //
+            var wsize = new Vector2(400, 24).multxy(_scaleDynamic);
+            fillRectRounded(wsize, normalAlign(new Vector2(0.5,0.95), wsize), `#000a`, 8*_scaleDynamic);
+            scaleFont(16, 'Segoe UI');
+            ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+            fillTextFast(normalAlign(new Vector2(0.5,0.95), wsize).sumxy(wsize.x/2, wsize.y*0.8),
+            `${wtext} (${floatNumber(clipTimeout-clipWaiting, 1)} sec.)`);
+            //
+            ctx.globalAlpha = 1
+        }
     },
     drawfunc: () => {
         // scale
-        var spacing = mlcSpacing * cvsscale.get();
-        var barsize =  mlcBarSize.multxy(cvsscale.get());
-        var buttonsize = mlcButtonSize * cvsscale.get();
+        musicLite.offset.update();
+        var spacing = mlcSpacing * _scaleDynamic;
+        var barsize =  mlcBarSize.multxy(_scaleDynamic);
+        var buttonsize = mlcButtonSize * _scaleDynamic;
         // position
         musicLite.size = new Vector2(buttonsize*2 + spacing*2 + barsize.x, buttonsize);
-        musicLite.pos = normalAlign(musicLite.anchor, musicLite.size).sumxy(0, spacing);
+        musicLite.pos = normalAlign(musicLite.anchor, musicLite.size).sumxy(0, spacing + musicLite.offset.get());
         // bar
         mlcMusicBar.pos = musicLite.pos.sumxy(buttonsize + spacing, buttonsize - (barsize.y + spacing));
         mlcMusicBar.size = barsize;
@@ -4578,7 +5466,7 @@ let musicLite = {
         // draw text
         ctx.fillStyle = '#fffb'; ctx.textAlign = 'start';
         var trackname = pref.bgmusic > 0 ? musicLite.name : txt('rbMusicOff');
-        ctx.fillText(trackname, musicLite.pos.x + buttonsize + spacing*2, musicLite.pos.y + 20 * cvsscale.get());
+        ctx.fillText(trackname, musicLite.pos.x + buttonsize + spacing*2, musicLite.pos.y + 20 * _scaleDynamic);
         if(mouse.pos.overAND(musicLite.pos.sumxy(buttonsize + spacing, spacing)) && pref.bgmusic > 0 &&
         mouse.pos.lessAND(musicLite.pos.sumv(musicLite.size).minxy(buttonsize + spacing, buttonsize/2))) {
             hoverHint.invoke(txt('hintTrackName') + musicLite.fullname)};
@@ -4586,13 +5474,13 @@ let musicLite = {
         ctx.textAlign = 'end';
         musicLite.dur = musicNormalComplete && musicNormal.duration !== NaN ? musicNormal.duration : 0;
         ctx.fillText(`${timeStringify(musicNormal.currentTime)} - ${timeStringify(musicLite.dur)}`,
-        musicLite.pos.x + buttonsize + barsize.x, musicLite.pos.y + 20 * cvsscale.get());
+        musicLite.pos.x + buttonsize + barsize.x, musicLite.pos.y + 20 * _scaleDynamic);
         // load anim
         if(!musicNormalComplete) {
             musicLite.loada += musicLite.loada < 1 ? deltaTime/1000 : null;
             musicLite.load >= 1 ? musicLite.load = 0 : musicLite.load += deltaTime/1000; 
             ctx.lineWidth = 6; ctx.strokeStyle = `rgba(255,255,255,${Math.norma(musicLite.loada-0.25)})`;
-            rotatingArc(musicLite.load, 18 * cvsscale.get(), musicLite.pos.sumxy(buttonsize + spacing + barsize.x/2, buttonsize/2))
+            rotatingArc(musicLite.load, 18 * _scaleDynamic, musicLite.pos.sumxy(buttonsize + spacing + barsize.x/2, buttonsize/2))
         } else {
             musicLite.loada = 0
         }
@@ -4605,7 +5493,7 @@ let roulette = {
     anime: [],
     pics: [],
     sorted: [],
-    centerAnime: adb[0],
+    centerAnime: {},
     oldCenter: undefined,
     //
     addAlign: new Vector2(0),
@@ -4691,14 +5579,14 @@ let roulette = {
     catchWinner: false,
     speedMax: 0,
     randomizer: 0.3,
-    doRoll: (time, speed) => {
+    doRoll: (time, speed, modTime = true) => {
         if(roulette.winnerPos >= 0) {setTimeout(() => {
             roulette.pics[roulette.winnerPos].bgColor = new Color(0,0,0,1);
             roulette.pics[roulette.winnerPos].winner = false;
             roulette.winnerPos = -1
         }, 500)};
         roulette.time = 0;
-        roulette.atime = time * (1 + (Math.random() * roulette.randomizer) - roulette.randomizer/2);
+        roulette.atime = modTime ? time * (1 + (Math.random() * roulette.randomizer) - roulette.randomizer/2) : time;
         roulette.speedMax = speed * (1 + (Math.random() * roulette.randomizer) - roulette.randomizer/2);
         roulette.catchWinner = true;
         //
@@ -4717,6 +5605,9 @@ let roulette = {
         roulette.picsCount == 1
         ? roulette.centerAnime = roulette.anime[0]
         : roulette.centerAnime = roulette.centerItem();
+        // update winner ring
+        visual.lightAngle1 += visual.lightAngle1 < 360 ? (deltaTime/1000) * 45 : -360;
+        visual.lightAngle2 -= visual.lightAngle2 > 0 ? (deltaTime/1000) * 30 : -360;
         //
         roulette.progress.update();
         roulette.sorted = [];
@@ -4739,7 +5630,7 @@ let roulette = {
                 roulette.progress.move(roulette.winnerPos, 0.5, easeOutQuint);
                 roulette.time = roulette.atime;
                 console.log('Winner: '+roulette.catchWinner['title'] + '\n    ' + roulette.catchWinner['sources'][0]);
-                musicRollEnd();
+                !pref.playClip ? musicRollEnd() : null;
                 rollWinner.invoke(roulette.centerAnime.title);
                 lsSaveObject('roulette.winner', [roulette.winnerPos, roulette.catchWinner])
             }
@@ -4871,16 +5762,19 @@ let roulette = {
     },
 };
 //
-function rouletteSetItems(array) {
+function rouletteSetItems(array, limit=true) {
     roulette.complete = false;
     roulette.winnerPos = -1;
     roulette.catchWinner = false;
     roulette.progress.set(Math.floor(roulette.anime.length/2));
     roulette.speed.reset();
     //
-    if(array.length > pref.rouletteItems) {
+    if(array.length > pref.rouletteItems && limit) {
         roulette.picsCount = pref.rouletteItems;
         roulette.picsGet(array.slice(0, pref.rouletteItems))
+    } else if(array.length > pref.rouletteItemsMax) {
+        roulette.picsCount = array.length;
+        roulette.picsGet(array.slice(0, pref.rouletteItemsMax))
     } else {
         roulette.picsCount = array.length;
         roulette.picsGet(array)
@@ -4895,7 +5789,7 @@ function rouletteApplyPreset(preset = presetbase['Дефолтный'], max = pr
 //
 let _itemsmapperx = 0;
 function rouletteItemsMapper(p) {
-    var tf = {align: new Vector2(), zoom: cvsscale.get(), alpha: 0};
+    var tf = {align: new Vector2(), zoom: _scaleDynamic, alpha: 0};
     // align, 3 steps
     if(p > 0 && p <= 0.4) {
         tf.align = new Vector2(0.05 + (0.23+_itemsmapperx) * easeInCubic(p*2.5) - _itemsmapperx, 0.05 + 0.1 * easeInCubic(p*2.5));
@@ -4920,7 +5814,7 @@ let _curve1 = new Vector2(-0.5, 0.35);
 let _curve2 = new Vector2(1.5, 0.35);
 //
 function rouletteItemsBezier(p) {
-    var tf = {align: new Vector2(), zoom: cvsscale.get(), alpha: 0};
+    var tf = {align: new Vector2(), zoom: _scaleDynamic, alpha: 0};
     // pos
     tf.align = (_map1.multxy(Math.pow(1-p, 3))).sumv(_curve1.multxy(3*p*Math.pow(1-p, 2))).sumv(_curve2.multxy(3*p*p*(1-p))).sumv(_map2.multxy(p*p*p))
     // zoom, alpha
@@ -4947,7 +5841,7 @@ function radialShadow(p=0) {
 };
 //
 let rmpBarHeight = 10;
-let rouletteMapBar = new ShapedSelectBar(new Vector2(cvssize.x*0.3, rmpBarHeight*cvsscale.get()), colorMatrix(`rgba(0,0,0,0)`), colorMatrix(`rgba(0,0,0,0.5)`));
+let rouletteMapBar = new ShapedSelectBar(new Vector2(cvssize.x*0.3, rmpBarHeight*_scaleDynamic), colorMatrix(`rgba(0,0,0,0)`), colorMatrix(`rgba(0,0,0,0.5)`));
 rouletteMapBar.permanent = true;
 rouletteMapBar.onset = (value) => {
     roulette.progress.set(value);
@@ -4967,7 +5861,7 @@ rouletteMapBar.postdraw = () => {
 };
 function drawMapRoulette(width, pos) {
     if(!roulette.hidemap) {
-        rouletteMapBar.size = new Vector2(width, rmpBarHeight*cvsscale.get());
+        rouletteMapBar.size = new Vector2(width, rmpBarHeight*_scaleDynamic);
         rouletteMapBar.pos = pos;
         var p = roulette.progress.get(); p = p > roulette.picsCount ? roulette.picsCount : p < 0 ? 0 : p;
         rouletteMapBar.update(p, roulette.picsCount);
@@ -4990,18 +5884,67 @@ let sload = {
     head: txt('eagName'),
     headsize: 50,
 };
+// downloading database
+let databaseRequestResult = null;
+let adb = {}, adb_information = {};
+function getAnimeDatabase() {
+    var xml = new XMLHttpRequest();
+    xml.open("GET",'https://raw.githubusercontent.com/manami-project/anime-offline-database/master/anime-offline-database.json',false);
+    xml.onload = () => {databaseRequestResult = xml.responseText};
+    xml.onerror = () => {databaseRequestResult = false};
+    xml.send(null)
+};
+function awaitForDatabase() {
+    if(databaseRequestResult !== null) {
+        if(databaseRequestResult !== false) {
+            var fulldata = JSON.parse(databaseRequestResult);
+            adb = fulldata.data;
+            adb_information = {
+                license: fulldata.license,
+                repository: fulldata.repository,
+                lastUpdate: fulldata.lastUpdate
+            };
+            _preftitles.adb_author = {
+                name: 'Author',
+                object: 'manami-project',
+                url: false
+            };
+            _preftitles.adb = {
+                name: 'Name',
+                object: 'anime-offline-database',
+                url: adb_information.repository
+            };
+            _preftitles.adb_license = {
+                name: 'License',
+                object: adb_information.license.name,
+                url: adb_information.license.url
+            };
+            _preftitles.adb_version = {
+                name: 'Last update',
+                object: adb_information.lastUpdate,
+                url: false
+            };
+            databaseRequestResult = 'success'
+        } else {
+            databaseRequestResult = 'error'
+        }
+    };
+};
+//
+// titles
+let _preftitles = {};
 //
 let firstMouseEvent = false;
 let dynamicBgcolor = colorMatrix(sload.bgcolor).alpha(0);
 let staticBgcolor = '#000';
-let imageLoadProgress = new TextBox(normalAlign(new Vector2(0.5, 0.3)), new Vector2(400 * cvsscale.get()));
+let imageLoadProgress = new TextBox(normalAlign(new Vector2(0.5, 0.3)), new Vector2(400 * _scaleDynamic));
 imageLoadProgress.iterlimit = 4;
 let loadImagesBar = `rgba(200,200,200,0.2)#rgba(255,255,255,0.8)#rgba(0,0,0,1)#rgba(0,0,0,1)`;
 //
 function screenLoading() {
-    imageLoadProgress.size.setxy(400 * cvsscale.get());
-    imageLoadProgress.margin.setxy(10 * cvsscale.get());
-    var spbsize =  new Vector2(fullsize.x, 8 * cvsscale.get());
+    imageLoadProgress.size.setxy(400 * _scaleDynamic);
+    imageLoadProgress.margin.setxy(10 * _scaleDynamic);
+    var spbsize =  new Vector2(fullsize.x, 8 * _scaleDynamic);
     //
     sload.alpha.update();
     fillRect(fullsize, normalAlign(new Vector2(0.5), fullsize), dynamicBgcolor.alpha(sload.alpha.get()).getColor());
@@ -5021,7 +5964,7 @@ function screenLoading() {
     //
     } else if(sload.state === 'timeout') {
         var center = fullAlign(new Vector2(0.5, 0.5));
-        var spacing = 15 * cvsscale.get();
+        var spacing = 15 * _scaleDynamic;
         ctx.fillStyle = '#b55'; ctx.textAlign = 'center';
         scaleFont(36, 'Segoe UI Light');
         fillTextFast(center.minxy(0, spacing), txt('loadNoCon'));
@@ -5040,9 +5983,18 @@ function screenLoading() {
         sload.alpha.move(1, sload.time, easeInOutSine);
         imageLoadProgress.text = txt('loadJkrg');
         imageLoadProgress.shadow.x = imageLoadProgress.size.x;
-        databaseShorter();
+        getAnimeDatabase();
         //
-        sload.state = 'wait'
+        sload.state = 'wait_adb'
+    //
+    } else if(sload.state === 'wait_adb') {
+        awaitForDatabase();
+        if(databaseRequestResult = 'error') {sload.state = 'timeout'};
+        if(databaseRequestResult = 'success') {
+            databaseShorter();
+            //
+            sload.state = 'wait'
+        }
     //
     } else if(sload.state === 'wait') {
         shapeProgressBar(normalAlign(new Vector2(0.5, 0), spbsize), spbsize, sload.alpha.get(), colorMapMatrix(loadImagesBar));
@@ -5061,7 +6013,7 @@ function screenLoading() {
         if(lsItemUndefined('roulette.anime')) {
             rouletteApplyPreset(presetbase[presetSelected], pref.rouletteItems)
         } else {
-            rouletteSetItems(lsLoadObject('roulette.anime'));
+            rouletteSetItems(lsLoadObject('roulette.anime'), false);
             sload.state = 'loadstart'
         };
         //
@@ -5113,14 +6065,18 @@ function screenLoading() {
                 setTimeout(() => {roulette.initsound = false}, 3000);
                 //
                 musicInitialize();
-                if(!firstMouseEvent) {playSound(sound['loaded']); firstMouseEvent = true};
+                if(!firstMouseEvent) {playSound(sound['loaded']); resetSnowflakes(); firstMouseEvent = true};
                 rollBar.state = 'show';
                 srv.state = 'show_roulette';
                 //
                 sload.state = 'none';
                 staticBgcolor = sload.bgcolor;
+                //
+                musicLite.active = false;
+                musicLite.offset.set(musicLite.size.y*-2);
                 setTimeout(() => {
                     imageLoadProgress.clear();
+                    musicLite.show();
                     // imageLoadProgress.draw();
                     sload.head = txt('eagFilter');
                     sload.ayaya.src = imageChangeFilter.src;
@@ -5134,13 +6090,13 @@ function screenLoading() {
     ctx.globalAlpha = sload.showing === true ? sload.alpha.get() : 1;
     if(sload.state !== 'startup' && sload.state !== 'timeout') {
         var center = fullAlign(new Vector2(0.5, 0.5));
-        var sizei = new Vector2(200 * cvsscale.get());
-        var spacing = 15 * cvsscale.get();
+        var sizei = new Vector2(200 * _scaleDynamic);
+        var spacing = 15 * _scaleDynamic;
         drawImageSized(sload.ayaya, center.minxy(sizei.x/2, sizei.y).minxy(0, spacing), sizei);
         imageLoadProgress.pos = normalAlign(new Vector2(0.5, 0.99), imageLoadProgress.shadow.get().multxy(0,1));
         ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
         scaleFont(sload.headsize, 'Segoe UI', 'bold');
-        fillTextFast(center.sumxy(0, sload.headsize * cvsscale.get()), sload.head);
+        fillTextFast(center.sumxy(0, sload.headsize * _scaleDynamic), sload.head);
         scaleFont(28, 'Segoe UI');
         imageLoadProgress.draw()
     }
@@ -5157,7 +6113,7 @@ let srv = {
     rhAlign: new Vector2(0, -0.5),
 };
 //
-let namebox = new TextBox(new Vector2(), new Vector2(640 * cvsscale.get(), 0));
+let namebox = new TextBox(new Vector2(), new Vector2(640 * _scaleDynamic, 0));
 namebox.dissolving = true;
 namebox.shadow.x = namebox.size.x/2;
 namebox.iterlimit = 4;
@@ -5168,7 +6124,7 @@ _lastbufferedtitle = '';
 namebox.onupd = () => {
     // scale
     namebox.size.x = cvssize.x * 0.45;
-    namebox.margin = srv.margin.multxy(cvsscale.get());
+    namebox.margin = srv.margin.multxy(_scaleDynamic);
     // var hover = false;
     if(roulette.catchWinner !== true && mouse.pos.overAND(namebox.getShadowPos()) 
     && mouse.pos.lessAND(namebox.getShadowPos().sumv(namebox.shadow.get()))) {
@@ -5237,12 +6193,12 @@ function screenRoulette() {
         rollBar.draw();
         tDesc.draw(); 
         tInfo.draw();
-        ctx.globalAlpha = 1 - srvhp;
         musicLite.draw();
+        ctx.globalAlpha = 1 - srvhp;
         mnMenu.draw();
         // roll progress
         ctx.globalAlpha = srvhp;
-        shapeProgressBar(new Vector2(cvsxoffset,0), new Vector2(cvssize.x, rollProgressHeight*cvsscale.get()), 
+        shapeProgressBar(new Vector2(cvsxoffset,0), new Vector2(cvssize.x, rollProgressHeight*_scaleDynamic), 
         Math.norma(roulette.time / roulette.atime), rollProgressBar);
         ctx.globalAlpha = 1;
         if(srvhp >= 1) {
@@ -5257,7 +6213,7 @@ function screenRoulette() {
         scaleFont(36, 'Segoe UI'); ctx.fillStyle = '#fff';
         namebox.draw();
         // roll progress
-        shapeProgressBar(new Vector2(cvsxoffset,0), new Vector2(cvssize.x, rollProgressHeight*cvsscale.get()), 
+        shapeProgressBar(new Vector2(cvsxoffset,0), new Vector2(cvssize.x, rollProgressHeight*_scaleDynamic), 
         Math.norma(roulette.time / roulette.atime), rollProgressBar);
         //
         roulette.draw();
@@ -5286,17 +6242,18 @@ function screenRoulette() {
         rollBar.draw();
         tDesc.draw(); 
         tInfo.draw(); 
-        ctx.globalAlpha = 1 - srvhp;
         musicLite.draw();
+        ctx.globalAlpha = 1 - srvhp;
         mnMenu.draw();
         // roll progress
         ctx.globalAlpha = srvhp;
-        shapeProgressBar(new Vector2(cvsxoffset,0), new Vector2(cvssize.x, rollProgressHeight*cvsscale.get()), 
+        shapeProgressBar(new Vector2(cvsxoffset,0), new Vector2(cvssize.x, rollProgressHeight*_scaleDynamic), 
         Math.norma(roulette.time / roulette.atime), rollProgressBar);
         ctx.globalAlpha = 1;
         //
         if(srvhp <= 0) {
             mnMenu.break = false;
+            setTimeout(() => {musicLite.show()}, 1000);
             namebox.state = 'measure';
             srv.state = 'idle'
         }
@@ -5310,7 +6267,7 @@ function screenRoulette() {
 // hint operator
 let sbBlockHint = {
     size: 32,
-    logo: invokeNewImage('images/hint.png'),
+    // logo: invokeNewImage('images/hint.png'),
     text: null,
     //
     show: () => {
@@ -5400,9 +6357,10 @@ function sbSelectbarPrefix(text, text2, bar, pos, width, spacing, scroll=0) {
     var sizey = spacing*2 + ctx.measureText(text).fontBoundingBoxAscent;
     bar.pos = pos.sumxy(width - (bar.size.x + spacing), spacing*2 - scroll);
     ctx.fillStyle = '#fff'; ctx.textAlign = 'end';
-    ctx.fillText(text2, (pos.x + width) - (spacing*2 + bar.size.x), pos.y + sizey - spacing*2 - scroll);
+    var texty = pos.y + sizey - spacing*2 - scroll;
+    ctx.fillText(text2, (pos.x + width) - (spacing*2 + bar.size.x), texty);
     ctx.textAlign = 'start';
-    ctx.fillText(text, pos.x + spacing, pos.y + sizey - spacing*2 - scroll);
+    ctx.fillText(text, pos.x + spacing, texty);
     bar.draw();
     // hints
     if(sbBlockHint.text !== null) {
@@ -5412,6 +6370,149 @@ function sbSelectbarPrefix(text, text2, bar, pos, width, spacing, scroll=0) {
     }
     //
     return sizey + spacing
+};
+//
+function sbTitleObject(titleobject, pos, width, spacing, scroll=0) {
+    var tname = textWidthFit(titleobject.name, width/2 - spacing*3);
+    var tobject = textWidthFit(titleobject.object, width/2 - spacing*3);
+    ctx.fillStyle = `#ccc`; ctx.textAlign = 'end';
+    fillTextArray(pos.sumxy(spacing, spacing - scroll), tname, spacing);
+    ctx.fillStyle = `#fff`; ctx.textAlign = 'start';
+    fillTextArray(pos.sumxy(spacing*2+width/2, spacing - scroll), tobject, spacing);
+    var h = tname[0].length > tobject[0].length ? tname[0].length * tname[1].y : tobject[0].length * tobject[1].y;
+    // url
+    if(titleobject.url !== false) {
+        if(mouse.pos.overAND(pos.sumxy(spacing, -scroll)) && mouse.pos.lessAND(pos.sumxy(width, (h+spacing*2)-scroll))) {
+            hoverHint.invoke(txt('hintOpenURL') + titleobject.url);
+            if(mouse.click) {window.open(String(titleobject.url))}
+        }
+    };
+    //
+    return spacing*2 + h
+};
+//
+let filterBrowserTabHeight = 100;
+let filterBrowserItemName = {style: false, font: 'Segoe UI', size: 20};
+let filterBrowserItemAbout = {style: false, font: 'Segoe UI', size: 16};
+let buttonEditorDeleteSize = new Vector2(90, 30);
+//
+function sbBrowserItem(item, image, pos, width, spacing, scroll=0) {
+    var taby = filterBrowserTabHeight * _scaleDynamic;
+    if(pos.y + taby >= scroll && pos.y <= scroll + cvssize.y) {
+        // bg
+        fillRectRounded(new Vector2(width, taby), pos.sumxy(0, -scroll), '#0005');
+        // image
+        if(!image.complete) {drawImageSized(imageNotFound, pos.sumxy(spacing, spacing - scroll), new Vector2(taby - spacing*2))} 
+        else {drawImageSized(image, pos.sumxy(spacing, spacing - scroll), new Vector2(taby - spacing*2))};
+        // name
+        ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+        scaleFontObject(filterBrowserItemName);
+        var limit = width - (taby + spacing*3);
+        var textt = pos.sumxy(spacing*2 + taby + limit/2, spacing+filterBrowserItemName.size*_scaleDynamic);
+        var limited = textStringLimit(item.name, limit);
+        ctx.fillText(limited, textt.x, textt.y - scroll);
+        // data
+        ctx.fillStyle = '#ccc';
+        scaleFontObject(filterBrowserItemAbout);
+        limited = textStringLimit(item.about, limit);
+        textt = textt.sumxy(0, filterBrowserItemName.size*_scaleDynamic);
+        ctx.fillText(limited, textt.x, textt.y - scroll);
+        // add button (if tab is hovered)
+        if(mouse.pos.overAND(pos.sumxy(0, -scroll)) && mouse.pos.lessAND(pos.sumxy(width, taby-scroll))) {
+            buttonBrowserAdd.bhvr = item.dbid;
+            buttonBrowserAdd.size.setv(buttonEditorDeleteSize.multxy(_scaleDynamic));
+            buttonBrowserAdd.pos.setv(pos.sumxy(width, taby - scroll).minv(buttonBrowserAdd.size).minxy(spacing));
+            buttonBrowserAdd.draw()
+        }
+    };
+    //
+    return taby + spacing
+};
+//
+function sbEditorItem([item, image], pos, width, spacing, scroll=0) {
+    var taby = filterBrowserTabHeight * _scaleDynamic;
+    if(pos.y + taby >= scroll && pos.y <= scroll + cvssize.y) {
+        // bg
+        fillRectRounded(new Vector2(width, taby), pos.sumxy(0, -scroll), '#0005');
+        // image
+        if(!image.complete) {drawImageSized(imageNotFound, pos.sumxy(spacing, spacing - scroll), new Vector2(taby - spacing*2))} 
+        else {drawImageSized(image, pos.sumxy(spacing, spacing - scroll), new Vector2(taby - spacing*2))};
+        // name
+        ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+        scaleFontObject(filterBrowserItemName);
+        var limit = width - (taby + spacing*3);
+        var textt = pos.sumxy(spacing*2 + taby + limit/2, spacing+filterBrowserItemName.size*_scaleDynamic);
+        var limited = textStringLimit(item.name, limit);
+        ctx.fillText(limited, textt.x, textt.y - scroll);
+        // data
+        ctx.fillStyle = '#ccc';
+        scaleFontObject(filterBrowserItemAbout);
+        limited = textStringLimit(item.about, limit);
+        textt = textt.sumxy(0, filterBrowserItemName.size*_scaleDynamic);
+        ctx.fillText(limited, textt.x, textt.y - scroll);
+        // delete button (if tab is hovered)
+        if(mouse.pos.overAND(pos.sumxy(0, -scroll)) && mouse.pos.lessAND(pos.sumxy(width, taby-scroll))) {
+            buttonEditorDelete.bhvr = item.dbid;
+            buttonEditorDelete.size.setv(buttonEditorDeleteSize.multxy(_scaleDynamic));
+            buttonEditorDelete.pos.setv(pos.sumxy(width, taby - scroll).minv(buttonEditorDelete.size).minxy(spacing));
+            buttonEditorDelete.draw()
+        }
+    };
+    //
+    return taby + spacing
+};
+//
+let pageManagerFont = {style: false, font: 'Segoe UI', size: 20};
+let pageManagerButton = new Vector2(150, 30);
+//
+function sbPageManager(control, button3, pos, width, spacing, scroll=0) {
+    var bsize = pageManagerButton.multxy(_scaleDynamic);
+    var h = spacing + pageManagerFont.size*_scaleDynamic + bsize.y;
+    // text
+    var all = (control.current*control.max-1) > control.all ? control.all : control.current*control.max-1
+    var text = `${txt('browserPage')} ${control.current}/${control.pages} | ${(control.current-1)*control.max} - ${all}`;
+    ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+    scaleFontObject(pageManagerFont);
+    fillTextFast(pos.sumxy(width/2, h/3 - scroll), text);
+    // buttons
+    var banch = pos.sumxy(width/2 - (bsize.x*1.5+spacing), (h-bsize.y) - scroll);
+    button3[0].size = button3[1].size = button3[2].size = bsize;
+    button3[0].pos.setv(banch);
+    button3[1].pos.setv(banch.sumxy(bsize.x+spacing, 0));
+    button3[2].pos.setv(banch.sumxy((bsize.x+spacing)*2, 0));
+    if(control.current > 1) {button3[0].draw()};
+    button3[1].draw(); 
+    if(control.current < control.pages) {button3[2].draw()};
+    //
+    return h + spacing
+};
+//
+// @EAG ANIME ITEM CLASS
+//
+function getAnimeDBID(data) {
+    for(var a in adb) {
+        if(adb[a].title == data.title) {return Number(a)}
+    };
+    console.error(`Тайтл ${data.title} не был найден в датабазе!`);
+    return null
+};
+//
+class AnimeItem {
+    constructor(data) {
+        // copy data & ids
+        this.data = data;
+        this.malid = malAnimeID(data.sources);
+        this.dbid = this.data.dbid !== undefined ? this.data.dbid : Number(getAnimeDBID(data));
+        // get score
+        this.score = null;
+        if(this.malid != null) {
+            if(adb_ratings[this.malid] !== undefined) {
+                this.score = Number(adb_ratings[this.malid].score)}};
+        if(typeof this.score !== 'number' || String(this.score) == 'NaN') {this.score = '???'};
+        // fast meta
+        this.name = data.title;
+        this.about = `Ep. ${data.episodes} | MAL ${this.score} | ${data.animeSeason.season}, ${data.animeSeason.year} | ${data.type} | ${data.status} | #${this.dbid}`;
+    }
 };
 //
 // @EAG STUFF FILTER
@@ -5476,6 +6577,7 @@ let tagSelectionString = JSON.stringify(tagSelection);
 let presetSelected = lsLoadString('presetSelected', 'Бесится, но любит');
 let newPresetSelected = lsLoadString('presetSelected', 'Бесится, но любит');
 let presetOnRoulette =  lsLoadString('presetOnRoulette', presetbase[presetSelected].name);
+let listOnRoulette = lsLoadString('listOnRoulette', 'ListName');
 //
 let presetButtons = {};
 let presetButtonFont = {
@@ -5545,6 +6647,9 @@ function presetSwitcher() {
     filterDefault = filterModify(filterDefault, presetbase[presetSelected].addon());
     lsSaveObject('filterDefault', filterDefault);
     filterPresetOnly = JSON.stringify(filterDefault);
+    // убираем игнор условий
+    filterAttempts = 0;
+    lsSaveValue('filterAttempts', 0);
     // обновляем тэги, подсчитываем
     tagSelectionPrepare();
     filterPrecount.request()
@@ -5654,10 +6759,13 @@ buttonFilterScoreMax.onclick = () => {
     filterPrecount.request();
     lsSaveObject('filterDefault', filterDefault)
 };
+// filter attempts (это находится в стаффе префов)
+// let buttonFilterAttempts = new ShapedSelectBar(new Vector2(250*1.5, 16), colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
+// buttonFilterAttempts.onset = (value) => {var fa = Math.round(value); filterAttempts = fa; lsSaveValue('filterAttempts', fa)};
 // rescale functions
 function rescaleFilterButtons() {
     var measure, spacing;
-    var spacing = filterButtonsSpacing * cvsscale.get();
+    var spacing = filterButtonsSpacing * _scaleDynamic;
     ctx.textAlign = 'center';
     // preset
     scaleFontObject(presetButtonFont);
@@ -5675,23 +6783,36 @@ function rescaleFilterButtons() {
     for(var key in seasonButtons) {rescaleAnotherButton(seasonButtons, key)};
     for(var key in typeButtons) {rescaleAnotherButton(typeButtons, key)};
     for(var key in statusButtons) {rescaleAnotherButton(statusButtons, key)};
+    // prep*
+    var s = [
+        filterPromptSize.multxy(_scaleDynamic),
+        filterThreeSize.multxy(_scaleDynamic),
+        buttonAnimeStateSize.multxy(_scaleDynamic),
+    ];
     // other
-    buttonFilterYearMin.size = filterPromptSize.multxy(cvsscale.get());
-    buttonFilterYearMax.size = filterPromptSize.multxy(cvsscale.get());
-    buttonFilterEpsMin.size = filterPromptSize.multxy(cvsscale.get());
-    buttonFilterEpsMax.size = filterPromptSize.multxy(cvsscale.get());
-    buttonScoreAllow.size = filterPromptSize.multxy(cvsscale.get());
-    buttonFilterScoreMin.size = filterPromptSize.multxy(cvsscale.get());
-    buttonFilterScoreMax.size = filterPromptSize.multxy(cvsscale.get());
+    buttonFilterYearMin.size = s[0];
+    buttonFilterYearMax.size = s[0];
+    buttonFilterEpsMin.size = s[0];
+    buttonFilterEpsMax.size = s[0];
+    buttonScoreAllow.size = s[0];
+    buttonFilterScoreMin.size = s[0];
+    buttonFilterScoreMax.size = s[0];
+    buttonFilterAttempts.size = new Vector2(300, 16).multxy(_scaleDynamic);
+    buttonFilterAttTags.size = s[0];
     // main
-    buttonFilterLeave.size = filterThreeSize.multxy(cvsscale.get());
-    buttonFilterApply.size = filterThreeSize.multxy(cvsscale.get());
-    buttonFilterReset.size = filterThreeSize.multxy(cvsscale.get());
-    buttonSwitchPreset.size = filterThreeSize.multxy(cvsscale.get());
+    buttonFilterLeave.size = s[1];
+    buttonFilterApply.size = s[1];
+    buttonFilterReset.size = s[1];
+    buttonSwitchPreset.size = s[1];
+    // header
+    buttonAnimeBrowser.size = s[2];
+    buttonAnimeEditor.size = s[2];
+    buttonAnimeFilter.size = s[2];
+    buttonAnimeArrays.size = s[2];
 };
 function rescaleAnotherButton(object, key) {
     var measure = ctx.measureText(txt(key));
-    object[key].size = new Vector2(Math.floor(measure.width), measure.fontBoundingBoxAscent).sumxy(filterButtonsSpacing*cvsscale.get()*2);
+    object[key].size = new Vector2(Math.floor(measure.width), measure.fontBoundingBoxAscent).sumxy(filterButtonsSpacing*_scaleDynamic*2);
 };
 //
 function actualizeFilterButtons() {
@@ -5706,29 +6827,31 @@ function actualizeFilterButtons() {
     buttonFilterScoreMin.text = filterDefault['scoreMin'];
     buttonFilterScoreMax.text = filterDefault['scoreMax'];
     buttonScoreAllow.active = filterDefault['scoreAllow'];
+    buttonFilterAttTags.active = filterAttemptTags;
 };
 //
+let filterMainThreePal = `rgba(24,110,24,1)#rgba(40,160,40,1)#rgba(63,255,63,1)#rgba(200,200,47,0.1)`;
 let buttonFilterLeave = new TextButtonShaped(shapeRectRounded, txt('wordBack'), filterThreeSize,
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
-    colorMapMatrix(`rgba(24,110,24,1)#rgba(40,160,40,1)#rgba(63,255,63,1)#rgba(200,200,47,0.1)`));
+    colorMapMatrix(filterMainThreePal));
 buttonFilterLeave.onclick = () => {requestScreen(screenRoulette, false)};
 let buttonFilterApply = new TextButtonShaped(shapeRectRounded, txt('wordApply'), filterThreeSize,
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
-    colorMapMatrix(`rgba(24,110,24,1)#rgba(40,160,40,1)#rgba(63,255,63,1)#rgba(200,200,47,0.1)`));
+    colorMapMatrix(filterMainThreePal));
 buttonFilterApply.onclick = () => {animeFilterApply()};
 let buttonFilterReset = new TextButtonShaped(shapeRectRounded, txt('wordReset'), filterThreeSize,
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
-    colorMapMatrix(`rgba(24,110,24,1)#rgba(40,160,40,1)#rgba(63,255,63,1)#rgba(200,200,47,0.1)`));
+    colorMapMatrix(filterMainThreePal));
 buttonFilterReset.onclick = () => {resetFilter(); filterPrecount.request(); tagSelectionPrepare(); lsSaveObject('tagSelection', tagSelection)};
 //
 let buttonSwitchPreset = new TextButtonShaped(shapeRectRounded, txt('filterApplyPreset'), new Vector2(300, 50),
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
-    colorMapMatrix(`rgba(24,110,24,1)#rgba(40,160,40,1)#rgba(63,255,63,1)#rgba(200,200,47,0.1)`));
+    colorMapMatrix(filterMainThreePal));
 buttonSwitchPreset.onclick = () => {presetSwitcher(); filterPrecount.request(); lsSaveObject('tagSelection', tagSelection)};
 //
-buttonFilterLeave.waitanim = false;
-buttonFilterApply.waitanim = false;
-buttonFilterReset.waitanim = false;
+buttonFilterLeave.waitanim = false; buttonFilterLeave.needshadow = false;
+buttonFilterApply.waitanim = false; buttonFilterApply.needshadow = false;
+buttonFilterReset.waitanim = false; buttonFilterReset.needshadow = false;
 //
 function tagSelectionPrepare() {
     tagSelection = JSON.parse(tagSelectionString);
@@ -5738,7 +6861,7 @@ function tagSelectionPrepare() {
     };
     for(var t in filterDefault.tagsExcluded) {
         tagSelection[filterDefault.tagsExcluded[t]] = 'exc';
-        tagButtons[filterDefault.tagsExcluded[t]].tap.set(_imagebuttonheight*cvsscale.get()-1)
+        tagButtons[filterDefault.tagsExcluded[t]].tap.set(_imagebuttonheight*_scaleDynamic-1)
     }
 };
 function tagSelectionParse(filter) {
@@ -5762,18 +6885,20 @@ function animeFilterApply() {
     // генерим фигню
     sload.state = 'loadstart';
     var anime = getListFiltered();
-    presetOnRoulette = presetbase[presetSelected].name;
-    lsSaveValue('presetOnRoulette', presetOnRoulette);
+    var changes = 0;
     if(anime.length >= 1) {
         rouletteSetItems(randomItemsFrom(anime, pref.rouletteItems));
-        rbChangesText(calcPresetChanges())
+        changes = calcPresetChanges()
     } else {
         console.error(txt('filterFindNone'));
         filterDefault = JSON.parse(filterPresetOnly); tagSelectionPrepare(); 
         lsSaveObject('tagSelection', tagSelection);
         rouletteSetItems(randomItemsFrom(getListFiltered(), pref.rouletteItems));
-        rbChangesText(0)
     };
+    tInfo.meta.usePreset = true;
+    tInfo.meta.object = presetbase[presetSelected];
+    tInfo.meta.changes = changes;
+    lsSaveObject('tinfoMeta', tInfo.meta);
     lsSaveObject('filterDefault', filterDefault);
     localStorage.removeItem(savePrefix+'roulette.winner');
     // дебаг автопрокрутки после апплая
@@ -5787,7 +6912,20 @@ function animeArrayApply(array) {
     sload.state = 'loadstart';
     requestScreen(screenLoading);
     setTimeout(() => {
-        rouletteSetItems(randomItemsFrom(array, pref.rouletteItems));
+        rouletteSetItems(randomItemsFrom(array, pref.rouletteItemsMax));
+        localStorage.removeItem(savePrefix+'roulette.winner');
+        sload.state = 'loadnew'
+    }, tss.fulltime * 1000);
+};
+function animeListApply(list) {
+    tInfo.meta.usePreset = false;
+    tInfo.meta.object = list;
+    lsSaveObject('tinfoMeta', tInfo.meta);
+    //
+    sload.state = 'loadstart';
+    requestScreen(screenLoading);
+    setTimeout(() => {
+        rouletteSetItems(list.getAnime(), false);
         localStorage.removeItem(savePrefix+'roulette.winner');
         sload.state = 'loadnew'
     }, tss.fulltime * 1000);
@@ -5814,11 +6952,82 @@ function calcPresetChanges() {
     //
     return changes
 };
+// state buttons
+let buttonAnimeStateSize = new Vector2(240, 35);
+let buttonAnimeStateColor = `rgba(110,24,110,1)#rgba(160,40,160,1)#rgba(255,255,255,1)#rgba(200,50,200,0.8)`;
+let buttonAnimeFilter = new TextButtonShaped(shapeRectRounded, txt('filterStateFilter'), buttonAnimeStateSize,
+    colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+    colorMapMatrix(buttonAnimeStateColor));
+let buttonAnimeBrowser = new TextButtonShaped(shapeRectRounded, txt('filterStateBrowser'), buttonAnimeStateSize,
+    colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+    colorMapMatrix(buttonAnimeStateColor));
+let buttonAnimeEditor = new TextButtonShaped(shapeRectRounded, txt('filterStateEditor'), buttonAnimeStateSize,
+    colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+    colorMapMatrix(buttonAnimeStateColor));
+let buttonAnimeArrays = new TextButtonShaped(shapeRectRounded, txt('filterStateArrays'), buttonAnimeStateSize,
+    colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+    colorMapMatrix(buttonAnimeStateColor));
+//
+buttonAnimeFilter.onclick = () => {
+    buttonAnimeBrowser.state = 'idle';
+    buttonAnimeEditor.state = 'idle';
+    buttonAnimeFilter.state = 'unaval';
+    buttonAnimeArrays.state = 'idle';
+    saf.state = 'filter'; saf.scroll.set(0)
+};
+buttonAnimeBrowser.onclick = () => {
+    buttonAnimeBrowser.state = 'unaval';
+    buttonAnimeEditor.state = 'idle';
+    buttonAnimeFilter.state = 'idle';
+    buttonAnimeArrays.state = 'idle';
+    saf.state = 'browser'; saf.scroll.set(0)
+};
+buttonAnimeEditor.onclick = () => {
+    buttonAnimeBrowser.state = 'idle';
+    buttonAnimeEditor.state = 'unaval';
+    buttonAnimeFilter.state = 'idle';
+    buttonAnimeArrays.state = 'idle';
+    saf.state = 'editor'; saf.scroll.set(0)
+};
+buttonAnimeArrays.onclick = () => {
+    buttonAnimeBrowser.state = 'idle';
+    buttonAnimeEditor.state = 'idle';
+    buttonAnimeFilter.state = 'idle';
+    buttonAnimeArrays.state = 'unaval';
+    saf.state = 'arrays'; saf.scroll.set(0)
+};
+buttonAnimeFilter.state = 'unaval';
+buttonAnimeBrowser.needshadow = buttonAnimeEditor.needshadow = 
+buttonAnimeArrays.needshadow = buttonAnimeFilter.needshadow = false;
+buttonAnimeBrowser.waitanim = buttonAnimeEditor.waitanim = 
+buttonAnimeArrays.waitanim = buttonAnimeFilter.waitanim = false;
+// filter tabs switcher
+function filterTabSwitcher(posx, swidth, fbSpacing) {
+    var pos = new Vector2(posx, fbSpacing);
+    var width = (swidth - fbSpacing*3)/4;
+    buttonAnimeFilter.pos.setv(pos.sumxy(fbSpacing, 0));
+    buttonAnimeArrays.pos.setv(pos.sumxy(width + fbSpacing*2, 0));
+    buttonAnimeEditor.pos.setv(pos.sumxy(width*2 + fbSpacing*3, 0));
+    buttonAnimeBrowser.pos.setv(pos.sumxy(width*3 + fbSpacing*4, 0));
+    buttonAnimeFilter.size.x = buttonAnimeArrays.size.x = buttonAnimeEditor.size.x = buttonAnimeBrowser.size.x = width;
+    //
+    ctx.textAlign = 'center';
+    scaleFont(24, 'Segoe UI');
+    buttonAnimeFilter.draw();
+    buttonAnimeArrays.draw();
+    buttonAnimeEditor.draw();
+    buttonAnimeBrowser.draw();
+};
+// browser self buttons
+let buttonBrowseTitles = new TextButtonShaped(shapeRectRounded, txt('filterBrowserFind'), buttonAnimeStateSize, 
+    colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`), 
+    colorMapMatrix(filterMainThreePal));
+buttonBrowseTitles.onclick = () => {sDBs.find(String(prompt(txt('filterBrowserPrompt')), sDBs.string))};
+buttonBrowseTitles.needshadow = false;
 //
 // @EAG SCREEN ANIME FILTER
 //
 let saf = {
-    state: 'preset',
     xanchor: 0,
     presetpos: {},
     tagpos: {},
@@ -5832,17 +7041,22 @@ let saf = {
     //
     pointer: 0,
     pointer2: 0,
+    pointer3: 0,
     precounter: 0,
+    //
+    head: 100,
+    state: 'filter', // filter, arrays, editor, search
+    edstate: 'list', // list, meta
 }; 
 //
 function screenAnimeFilter() {
     // update
-    actualizeFilterButtons();
     saf.scroll.update();
     saf.bgcolor = `rgba(0,0,0,${pref.bgalpha})`;
     // scaling
-    var sensivity = saf.sensivity * cvsscale.get();
-    var fbSpacing = filterButtonsSpacing * cvsscale.get();
+    var sensivity = saf.sensivity * _scaleDynamic;
+    var fbSpacing = filterButtonsSpacing * _scaleDynamic;
+    var linew = 3*_scaleDynamic;
     // scrolling
     if(cvssize.y >= saf.height) {saf.scroll.set(0)}
     else {
@@ -5855,10 +7069,65 @@ function screenAnimeFilter() {
     };
     //
     saf.width = fullsize.y * 1.3 > fullsize.x ? fullsize.x : fullsize.y * 1.3;
-    saf.height = 0 + saf.precounter + fbSpacing;
     saf.xanchor = (cvssize.x - saf.width)/2 - fbSpacing + cvsxoffset;
+    var header = buttonAnimeStateSize.y*2*_scaleDynamic + fbSpacing*3 + linew;
     fillRect(new Vector2(saf.width + fbSpacing*2, cvssize.y), new Vector2(saf.xanchor, 0), saf.bgcolor);
-    saf.height += fbSpacing;
+    // переключение менбшек
+    filterTabSwitcher(saf.xanchor, saf.width, fbSpacing);
+    // ебём режем
+    ctx.fillStyle = '#fff';
+    fillRectFast(new Vector2(saf.width, linew), new Vector2(saf.xanchor+fbSpacing, header-linew));
+    // скрины
+    if(saf.state == 'filter') {animeSStateFilter(header, fbSpacing, saf.width, saf.xanchor)} 
+    else if(saf.state == 'editor') {animeSStateEditor(header, fbSpacing, saf.width, saf.xanchor)}
+    else if(saf.state == 'browser') {animeSStateBrowser(header, fbSpacing, saf.width, saf.xanchor)} 
+    else if(saf.state == 'arrays') {animeSStateArrays(header, fbSpacing, saf.width, saf.xanchor)};
+    // убираем резку
+    clipRestore()
+};
+function positionsWidthBox(array, width, spacing, height=0, scroll=0) {
+    var pos = {}, size, px=0, py=height;
+    for(var i in array) {
+        size = array[i].size;
+        if(px === 0) {
+            pos[i] = new Vector2(px, py - scroll);
+            px += size.x + spacing
+        } else if(px + size.x <= width) {
+            pos[i] = new Vector2(px, py - scroll);
+            px += size.x + spacing
+        } else {
+            px = 0; py += size.y + spacing;
+            pos[i] = new Vector2(px, py - scroll);
+            px += size.x + spacing
+        }
+    };
+    return [pos, py + size.y + spacing*2]
+};
+//
+// @EAG ANIME - FILTER
+//
+function animeSStateFilter(header, fbSpacing, swidth, xanchor) {
+    // свои кнопки
+    var width = (swidth - fbSpacing*3)/4;
+    var h = buttonAnimeStateSize.y * _scaleDynamic;
+    var pos = new Vector2(xanchor, fbSpacing*2 + h);
+    scaleFont(24, 'Segoe UI');
+    buttonFilterLeave.pos.setv(pos.sumxy(fbSpacing, 0));
+    buttonFilterApply.pos.setv(pos.sumxy(fbSpacing*2 + width, 0));
+    buttonFilterReset.pos.setv(pos.sumxy(fbSpacing*3 + width*2, 0));
+    buttonFilterLeave.size = buttonFilterApply.size = buttonFilterReset.size = new Vector2(width, h);
+    buttonFilterLeave.draw(); buttonFilterApply.draw(); buttonFilterReset.draw();
+    // подсчёт аниме
+    filterPrecount.update();
+    fillRectRounded(new Vector2(width, h), pos.sumxy(fbSpacing*4 + width*3, 0), saf.bgcolor, fbSpacing);
+    ctx.fillStyle = '#fff';
+    // scaleFontObject(titleCounterFont); ctx.textAlign = 'center';
+    if(filterPrecount.flag || !filterPrecount.first) {fillRectRounded(new Vector2(width * Math.norma(filterPrecount.timeout*2), h), pos.sumxy(fbSpacing*4 + width*3, 0), `#0c05`, fbSpacing)}
+    else {fillTextFast(pos.sumxy(fbSpacing*4 + width*3.5, h - fbSpacing), textStringLimit(String(filterPrecount.count), width))};
+    // отрезаем
+    clipCanvas(fullsize.minxy(0, header), new Vector2(cvsxoffset, header));
+    saf.height = fbSpacing + header;
+    actualizeFilterButtons();
     // заголовок пресетов
     fillRectRounded(new Vector2(saf.width, saf.pointer - saf.height), new Vector2(saf.xanchor+fbSpacing, saf.height - saf.scroll.get()), saf.selbox, 10);
     scaleFontObject(filterHeaderFont); ctx.textAlign = 'center';
@@ -5933,39 +7202,354 @@ function screenAnimeFilter() {
     saf.height += sbTwoButtonPrefix(txt('filterScore'), buttonFilterScoreMin, buttonFilterScoreMax, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
     saf.height += sbTwoButtonPrefix(txt('filterYear'), buttonFilterYearMin, buttonFilterYearMax, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
     saf.height += sbTwoButtonPrefix(txt('filterEps'), buttonFilterEpsMin, buttonFilterEpsMax, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
+    // аккуратность фильтрации
+    buttonFilterAttempts.update(filterAttempts, filterAttRange.max);
+    scaleFont(24, 'Segoe UI Light');
+    fillRectRounded(new Vector2(saf.width, saf.pointer3 - saf.height), new Vector2(saf.xanchor+fbSpacing, saf.height - saf.scroll.get()), saf.selbox, 10);
+    saf.height += fbSpacing;
+    sbBlockHint.text = txt('hintAttempts');
+    saf.height += sbSelectbarPrefix(txt('filterAttempts'), Math.round(buttonFilterAttempts.point()), buttonFilterAttempts, new Vector2(saf.xanchor+fbSpacing*2, saf.height), saf.width-fbSpacing*2, prefButtonSpacing*_scaleDynamic, saf.scroll.get());
+    sbBlockHint.text = txt('hintAttTags');
+    saf.height += sbButtonPrefix(txt('filterAttTags'), buttonFilterAttTags, new Vector2(saf.xanchor+fbSpacing*2, saf.height), saf.width-fbSpacing*2, prefButtonSpacing*_scaleDynamic, saf.scroll.get());
+    saf.pointer3 = saf.height;
     // предупреждение перед применением
     saf.height += fbSpacing;
     scaleFont(16, 'Segoe UI Light'); ctx.textAlign = 'center';
-    saf.height += sbTextFit(txt('filterWarn'), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get(), '#f44');
-    // действия с фильтром
-    scaleFont(28, 'Segoe UI Light', 'bold');
-    saf.height += sbThreeButtonAlign([buttonFilterLeave, buttonFilterApply, buttonFilterReset], new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
-    // подсчёт аниме
-    filterPrecount.update();
-    scaleFontObject(titleCounterFont);
-    fillRectRounded(new Vector2(saf.width, saf.precounter), (new Vector2(saf.xanchor + fbSpacing, fbSpacing)), saf.bgcolor, fbSpacing);
-    if(filterPrecount.flag) {fillRectRounded(new Vector2(saf.width * Math.norma(filterPrecount.timeout*2), saf.precounter), (new Vector2(saf.xanchor + fbSpacing, fbSpacing)), `#0c05`, fbSpacing)};
-    saf.precounter = filterPrecount.flag || !filterPrecount.first
-    ? fbSpacing + sbTextFit(filterPrecount.count, new Vector2(saf.xanchor + fbSpacing, fbSpacing), saf.width, fbSpacing, 0, '#ffff')
-    : fbSpacing + sbTextFit(txt('filterCounter') + filterPrecount.count, new Vector2(saf.xanchor + fbSpacing, fbSpacing), saf.width, fbSpacing, 0, '#ffff')
+    saf.height += sbTextFit(txt('filterWarn'), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get(), '#f44')
+    saf.height += fbSpacing;
 };
-function positionsWidthBox(array, width, spacing, height=0, scroll=0) {
-    var pos = {}, size, px=0, py=height;
-    for(var i in array) {
-        size = array[i].size;
-        if(px === 0) {
-            pos[i] = new Vector2(px, py - scroll);
-            px += size.x + spacing
-        } else if(px + size.x <= width) {
-            pos[i] = new Vector2(px, py - scroll);
-            px += size.x + spacing
+//
+// @EAG ANIME - BROWSER
+//
+let sDBs = {
+    string: '',
+    result: [],
+    images: [],
+    anime: [],
+    //
+    max: 50,
+    pages: 1,
+    current: 1,
+    //
+    find: (req, hard) => {
+        if(req == '') {return};
+        var res = searchByTitle(req, hard);
+        if(!res) {return} else {
+            sDBs.string = req;
+            sDBs.result = [];
+            for(var r in res) {
+                sDBs.result[r] = res[r];
+                sDBs.pages = Math.ceil(sDBs.result.length / sDBs.max);
+            };
+            sDBs.getPage(1)
+        }
+    },
+    getPage: (number = 1) => {
+        if(number > sDBs.pages || number < 0) {return};
+        sDBs.current = number;
+        sDBs.anime = [];
+        sDBs.images = [];
+        if(number == sDBs.pages) {
+            for(var i = (number-1) * sDBs.max; i < sDBs.result.length; i++) {sDBs.drawing(i)}
         } else {
-            px = 0; py += size.y + spacing;
-            pos[i] = new Vector2(px, py - scroll);
-            px += size.x + spacing
+            for(var i = (number-1) * sDBs.max; i < number * sDBs.max; i++) {sDBs.drawing(i)}
+        }
+    },
+    drawing: (id) => {
+        sDBs.anime[id] = new AnimeItem(sDBs.result[id]);
+        sDBs.images[id] = new Image();
+        eval(`sDBs.images[id].onerror = () => {sDBs.images[${id}].src = 'images/notfound.png'}`);
+        sDBs.images[id].src = sDBs.result[id].picture
+    },
+    controls: () => {
+        return {
+            max: sDBs.max,
+            all: sDBs.result.length,
+            current: sDBs.current,
+            pages: sDBs.pages,
+        }
+    }
+};
+//
+let browserPrevPage = new TextButtonShaped(shapeRectRounded, txt('browserPrev'), new Vector2(200,30),
+    colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)`),
+    colorMapMatrix(`rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`));
+browserPrevPage.waitanim = false; browserPrevPage.needshadow = false;
+let browserNextPage = new TextButtonShaped(shapeRectRounded, txt('browserNext'), new Vector2(200,30),
+    colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)`),
+    colorMapMatrix(`rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`));
+browserNextPage.waitanim = false; browserNextPage.needshadow = false;
+let browserPromptPage = new TextButtonShaped(shapeRectRounded, txt('browserEnter'), new Vector2(200,30),
+    colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)`),
+    colorMapMatrix(`rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`));
+browserPromptPage.waitanim = false; browserPromptPage.needshadow = false;
+//
+browserPrevPage.onclick = () => {sDBs.getPage(sDBs.current-1); saf.scroll.set(0)};
+browserNextPage.onclick = () => {sDBs.getPage(sDBs.current+1); saf.scroll.set(0)};
+browserPromptPage.onclick = () => {
+    sDBs.getPage(promptNumber(txt('browserPage') + '...', 1, sDBs.pages, sDBs.current));
+    saf.scroll.set(0)
+};
+//
+//
+let buttonBrowserAdd = new ShapedHoldButton(shapeRectRounded, new Vector2(120,30), 
+    colorMapMatrix(`rgba(29,130,29,1)#rgba(40,160,40,1)#rgba(63,255,63,1)#rgba(47,200,47,0.3)`));
+buttonBrowserAdd.bhvr = -1; buttonBrowserAdd.needshadow = false; buttonBrowserAdd.height = 0;
+buttonBrowserAdd.onhover = () => {
+    !edList.haveTitle(buttonBrowserAdd.bhvr) ? hoverHint.invoke(txt('browserAddNote')) : hoverHint.invoke(txt('browserAlreadyNote'))
+};
+buttonBrowserAdd.onact = () => {
+    if(!edList.haveTitle(buttonBrowserAdd.bhvr)) {
+        edList.addTitle(buttonBrowserAdd.bhvr);
+        setTimeout(() => {buttonBrowserAdd.operate = false; buttonBrowserAdd.dtime=500}, 500)
+    } else {
+        buttonBrowserAdd.operate = false; buttonBrowserAdd.dtime=500
+    }
+};
+buttonBrowserAdd.time = '500';
+//
+let _saf_browserheight = 0;
+function animeSStateBrowser(header, fbSpacing, swidth, xanchor) {
+    // свои кнопки
+    var width = (swidth - fbSpacing*3)/4;
+    var h = buttonAnimeStateSize.y * _scaleDynamic;
+    var pos = new Vector2(xanchor, fbSpacing*2 + h);
+    scaleFont(24, 'Segoe UI');
+    buttonFilterLeave.pos.setv(pos.sumxy(fbSpacing, 0));
+    buttonBrowseTitles.pos.setv(pos.sumxy(fbSpacing*4 + width*3, 0))
+    buttonBrowseTitles.size = buttonFilterLeave.size = new Vector2(width, h);
+    buttonFilterLeave.draw();
+    buttonBrowseTitles.draw();
+    // отрезаем
+    clipCanvas(fullsize.minxy(0, header), new Vector2(cvsxoffset, header));
+    saf.height = fbSpacing + header;
+    // count n пагес
+    scaleFont(18, 'Segoe UI');
+    if(sDBs.string != '') {
+        sDBs.result.length > 0
+        ? saf.height += sbTextFit(sDBs.result.length + txt('browserResultCount') + sDBs.string, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get())
+        : saf.height += sbTextFit(txt('browserNoResult') + sDBs.string, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
+        saf.height += fbSpacing
+    };
+    if(sDBs.pages > 1 && saf.scroll.get() < _saf_browserheight/2) {
+        saf.height += sbPageManager(sDBs.controls(), [browserPrevPage, browserPromptPage, browserNextPage], new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
+    };
+    // анимехи (бляъ)
+    if(sDBs.anime.length !== 0) {
+        for(var a in sDBs.anime) {
+            saf.height += sbBrowserItem(sDBs.anime[a], sDBs.images[a], new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get())
         }
     };
-    return [pos, py + size.y + spacing*2]
+    // опять пагес
+    if(sDBs.pages > 1 && saf.scroll.get() > _saf_browserheight/2) {
+        saf.height += sbPageManager(sDBs.controls(), [browserPrevPage, browserPromptPage, browserNextPage], new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get())
+    };
+    //
+    _saf_browserheight = saf.height;
+};
+//
+// @EAG ANIME - EDITOR
+//
+let edList = {
+    edited: new animeList(),
+    images: {},
+    anime: {},
+    //
+    getRoulette: () => {
+        edList.edited = new animeList('Roulette #'+Math.floor(Math.random()*10000000));
+        edList.edited.compressArray(roulette.anime);
+        edList.getMeta()
+    },
+    getMeta: () => {
+        edList.images = {};
+        edList.anime = {};
+        for(var a in edList.edited.list) {
+            edList.getMetaSingle(edList.edited.list[a])
+        };
+    },
+    getMetaSingle: (dbid) => {
+        // image
+        edList.images[dbid] = new Image();
+        eval(`edList.images[dbid].onerror = () => {edList.images[${dbid}].src = 'images/notfound.png'}`);
+        edList.images[dbid].src = adb[dbid].picture;
+        // anime item
+        edList.anime[dbid] = new AnimeItem(adb[dbid])
+    },
+    //
+    setRoulette: () => {
+        if(edList.edited.list.length > 0) {
+            animeListApply(edList.edited)
+        }
+    },
+    //
+    getTitle: (id) => {
+        return [edList.anime[edList.edited.list[id]], edList.images[edList.edited.list[id]]]
+    },
+    addTitle: (dbid) => {
+        var res = edList.edited.newEntry(dbid);
+        if(res) {edList.getMetaSingle(dbid); return true} else {return false}
+    },
+    deleteTitle: (dbid) => {
+        edList.edited.deleteEntry(dbid);
+        delete edList.anime[dbid];
+        delete edList.images[dbid];
+    },
+    haveTitle: (dbid) => {
+        for(var t in edList.edited.list) {
+            if(edList.edited.list[t] == dbid) {return true}
+        };
+        return false
+    },
+    //
+    clear: (conf = true) => {
+        if(conf) {
+            if(confirm(txt('editorListClear'))) {
+                edList.edited = new animeList();
+                edList.images = {};
+                edList.anime = {}
+            }
+        } else {
+            edList.edited = new animeList();
+            edList.images = {};
+            edList.anime = {}
+        }
+    },
+    downloadJSON: () => {
+        if(edList.edited.list.length > 0) {
+            var file = {
+                data: JSON.parse(JSON.stringify(edList.edited)),
+                anime: optimizeAnimeArray(edList.edited.getAnime())
+            };
+            delete file.data.list;
+            fileManager.downloadJSON(edList.edited.name, file)
+        } else {
+            alert(txt('editorDownloadEmpty'))
+        }
+    },
+    uploadJSON: () => {
+        fileManager.uploadJSON();
+        fileManager.onupload = () => {
+            var file = JSON.parse(JSON.stringify(fileManager.result));
+            // если список пуст, ниче не делаем дальше
+            if(file.anime.length == 0) {alert(txt('editorUploadEmpty')); return};
+            // проверяем совместимость, предупреждаем
+            var list = new animeList();
+            list.parse(JSON.stringify(file.data));
+            var compat = list.compatibility(), compConf = true;
+            if(!compat.adb || !compat.app) {
+                var compConf = confirm(`${txt('editorCompatibilityWarn_1')}\n|\n${compat.adb?'':txt('wordDatabase')+': '+list.compat.adb+' -> '+adb_information.lastUpdate}${compat.app?'':'\n'+txt('wordApp')+': '+list.compat.app+' -> '+$appInfo.version}\n|\n${txt('editorCompatibilityWarn_2')}`);
+            };
+            if(!compConf) {return} else {
+                // конфирмация, если лист не пустой, он будет перезаписан
+                var conf = true;
+                if(edList.edited.list.length > 0) {conf = confirm(txt('editorUploadOverwrite'))};
+            };
+            if(!conf) {return} else {
+                // применяем, хуле
+                edList.clear(false);
+                edList.edited.parse(JSON.stringify(file.data));
+                // если была несовместимость с датабазой, удаляем дбид и ищем тайтлы по названию
+                if(!compat.adb) {
+                    for(var a in file.anime) {
+                        if(file.anime[a].dbid !== undefined) {delete file.anime[a].dbid}
+                    }
+                };
+                edList.edited.compressArray(file.anime);
+                edList.getMeta();
+            }
+        }
+    },
+};
+//
+let buttonEditorDelete = new ShapedHoldButton(shapeRectRounded, new Vector2(120,30), 
+    colorMapMatrix(`rgba(130,29,29,1)#rgba(160,40,40,1)#rgba(255,63,63,1)#rgba(47,47,200,0.3)`));
+buttonEditorDelete.bhvr = -1; buttonEditorDelete.needshadow = false; buttonEditorDelete.height = 0;
+buttonEditorDelete.onhover = () => {
+    if(buttonEditorDelete.bhvr != null) {
+        hoverHint.invoke(txt('editorDeleteNote'))
+    } else {hoverHint.invoke(txt('editorErrorDBID'))}
+};
+buttonEditorDelete.onact = () => {
+    if(buttonEditorDelete.bhvr != null) {edList.deleteTitle(buttonEditorDelete.bhvr)};
+    setTimeout(() => {buttonEditorDelete.operate = false; buttonEditorDelete.dtime=500}, 500)
+};
+buttonEditorDelete.time = '500';
+//
+let buttonEditorApply = new TextButtonShaped(shapeRectRounded, txt('wordApply'), new Vector2(500,40),
+    colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+    colorMapMatrix(filterMainThreePal));
+buttonEditorApply.needshadow = false; buttonEditorApply.waitanim = false;
+buttonEditorApply.onclick = () => {edList.setRoulette()};
+buttonEditorApply.onhover = () => {
+    if(edList.edited.list.length == 0) {hoverHint.invoke(txt('editorApplyEmpty'), '#f94')}
+};
+let buttonEditorClaimRoll = new TextButtonShaped(shapeRectRounded, txt('editorClaimRoulette'), new Vector2(500,40),
+    colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+    colorMapMatrix(filterMainThreePal));
+buttonEditorClaimRoll.needshadow = false; buttonEditorClaimRoll.waitanim = false;
+buttonEditorClaimRoll.onhover = () => {
+    roulette.anime.length > 0 ? hoverHint.invoke(txt('hintClaimRoulette')) : hoverHint.invoke(txt('eagEmpty'))
+};
+buttonEditorClaimRoll.onclick = () => {if(roulette.anime.length > 0) {
+    var conf = true; if(edList.edited.list.length > 0) {conf = confirm(txt('editorUploadOverwrite'))};
+    if(conf) {edList.edited.compressArray(roulette.anime); edList.getMeta()}
+}};
+//
+let buttonEditorDownloadSize = new Vector2(200,32);
+let buttonEditorDownload = new TextButtonShaped(shapeRectRounded, txt('editorDownloadJSON'), new Vector2(500,40),
+    colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+    colorMapMatrix(`rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`));
+buttonEditorDownload.needshadow = false; buttonEditorDownload.waitanim = false;
+let buttonEditorUpload = new TextButtonShaped(shapeRectRounded, txt('editorUploadJSON'), new Vector2(500,40),
+    colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+    colorMapMatrix(`rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`));
+buttonEditorUpload.needshadow = false; buttonEditorUpload.waitanim = false;
+buttonEditorDownload.onhover = () => {
+    if(edList.edited.list.length == 0) {hoverHint.invoke(txt('editorDownloadEmpty'), '#f94')}
+};
+buttonEditorDownload.onclick = () => {if(edList.edited.list.length == 0) {edList.downloadJSON()}};
+buttonEditorUpload.onclick = () => {edList.uploadJSON()};
+//
+function animeSStateEditor(header, fbSpacing, swidth, xanchor) {
+    // свои кнопки
+    var width = (swidth - fbSpacing*3)/4;
+    var h = buttonAnimeStateSize.y * _scaleDynamic;
+    var pos = new Vector2(xanchor, fbSpacing*2 + h);
+    scaleFont(24, 'Segoe UI');
+    buttonFilterLeave.pos.setv(pos.sumxy(fbSpacing, 0));
+    buttonEditorApply.pos.setv(pos.sumxy(fbSpacing*2 + width, 0));
+    buttonEditorClaimRoll.pos.setv(pos.sumxy(fbSpacing*3 + width*2, 0));
+    buttonEditorClaimRoll.size = buttonEditorApply.size = buttonFilterLeave.size = new Vector2(width, h);
+    buttonFilterLeave.draw(); buttonEditorApply.draw(); buttonEditorClaimRoll.draw();
+    // отрезаем
+    clipCanvas(fullsize.minxy(0, header), new Vector2(cvsxoffset, header));
+    saf.height = fbSpacing + header;
+    // стейт списка
+    if(saf.edstate == 'list') {
+        // json d+u
+        scaleFont(18, 'Segoe UI');
+        buttonEditorDownload.size = buttonEditorUpload.size = buttonEditorDownloadSize.multxy(_scaleDynamic);
+        saf.height += sbTwoButtonPrefix(txt('editorJSON'), buttonEditorDownload, buttonEditorUpload, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
+        // анимехи (бляъ 2)
+        if(edList.edited.list.length !== 0) {
+            for(var a in edList.edited.list) {
+                saf.height += sbEditorItem(edList.getTitle(a), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get())
+            }
+        }
+    // стейт метаданных
+    } else {
+        
+    }
+};
+//
+// @EAG ANIME - ARRAYS
+// 
+function animeSStateArrays(header, fbSpacing, swidth, xanchor) {
+    var size = imageWIPSize.multxy(_scaleDynamic/2);
+    drawImageSized(imageWorkInProgress, new Vector2(xanchor + fbSpacing*2, cvssize.y - size.y), size);
+    scaleFont(28, 'Consolas'); 
+    ctx.fillStyle = '#fbb'; ctx.textAlign = 'end';
+    fillTextFast(new Vector2(xanchor + swidth - fbSpacing*2, cvssize.y - fbSpacing), 'Work In Progress!!!')
 };
 //
 // @EAG STUFF PREFERENCES
@@ -5979,16 +7563,55 @@ let prefOptionWidth = 250;
 let imagePrefApply = invokeNewImage('images/apply.png');
 let imagePrefDefault = invokeNewImage('images/recycle.png');
 let imageAyayaConfused = invokeNewImage('images/confused.png');
-//
+// tabs
+let imagesPrefTabs = {
+    main: invokeNewImage('images/pref_main.png'),
+    audio: invokeNewImage('images/pref_audio.png'),
+    draw: invokeNewImage('images/pref_draw.png'),
+    other: invokeNewImage('images/pref_other.png'),
+    about: invokeNewImage('images/pref_about.png'),
+};
+let prefTabsColors = {
+    main: new Color(250,201,25,1),
+    audio: new Color(30,30,200,1),
+    draw: new Color(200,30,200,1),
+    other: new Color(200,30,30,1),
+    about: new Color(220,220,220,1),
+};
+// header buttons
 let buttonPrefApply = new ImageButtonShaped(shapeRectRounded, imagePrefApply, new Vector2(prefButtonSpacing), 
-    colorMapMatrix(`rgba(24,110,24,1)#rgba(40,160,40,1)#rgba(63,255,63,1)#rgba(47,200,47,0.3)`));
+    colorMapMatrix(`rgba(24,110,24,0)#rgba(40,160,40,0.35)#rgba(63,255,63,1)#rgba(47,200,47,0.8)`));
 buttonPrefApply.onclick = () => {requestScreen(screenRoulette, false)};
-buttonPrefApply.waitanim = false;
-let buttonPrefDefault = new ImageButtonShaped(shapeRectRounded, imagePrefDefault, new Vector2(prefButtonSpacing),
-    colorMapMatrix(`rgba(110,24,24,1)#rgba(160,40,40,1)#rgba(255,63,63,1)#rgba(47,47,200,0.3)`));
-buttonPrefDefault.onclick = () => {pref = JSON.parse(prefDefault); pref.lockfps ? lockFpsSwitch(pref.framerate) : lockFpsSwitch()};
-buttonPrefDefault.onhover = () => {hoverHint.invoke(txt('hintPrefReset'))};
-// fast state access
+buttonPrefApply.waitanim = false; buttonPrefApply.needshadow = false;
+// tab buttons
+let buttonPrefTabMain = new ImageButtonShaped(shapeRectRounded, imagesPrefTabs.main, new Vector2(prefButtonSpacing),
+    colorMapMatrix(`rgba(250,201,25,0)#rgba(250,201,25,0.35)#rgba(250,201,25,1)#rgba(250,201,25,0.8)`));
+buttonPrefTabMain.waitanim = false; buttonPrefTabMain.needshadow = false;
+let buttonPrefTabAudio = new ImageButtonShaped(shapeRectRounded, imagesPrefTabs.audio, new Vector2(prefButtonSpacing),
+    colorMapMatrix(`rgba(30,30,200,0)#rgba(30,30,200,0.35)#rgba(30,30,200,1)#rgba(30,30,200,0.8)`));
+buttonPrefTabAudio.waitanim = false; buttonPrefTabAudio.needshadow = false;
+let buttonPrefTabDraw = new ImageButtonShaped(shapeRectRounded, imagesPrefTabs.draw, new Vector2(prefButtonSpacing),
+    colorMapMatrix(`rgba(200,30,200,0)#rgba(200,30,200,0.35)#rgba(200,30,200,1)#rgba(200,30,200,0.8)`));
+buttonPrefTabDraw.waitanim = false; buttonPrefTabDraw.needshadow = false;
+let buttonPrefTabOther = new ImageButtonShaped(shapeRectRounded, imagesPrefTabs.other, new Vector2(prefButtonSpacing),
+    colorMapMatrix(`rgba(200,30,30,0)#rgba(200,30,30,0.35)#rgba(200,30,30,1)#rgba(200,30,30,0.8)`));
+buttonPrefTabOther.waitanim = false; buttonPrefTabOther.needshadow = false;
+let buttonPrefTabAbout = new ImageButtonShaped(shapeRectRounded, imagesPrefTabs.about, new Vector2(prefButtonSpacing),
+    colorMapMatrix(`rgba(220,220,220,0)#rgba(220,220,220,0.35)#rgba(220,220,220,1)#rgba(220,220,220,0.8)`));
+buttonPrefTabAbout.waitanim = false; buttonPrefTabAbout.needshadow = false;
+// tab click events
+function prefOnAllTabs() {
+    buttonPrefTabMain.state = buttonPrefTabAudio.state = buttonPrefTabDraw.state 
+    = buttonPrefTabOther.state = buttonPrefTabAbout.state = 'idle';
+    spref.line.set(255,255,255,1); spref.scroll.reset(); mouse.click = false;
+};
+buttonPrefTabMain.state = 'unaval';
+//
+buttonPrefTabMain.onclick = () => {prefOnAllTabs(); buttonPrefTabMain.state = 'unaval'; spref.tab = 'main'; spref.line.fadeTo(prefTabsColors.main, 0.5)};
+buttonPrefTabAudio.onclick = () => {prefOnAllTabs(); buttonPrefTabAudio.state = 'unaval'; spref.tab = 'audio'; spref.line.fadeTo(prefTabsColors.audio, 0.5)};
+buttonPrefTabDraw.onclick = () => {prefOnAllTabs(); buttonPrefTabDraw.state = 'unaval'; spref.tab = 'draw'; spref.line.fadeTo(prefTabsColors.draw, 0.5)};
+buttonPrefTabOther.onclick = () => {prefOnAllTabs(); buttonPrefTabOther.state = 'unaval'; spref.tab = 'other'; spref.line.fadeTo(prefTabsColors.other, 0.5)};
+buttonPrefTabAbout.onclick = () => {prefOnAllTabs(); buttonPrefTabAbout.state = 'unaval'; spref.tab = 'about'; spref.line.fadeTo(prefTabsColors.about, 0.5)};
 // colors
 let prefTextPalette = `rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`;
 let prefPromptPalette = `rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`;
@@ -6019,8 +7642,9 @@ let prefRouletteTitles = new ShapedSelectBar(new Vector2(prefOptionWidth*1.5, pr
 let prefRouletteImages = new ShapedSelectBar(new Vector2(prefOptionWidth*1.5, prefBarHeight), colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
 prefRouletteTime.onset = (value) => {prefSetValue('rollTime', 5 + Math.round(value))};
 prefRouletteSpeed.onset = (value) => {prefSetValue('rollSpeed', 10 + Math.round(value))};
-prefRouletteTitles.onset = (value) => {prefSetValue('rouletteItems', 10 + Math.round(value))};
+prefRouletteTitles.onset = (value) => {prefSetValue('rouletteItems', 20 + Math.round(value))};
 prefRouletteImages.onset = (value) => {prefSetValue('rollImages', 7 + Math.round(value)*2)};
+prefRouletteImages.visAlias = true;
 let prefRouletteScroll = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
 let prefRouletteMap = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
 let prefRouletteNSFW = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
@@ -6034,7 +7658,7 @@ prefRouletteNSFW.onclick = () => {prefSetValue('showNSFW', true)}; prefRouletteN
 function actualPrefRoulette() {
     prefRouletteTime.update(pref['rollTime'] - 5, 195);
     prefRouletteSpeed.update(pref['rollSpeed'] - 10, 90);
-    prefRouletteTitles.update(pref['rouletteItems'] - 10, 190);
+    prefRouletteTitles.update(pref['rouletteItems'] - 20, pref.rouletteItemsMax-20);
     prefRouletteImages.update((pref['rollImages'] - 7)/2, 10);
     prefRouletteScroll.active = pref.autoScroll;
     prefRouletteMap.active = pref.showMap;
@@ -6049,25 +7673,29 @@ prefAudioBG.onset = (value) => {prefSetValue('bgmusic', Math.round(value))}; pre
 prefAudioRoll.onset = (value) => {prefSetValue('rollmusic', Math.round(value))};
 let prefAudioShowPlayer = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
 let prefAudioNewTrack = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
-prefAudioShowPlayer.isSwitcher = true; prefAudioNewTrack.isSwitcher = true;
-prefAudioShowPlayer.needshadow = false; prefAudioNewTrack.needshadow = false;
-prefAudioShowPlayer.height = 0; prefAudioNewTrack.height = 0;
+let prefAudioClips = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
+prefAudioShowPlayer.isSwitcher = true; prefAudioNewTrack.isSwitcher = true; prefAudioClips.isSwitcher = true;
+prefAudioShowPlayer.needshadow = false; prefAudioNewTrack.needshadow = false; prefAudioClips.needshadow = false;
+prefAudioShowPlayer.height = 0; prefAudioNewTrack.height = 0; prefAudioClips.height = 0;
 prefAudioShowPlayer.onclick = () => {prefSetValue('playerShow', true)}; prefAudioShowPlayer.ondeact = () => {prefSetValue('playerShow', false)};
 prefAudioNewTrack.onclick = () => {prefSetValue('rollNewTrack', true)}; prefAudioNewTrack.ondeact = () => {prefSetValue('rollNewTrack', false)};
+prefAudioClips.onclick = () => {prefSetValue('playClip', true)}; prefAudioClips.ondeact = () => {prefSetValue('playClip', false)};
 //
 function actualPrefAudio() {
     prefAudioSound.update(pref['sound'], 100);
     prefAudioBG.update(pref['bgmusic'], 100);
     prefAudioRoll .update(pref['rollmusic'], 100);
     prefAudioShowPlayer.active = pref.playerShow;
-    prefAudioNewTrack.active = pref.rollNewTrack
+    prefAudioNewTrack.active = pref.rollNewTrack;
+    prefAudioClips.active = pref.playClip
 };
 // render
-let prefRenderText = '';
+let prefRenderText = [txt('pstDisable'), txt('pstLow'), txt('pstMedium'), txt('pstHigh')];
 let prefRenderFps = new ShapedSelectBar(new Vector2(prefOptionWidth*1.5, prefBarHeight), colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
 let prefRenderBack = new ShapedSelectBar(new Vector2(prefOptionWidth*1.5, prefBarHeight), colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
 let prefRenderQuality = new ShapedSelectBar(new Vector2(prefOptionWidth*1.5, prefBarHeight), colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
 let prefRenderScale = new ShapedSelectBar(new Vector2(prefOptionWidth*1.5, prefBarHeight), colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
+prefRenderQuality.visAlias = true;
 prefRenderFps.onset = (value) => {if(pref.lockfps) {prefSetValue('framerate', 30 + Math.round(value)*5); lockFpsSwitch(pref.framerate)}};
 prefRenderBack.onset = (value) => {prefSetValue('bgalpha', Math.round(value)/100)}; prefRenderBack.permanent = true; 
 prefRenderQuality.onset = (value) => {setRenderQuality(Math.round(value))};
@@ -6090,52 +7718,76 @@ let prefRenderVisual = new TextButtonShaped(shapeRectRounded, '', new Vector2(pr
 prefRenderVisual.onclick = prefVisualSwitch; prefRenderVisual.ondeact = prefVisualSwitch;
 prefRenderVisual.isSwitcher = true; prefRenderVisual.height = 0; prefRenderVisual.needshadow = false;
 // rescale
+let prefButtonSizes = [
+    new Vector2(prefOptionWidth*1.5, prefBarHeight),
+    new Vector2(prefOptionWidth/2, prefButtonHeight),
+    new Vector2(prefOptionWidth, prefButtonHeight*1.2)
+];
+// reset
+let buttonPrefDefault = new ShapedHoldButton(shapeRectRounded, new Vector2(prefOptionWidth/2, prefButtonHeight), 
+    colorMapMatrix(`rgba(110,24,24,1)#rgba(160,40,40,1)#rgba(255,63,63,1)#rgba(47,47,200,0.3)`));
+buttonPrefDefault.onact = () => {
+    pref = JSON.parse(prefDefault); 
+    pref.lockfps ? lockFpsSwitch(pref.framerate) : lockFpsSwitch();
+    for(var k in localStorage) {
+        if(k.indexOf('eagsv_pref.') !== -1) {delete localStorage[k]}
+    };
+    setTimeout(() => {buttonPrefDefault.unblock()}, 500)
+};
+let buttonResetStorage = new ShapedHoldButton(shapeRectRounded, new Vector2(prefOptionWidth/2, prefButtonHeight), 
+colorMapMatrix(`rgba(110,24,24,1)#rgba(160,40,40,1)#rgba(255,63,63,1)#rgba(47,47,200,0.3)`));
+buttonResetStorage.onact = () => {localStorage.clear(); setTimeout(() => {buttonResetStorage.unblock()}, 500)};
 function prefButtonsRescale() {
+    // prepare*
+    var s = [
+        prefButtonSizes[0].multxy(_scaleDynamic),
+        prefButtonSizes[1].multxy(_scaleDynamic),
+        prefButtonSizes[2].multxy(_scaleDynamic),
+    ];
     // roll
-    prefRouletteTime.size = new Vector2(prefOptionWidth*1.5, prefBarHeight).multxy(cvsscale.get());
-    prefRouletteSpeed.size = new Vector2(prefOptionWidth*1.5, prefBarHeight).multxy(cvsscale.get());
-    prefRouletteTitles.size = new Vector2(prefOptionWidth*1.5, prefBarHeight).multxy(cvsscale.get());
-    prefRouletteImages.size = new Vector2(prefOptionWidth*1.5, prefBarHeight).multxy(cvsscale.get());
-    prefRouletteScroll.size = new Vector2(prefOptionWidth/2, prefButtonHeight).multxy(cvsscale.get());
-    prefRouletteMap.size = new Vector2(prefOptionWidth/2, prefButtonHeight).multxy(cvsscale.get());
-    prefRouletteNSFW.size = new Vector2(prefOptionWidth/2, prefButtonHeight).multxy(cvsscale.get());
+    prefRouletteTime.size = s[0];
+    prefRouletteSpeed.size = s[0];
+    prefRouletteTitles.size = s[0];
+    prefRouletteImages.size = s[0];
+    prefRouletteScroll.size = s[1];
+    prefRouletteMap.size = s[1];
+    prefRouletteNSFW.size = s[1];
     // audio
-    prefAudioSound.size = new Vector2(prefOptionWidth*1.5, prefBarHeight).multxy(cvsscale.get());
-    prefAudioBG.size = new Vector2(prefOptionWidth*1.5, prefBarHeight).multxy(cvsscale.get());
-    prefAudioRoll.size = new Vector2(prefOptionWidth*1.5, prefBarHeight).multxy(cvsscale.get());
-    prefAudioShowPlayer.size = new Vector2(prefOptionWidth/2, prefButtonHeight).multxy(cvsscale.get());
-    prefAudioNewTrack.size = new Vector2(prefOptionWidth/2, prefButtonHeight).multxy(cvsscale.get());
+    prefAudioSound.size = s[0];
+    prefAudioBG.size = s[0];
+    prefAudioRoll.size = s[0];
+    prefAudioShowPlayer.size = s[1];
+    prefAudioNewTrack.size = s[1];
+    prefAudioClips.size = s[1];
     // render
-    prefRenderFps.size = new Vector2(prefOptionWidth*1.5, prefBarHeight).multxy(cvsscale.get());
-    prefRenderBack.size = new Vector2(prefOptionWidth*1.5, prefBarHeight).multxy(cvsscale.get());
-    prefRenderQuality.size = new Vector2(prefOptionWidth*1.5, prefBarHeight).multxy(cvsscale.get());
-    prefRenderScale.size = new Vector2(prefOptionWidth*1.5, prefBarHeight).multxy(cvsscale.get());
-    prefRenderLockFps.size = new Vector2(prefOptionWidth/2, prefButtonHeight).multxy(cvsscale.get());
-    prefRenderWallpaper.size = new Vector2(prefOptionWidth, prefButtonHeight*1.2).multxy(cvsscale.get());
-    prefRenderParallax.size = new Vector2(prefOptionWidth/2, prefButtonHeight).multxy(cvsscale.get());
+    prefRenderFps.size = s[0];
+    prefRenderBack.size = s[0];
+    prefRenderQuality.size = s[0];
+    prefRenderScale.size = s[0];
+    prefRenderLockFps.size = s[1];
+    prefRenderWallpaper.size = s[2];
+    prefRenderParallax.size = s[1];
     // other
-    prefRenderVisual.size = new Vector2(prefOptionWidth/2, prefButtonHeight).multxy(cvsscale.get());
-    prefRenderShowFps.size = new Vector2(prefOptionWidth/2, prefButtonHeight).multxy(cvsscale.get());
-    prefRenderDevInfo.size = new Vector2(prefOptionWidth/2, prefButtonHeight).multxy(cvsscale.get());
+    prefRenderVisual.size = s[1];
+    prefRenderShowFps.size = s[1];
+    prefRenderDevInfo.size = s[1];
+    buttonPrefDefault.size = s[1];
+    buttonResetStorage.size = s[1];
 };
 //
 function actualPrefRender() {
     prefRenderFps.update((pref.framerate - 30)/5, 34);
     prefRenderBack.update(pref.bgalpha*100, 100);
-    prefRenderScale.update(cvsscale.get()-0.5, 3.5);
+    prefRenderScale.update(_scaleDynamic-0.5, 3.5);
     if(!pref.imageSmoothing) {
-        prefRenderQuality.update(0, 3);
-        prefRenderText = txt('pstDisable')
+        prefRenderQuality.update(0, 3)
     } else {
         if(pref.imageQuality === 'low') {
-            prefRenderQuality.update(1, 3);
-            prefRenderText = txt('pstLow')
+            prefRenderQuality.update(1, 3)
         } else if(pref.imageQuality === 'medium') {
-            prefRenderQuality.update(2, 3);
-            prefRenderText = txt('pstMedium')
+            prefRenderQuality.update(2, 3)
         } else {
-            prefRenderQuality.update(3, 3);
-            prefRenderText = txt('pstHigh')
+            prefRenderQuality.update(3, 3)
         }
     };
     prefRenderLockFps.active = pref.lockfps;
@@ -6144,6 +7796,14 @@ function actualPrefRender() {
     prefRenderDevInfo.active = pref.showDebugInfo;
     prefRenderVisual.active = pref.visual;
 };
+// filter attempts
+let buttonFilterAttempts = new ShapedSelectBar(prefButtonSizes[0], colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
+buttonFilterAttempts.onset = (value) => {var fa = Math.round(value); filterAttempts = fa; lsSaveValue('filterAttempts', fa); filterPrecount.request()};
+buttonFilterAttempts.visAlias = true;
+let buttonFilterAttTags = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
+buttonFilterAttTags.isSwitcher = true; buttonFilterAttTags.needshadow = false; buttonFilterAttTags.height = 0;
+buttonFilterAttTags.onclick = () => {filterAttemptTags = true; lsSaveValue('filterAttemptTags', true); filterPrecount.request()};
+buttonFilterAttTags.ondeact = () => {filterAttemptTags = false; lsSaveValue('filterAttemptTags', false); filterPrecount.request()};
 //
 function setRenderQuality(value) {
     if(value === 0) {
@@ -6159,6 +7819,29 @@ function setRenderQuality(value) {
         }
     }
 };
+// some titles
+_preftitles.jikan = {
+    name: 'Source of additional information from the MyAnimeList website',
+    object: 'Jikan API (Unofficial MyAnimeList API)',
+    url: 'https://jikan.moe/',
+};
+_preftitles.translator = {
+    name: 'Translator',
+    object: 'Microsoft Text Translator (via restapi.com)',
+    url: 'https://rapidapi.com/blog/microsoft-text-translation-api-tutorial/'
+};
+_preftitles.author = {
+    name: 'Author', object: $appInfo.author, url: 'https://t.me/potapell0'
+};
+_preftitles.version = {
+    name: 'Version', object: $appInfo.version, url: false
+};
+_preftitles.update = {
+    name: 'Update', object: $appInfo.date, url: false
+};
+_preftitles.license = {
+    name: 'License', object: $appInfo.license, url: $appInfo.licenseURL
+};
 //
 // @EAG SCREEN PREFERENCES
 //
@@ -6166,15 +7849,16 @@ let spref = {
     xanchor: 0,
     bgcolor: `rgba(0,0,0,${pref.bgalpha})`,
     selbox: '#0008',
-    state: 'roulette',
-    alpha: new Vector1(1),
     //
     width: 0,
     height: 0,
     scroll: new Vector1(0),
     sensivity: 100,
+    head: 60,
     //
     pointer: 0,
+    tab: 'main', // main, audio, draw, other, about
+    line: new Color(200, 150, 30, 1),
     //
     text: {
     },
@@ -6185,9 +7869,10 @@ function screenPreferences() {
     spref.scroll.update();
     spref.bgcolor = `rgba(0,0,0,${pref.bgalpha})`;
     // scale
-    var sensivity = spref.sensivity * cvsscale.get();
-    var spacing = prefButtonSpacing * cvsscale.get();
-    var bheight = prefButtonHeight * cvsscale.get();
+    var sensivity = spref.sensivity * _scaleDynamic;
+    var spacing = prefButtonSpacing * _scaleDynamic;
+    var bheight = prefButtonHeight * _scaleDynamic;
+    var head = spref.head * _scaleDynamic;
     // scrolling
     if(cvssize.y >= spref.height) {spref.scroll.set(0)}
     else {
@@ -6198,101 +7883,161 @@ function screenPreferences() {
         if(spref.scroll.get() < 0) {spref.scroll.set(0)};
         if(spref.scroll.get() > spref.height - cvssize.y) {spref.scroll.set(spref.height - cvssize.y)}
     };
-    // ayaya
-    var ayayasize = new Vector2(imageAyayaConfused.naturalWidth, imageAyayaConfused.naturalHeight).multxy(0.33 * cvsscale.get());
-    drawImageSized(imageAyayaConfused, new Vector2((spref.width + spref.xanchor + spacing) - ayayasize.x, spref.height - (ayayasize.y + spref.scroll.get())), ayayasize)
     // start
-    spref.height = 0;
+    spref.height = head + 3 * _scaleDynamic + spacing*2;
     spref.width = fullsize.y * 1.3 > fullsize.x ? fullsize.x : fullsize.y * 1.3;
-    spref.xanchor = (cvssize.x - spref.width)/2 + (spacing + bheight)/2 + cvsxoffset;
-    fillRect(new Vector2(spref.width + spacing*2, cvssize.y), new Vector2(spref.xanchor, 0), spref.bgcolor);
-    spref.height += spacing;
-    // main buttons
-    buttonPrefApply.sizedZoom(new Vector2(bheight*2));
-    buttonPrefDefault.sizedZoom(new Vector2(bheight*2));
-    buttonPrefApply.pos = new Vector2(spref.xanchor - (spacing + bheight*2), spacing);
-    buttonPrefDefault.pos = new Vector2(spref.xanchor - (spacing + bheight*2), cvssize.y - (bheight*2 + spacing + _imagebuttonheight));
-    buttonPrefApply.draw(); buttonPrefDefault.draw();
-    spref.alpha.update(); ctx.globalAlpha = spref.alpha.get();
-    //
-    scaleFont(54, 'Segoe UI', 'bold');
-    fillRectRounded(new Vector2(spref.width, spref.pointer - spref.height), new Vector2(spref.xanchor+spacing, spref.height - spref.scroll.get()), spref.selbox, 10 * cvsscale.get());
-    spref.height += sbTextHeader(txt('prefHead'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    spref.height += spacing;
-    spref.pointer = spref.height;
-    spref.height += spacing;
-    // ЯЗЫК
-    scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
-    sbVoidPrefix(allTranslations.head(), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get())
-    for(var elem in prefLanguages) {
-        prefLanguages[elem].pos.setxy(spref.xanchor+spref.width - (spacing*2 + prefLangButtons.x) * Number(+elem+1) + spacing, spref.height+spacing - spref.scroll.get());
-        prefLanguages[elem].sizedZoom(prefLangButtons.multxy(cvsscale.get()));
-        prefLanguages[elem].draw()
+    spref.xanchor = (cvssize.x - spref.width)/2 + cvsxoffset;
+    // ayaya & bg
+    if(spref.tab == 'about') {
+        var ayayasize = new Vector2(imageAyayaConfused.naturalWidth, imageAyayaConfused.naturalHeight).multxy(0.33 * _scaleDynamic);
+        drawImageSized(imageAyayaConfused, new Vector2((spref.width + spref.xanchor + spacing*2) - ayayasize.x, fullsize.y-ayayasize.y), ayayasize);
     };
-    spref.height += prefLangButtons.y + spacing*2;
-    // НАСТРОЙКИ РУЛЕТКИ
-    actualPrefRoulette();
-    scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
-    sbBlockHint.text = txt('hintRoll');
-    spref.height += sbTextHeader(txt('prefRoll'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
-    spref.height += sbSelectbarPrefix(txt('prefRTime'), Math.round(prefRouletteTime.point())+5, prefRouletteTime, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    spref.height += sbSelectbarPrefix(txt('prefRSpeed'), Math.round(prefRouletteSpeed.point())+10, prefRouletteSpeed, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    sbBlockHint.text = txt('hintTitleMax');
-    spref.height += sbSelectbarPrefix(txt('prefRTitle'), Math.round(prefRouletteTitles.point())+10, prefRouletteTitles, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    spref.height += sbSelectbarPrefix(txt('prefROnscreen'), Math.round(prefRouletteImages.point())*2+7, prefRouletteImages, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    sbBlockHint.text = txt('hintAutoScroll');
-    spref.height += sbButtonPrefix(txt('prefRAuto'), prefRouletteScroll, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    sbBlockHint.text = txt('hintAllowNSFW');
-    spref.height += sbButtonPrefix(txt('prefRNSFW'), prefRouletteNSFW, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+    fillRect(new Vector2(spref.width + spacing*2, cvssize.y), new Vector2(spref.xanchor, 0), spref.bgcolor);
+    // header
+    ctx.fillStyle = spref.bgcolor;
+    fillRectFast(new Vector2(spref.width+spacing*2, head), new Vector2(spref.xanchor, 0));
+    scaleFont(50, 'Segoe UI', 'bold'); ctx.fillStyle = '#fff'; ctx.textAlign = 'start';
+    fillTextFast(new Vector2(spref.xanchor + bheight*2, head - spacing*2), txt('prefHead'));
+    buttonPrefApply.sizedZoom(new Vector2(head-spacing*2));
+    buttonPrefApply.pos.setxy(spacing+spref.xanchor, spacing);
+    buttonPrefApply.draw();
+    // tab buttons
+    buttonPrefTabMain.sizedZoom(new Vector2(head-spacing*2));
+    buttonPrefTabAudio.sizedZoom(new Vector2(head-spacing*2));
+    buttonPrefTabDraw.sizedZoom(new Vector2(head-spacing*2));
+    buttonPrefTabOther.sizedZoom(new Vector2(head-spacing*2));
+    buttonPrefTabAbout.sizedZoom(new Vector2(head-spacing*2));
+    buttonPrefTabAbout.pos.setxy((spref.xanchor+spref.width) - bheight*1.75, spacing);
+    buttonPrefTabOther.pos.setxy((spref.xanchor+spref.width) - bheight*3.5, spacing);
+    buttonPrefTabDraw.pos.setxy((spref.xanchor+spref.width) - bheight*5.25, spacing);
+    buttonPrefTabAudio.pos.setxy((spref.xanchor+spref.width) - bheight*7, spacing);
+    buttonPrefTabMain.pos.setxy((spref.xanchor+spref.width) - bheight*8.75, spacing);
+    buttonPrefTabMain.draw(); buttonPrefTabAudio.draw(); buttonPrefTabDraw.draw(); buttonPrefTabOther.draw(); buttonPrefTabAbout.draw();
+    // clip
+    spref.line.update();
+    ctx.fillStyle = spref.line.getColor();
+    fillRectFast(new Vector2(spref.width+spacing*2, 3*_scaleDynamic), new Vector2(spref.xanchor, head));
+    clipCanvas(fullsize.minxy(0, head+3*_scaleDynamic), new Vector2(0, head+3*_scaleDynamic));
+    // ГЛАВНОЕ
+    if(spref.tab === 'main') {
+        // ЯЗЫК
+        scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
+        spref.height += spacing + sbTextHeader(txt('prefLanguage'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
+        sbVoidPrefix(allTranslations.head(), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get())
+        for(var elem in prefLanguages) {
+            prefLanguages[elem].pos.setxy(spref.xanchor+spref.width - (spacing*2 + prefLangButtons.x) * Number(+elem+1) + spacing, spref.height+spacing - spref.scroll.get());
+            prefLanguages[elem].sizedZoom(prefLangButtons.multxy(_scaleDynamic));
+            prefLanguages[elem].draw()
+        };
+        spref.height += prefLangButtons.y + spacing*2;
+        // НАСТРОЙКИ РУЛЕТКИ
+        actualPrefRoulette();
+        scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
+        sbBlockHint.text = txt('hintRoll');
+        spref.height += sbTextHeader(txt('prefRoll'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
+        spref.height += sbSelectbarPrefix(txt('prefRTime'), Math.round(prefRouletteTime.point())+5, prefRouletteTime, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbSelectbarPrefix(txt('prefRSpeed'), Math.round(prefRouletteSpeed.point())+10, prefRouletteSpeed, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        sbBlockHint.text = txt('hintTitleMax');
+        spref.height += sbSelectbarPrefix(txt('prefRTitle'), Math.round(prefRouletteTitles.point())+20, prefRouletteTitles, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbSelectbarPrefix(txt('prefROnscreen'), Math.round(prefRouletteImages.point())*2+7, prefRouletteImages, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        sbBlockHint.text = txt('hintAutoScroll');
+        spref.height += sbButtonPrefix(txt('prefRAuto'), prefRouletteScroll, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     // НАСТРОЙКИ АУДИО
-    actualPrefAudio();
-    scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
-    sbBlockHint.text = txt('hintAudio');
-    spref.height += sbTextHeader(txt('prefAudio'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
-    spref.height += sbSelectbarPrefix(txt('prefASound'), Math.round(prefAudioSound.point()), prefAudioSound, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    sbBlockHint.text = txt('hintMusicOff');
-    spref.height += sbSelectbarPrefix(txt('prefABG'), Math.round(prefAudioBG.point()), prefAudioBG, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    spref.height += sbSelectbarPrefix(txt('prefARoll'), Math.round(prefAudioRoll.point()), prefAudioRoll, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    sbBlockHint.text = txt('hintNewTrack');
-    spref.height += sbButtonPrefix(txt('prefANew'), prefAudioNewTrack, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    spref.height += sbButtonPrefix(txt('prefAShow'), prefAudioShowPlayer, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    sbBlockHint.text = txt('hintAudioVisual');
-    spref.height += sbButtonPrefix(txt('prefVisual'), prefRenderVisual, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+    } else if(spref.tab === 'audio') {
+        actualPrefAudio();
+        scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
+        sbBlockHint.text = txt('hintAudio');
+        spref.height += sbTextHeader(txt('prefAudio'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
+        spref.height += sbSelectbarPrefix(txt('prefASound'), Math.round(prefAudioSound.point()), prefAudioSound, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        sbBlockHint.text = txt('hintMusicOff');
+        spref.height += sbSelectbarPrefix(txt('prefABG'), Math.round(prefAudioBG.point()), prefAudioBG, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbSelectbarPrefix(txt('prefARoll'), Math.round(prefAudioRoll.point()), prefAudioRoll, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        sbBlockHint.text = txt('hintNewTrack');
+        spref.height += sbButtonPrefix(txt('prefANew'), prefAudioNewTrack, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbButtonPrefix(txt('prefAShow'), prefAudioShowPlayer, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        sbBlockHint.text = txt('hintAudioVisual');
+        spref.height += sbButtonPrefix(txt('prefVisual'), prefRenderVisual, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     // НАСТРОЙКИ ОТРИСОВКИ
-    actualPrefRender();
-    scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
-    spref.height += sbTextHeader(txt('prefRender'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
-    spref.height += sbButtonPrefix(txt('prefRLimit'), prefRenderLockFps, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    ctx.textAlign = 'start';
-    spref.height += sbSelectbarPrefix(txt('prefRFPS'), Math.round(prefRenderFps.point())*5 + 30, prefRenderFps, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    spref.height += sbSelectbarPrefix(txt('prefRSmooth'), prefRenderText, prefRenderQuality, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    spref.height += sbSelectbarPrefix(txt('prefRShadow'), Math.round(prefRenderBack.point())/100, prefRenderBack, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    sbBlockHint.text = txt('hintPrefScale');
-    spref.height += sbSelectbarPrefix(txt('prefScaleSet'), `x`+floatNumber(cvsscale.get(), 1), prefRenderScale, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    sbBlockHint.text = txt('hintBackgroundURL') + wallpaper.src;
-    spref.height += sbButtonPrefix(textStringLimit(txt('prefRBG') + wallpaper.src, spref.width - (prefOptionWidth*cvsscale.get() + spacing*2)), prefRenderWallpaper, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    spref.height += _imagebuttonheight;
-    // ДРУГОЕ
-    sbBlockHint.text = txt('hintParallax');
-    spref.height += sbButtonPrefix(txt('prefParallax'), prefRenderParallax, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    spref.height += sbButtonPrefix(txt('prefShowFPS'), prefRenderShowFps, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    spref.height += sbButtonPrefix(txt('prefDevinfo'), prefRenderDevInfo, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+    } else if(spref.tab === 'draw') {
+        actualPrefRender();
+        scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
+        spref.height += sbTextHeader(txt('prefRender'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
+        spref.height += sbButtonPrefix(txt('prefRLimit'), prefRenderLockFps, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        ctx.textAlign = 'start';
+        spref.height += sbSelectbarPrefix(txt('prefRFPS'), Math.round(prefRenderFps.point())*5 + 30, prefRenderFps, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbSelectbarPrefix(txt('prefRSmooth'), prefRenderText[Math.round(prefRenderQuality.pointer*3)], prefRenderQuality, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbSelectbarPrefix(txt('prefRShadow'), Math.round(prefRenderBack.point())/100, prefRenderBack, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        sbBlockHint.text = txt('hintPrefScale');
+        spref.height += sbSelectbarPrefix(txt('prefScaleSet'), `x`+floatNumber(_scaleDynamic, 1), prefRenderScale, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        sbBlockHint.text = txt('hintBackgroundURL') + wallpaper.src;
+        spref.height += sbButtonPrefix(textStringLimit(txt('prefRBG') + wallpaper.src, spref.width - (prefOptionWidth*_scaleDynamic + spacing*2)), prefRenderWallpaper, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += _imagebuttonheight;
+        sbBlockHint.text = txt('hintParallax');
+        spref.height += sbButtonPrefix(txt('prefParallax'), prefRenderParallax, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+    // ДРУГИЕ ПРИКОЛЫ
+    } else if(spref.tab === 'other') {
+        actualPrefRender();
+        scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
+        spref.height += sbTextHeader(txt('prefOthers'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
+        spref.height += sbButtonPrefix(txt('prefShowFPS'), prefRenderShowFps, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbButtonPrefix(txt('prefDevinfo'), prefRenderDevInfo, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        sbBlockHint.text = txt('hintAllowNSFW');
+        spref.height += sbButtonPrefix(txt('prefRNSFW'), prefRouletteNSFW, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        sbBlockHint.text = txt('hintAudioClips');
+        spref.height += sbButtonPrefix(txt('prefPlayClip'), prefAudioClips, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
+        spref.height += sbTextHeader(txt('prefRecovery'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
+        sbBlockHint.text = txt('hintPrefReset');
+        spref.height += sbButtonPrefix(txt('prefResetDefault'), buttonPrefDefault, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        sbBlockHint.text = txt('hintResetStorage');
+        spref.height += sbButtonPrefix(txt('prefResetStorage'), buttonResetStorage, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     // О ПРОГРАММЕ
-    // scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
-    // spref.height += sbTextHeader(txt('prefAbout'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    spref.height += spacing*3;
-    scaleFont(32, 'Segoe UI', 'bold');
-    spref.height += sbTextHeader($appInfo.fullname, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    scaleFont(24, 'Segoe UI');
-    spref.height += sbTextHeader($appInfo.author + ` | ` + txt('prefVersion') + $appInfo.version + ` | ` + $appInfo.date, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    scaleFont(18, 'Segoe UI Light');
-    spref.height += sbTextFit(txt('eagOther'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    scaleFont(20, 'Segoe UI', 'bold');
-    spref.height += sbTextHeader(txt('eagThanks'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-    spref.height += spacing;
+    } else {
+        // scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
+        // spref.height += sbTextHeader(txt('prefAbout'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += spacing*3;
+        // о проге
+        scaleFont(32, 'Segoe UI', 'bold');
+        spref.height += sbTextHeader($appInfo.fullname, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        scaleFont(18, 'Segoe UI Light');
+        spref.height += sbTitleObject(_preftitles.author, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbTitleObject(_preftitles.version, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbTitleObject(_preftitles.update, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbTitleObject(_preftitles.license, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += spacing*2;
+        ctx.textAlign = 'center';
+        spref.height += sbTextFit(txt('eagAbout'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbTextFit(txt('eagBased'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        // о датабазе
+        spref.height += spacing*2;
+        scaleFont(32, 'Segoe UI', 'bold');
+        spref.height += sbTextHeader(txt('wordDatabase'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        scaleFont(18, 'Segoe UI Light');
+        spref.height += sbTitleObject(_preftitles.adb, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbTitleObject(_preftitles.adb_author, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbTitleObject(_preftitles.adb_version, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbTitleObject(_preftitles.adb_license, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        // об остальном
+        spref.height += spacing*2;
+        scaleFont(32, 'Segoe UI', 'bold');
+        spref.height += sbTextHeader('API', new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        scaleFont(18, 'Segoe UI Light');
+        spref.height += sbTitleObject(_preftitles.jikan, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbTitleObject(_preftitles.translator, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        //
+        spref.height += spacing*3;
+        scaleFont(20, 'Segoe UI', 'bold');
+        spref.height += sbTextHeader(txt('eagThanks'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += spacing;
+    };
+    //
+    clipRestore();
 };  
 //
 // @EAG SCREEN TRANSITION
@@ -6384,78 +8129,6 @@ function requestScreen(screen, open=true) {
     open ? tss.state = 'openhide' : tss.state = 'closehide'
 };
 //
-// @EAG SCREEN DB SEARCH
-//
-let sDBs = {
-    string: '',
-    max: 50,
-    result: [],
-    //
-    images: [],
-    spacing: 10,
-    //
-    offset: 0,
-    scroll: new Vector1(),
-    //
-    find: (req, hard) => {
-        sDBs.string = req;
-        var res = searchByTitle(req, hard);
-        if(!res) {return} else {
-            sDBs.result = res.splice(0, sDBs.max);
-            sDBs.images = [];
-            for(var r in sDBs.result) {
-                sDBs.images[r] = new Image();
-                sDBs.images[r].onerror = () => {sDBs.images[r].src = 'images/notfound.png'};
-                sDBs.images[r].src = sDBs.result[r].picture
-            }
-        }
-    },
-};
-sDBs.result.length = sDBs.max;
-//
-let promptAnimeSearch = new TextButtonShaped(shapeRectRounded, 'Искать', new Vector2(300, 40), colorMapMatrix(prefTextPalette), colorMapMatrix(prefPromptPalette));
-promptAnimeSearch.onclick = () => {sDBs.find(prompt('Введите название тайтла...', sDBs.string))};
-//
-function screenDBSearch() {
-    // bg
-    fillRect(cvssize.multxy(0.8, 1), new Vector2(cvsxoffset + cvssize.x*0.1, 0), `0,0,0,${pref.bgalpha}`);
-    // scroll
-    sDBs.scroll.update();
-    if(cvssize.y >= sDBs.offset) {sDBs.scroll.set(0)}
-    else {
-        if(sDBs.scroll.get() < sDBs.offset - cvssize.y && wheelState === 'btm') {
-            sDBs.scroll.move(Math.floor(sDBs.scroll.getFixed())+spref.sensivity, 0.5, easeOutExpo)} 
-        else if(sDBs.scroll.get() > 0 && wheelState === 'top') {
-            sDBs.scroll.move(Math.floor(sDBs.scroll.getFixed())-spref.sensivity, 0.5, easeOutExpo)};
-        if(sDBs.scroll.get() < 0) {sDBs.scroll.set(0)};
-        if(sDBs.scroll.get() > sDBs.offset - cvssize.y) {sDBs.scroll.set(sDBs.offset - cvssize.y)}
-    };
-    sDBs.offset = Number(sDBs.spacing);
-    var scroll = sDBs.scroll.get();
-    // find
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'center';
-    scaleFont(16, 'Segoe UI');
-    promptAnimeSearch.size = new Vector2(prefOptionWidth, prefButtonHeight*1.2).multxy(cvsscale.get());
-    promptAnimeSearch.pos.setxy(fullsize.x/2 - promptAnimeSearch.size.x/2, sDBs.offset - scroll);
-    promptAnimeSearch.draw();
-    sDBs.offset += sDBs.spacing + promptAnimeSearch.size.y;
-    // draw titles
-    scaleFont(24, 'Segoe UI Light');
-    if(sDBs.images[0] !== undefined) {
-        for(var a in sDBs.images) {
-            if(a >= sDBs.max) {break};
-            if(!sDBs.images[a].complete) {continue};
-            var imgsize = new Vector2(sDBs.images[a].naturalWidth, sDBs.images[a].naturalHeight);
-            sDBs.offset += 24 * cvsscale.get();
-            fillTextFast(new Vector2(fullsize.x/2, sDBs.offset - scroll), textStringLimit(sDBs.result[a].title, cvssize.x*0.8 - sDBs.spacing*3));
-            sDBs.offset += sDBs.spacing*1.5;
-            drawImage(sDBs.images[a], new Vector2(fullsize.x/2 - imgsize.x/2, sDBs.offset - scroll));
-            sDBs.offset += imgsize.y + sDBs.spacing;
-        }
-    };
-};
-//
 // @EAG WINNER ANIMATION
 //
 let rollWinner = {
@@ -6490,7 +8163,7 @@ let rollWinner = {
     invoke: (name) => {
         if(rollWinner.state === 'none') {
             scaleFont(rollWinner.fsize, rollWinner.font, 'bold');
-            rollWinner.str = textWidthFit(String(name).toLocaleUpperCase(), cvssize.x*0.9, 10*cvsscale.get());
+            rollWinner.str = textWidthFit(String(name).toLocaleUpperCase(), cvssize.x*0.9, 10*_scaleDynamic);
             rollWinner.waiter = 1 + (rollWinner.str[0].length-1) * 0.75;
             rollWinner.state = 'dark';
             rollWinner.bg = new Color(0,0,0,0);
@@ -6515,11 +8188,11 @@ let rollWinner = {
             ctx.fillStyle = rollWinner.text.getColor();
             ctx.textAlign = 'center';
             ctx.letterSpacing = `${rollWinner.zoom.get()}px`;
-            const spacing = 10*cvsscale.get();
+            const spacing = 10*_scaleDynamic;
             const [fit, fitsize] = rollWinner.str;
             const pos = normalAlign(rollWinner.anchor, fitsize.sumxy(0, spacing*fit.length).multxy(1, fit.length));
             scaleFont(rollWinner.fsize * rollWinner.zoom.get(), rollWinner.font, 'bold');
-            fillTextArray(pos, rollWinner.str, 5 * cvsscale.get());
+            fillTextArray(pos, rollWinner.str, 5 * _scaleDynamic);
             ctx.letterSpacing = '0px';
             //
             if(rollWinner.state === 'dark') {
@@ -6543,15 +8216,107 @@ let rollWinner = {
                 rollWinner.bg.fadeTo(new Color(0,0,0,0), 0.5);
                 rollWinner.state = 'wait';
                 visual.lightDiam.move(fitFrameSize.y*1.6, 1, easeOutCirc)
-                setTimeout(() => {rollWinner.state = 'none'}, 1100)
+                setTimeout(() => {
+                    rollWinner.state = 'none'
+                }, 1100)
             }
         }
     },
 };
 //
-// @eag VISUAL EFFECTS
+// @EAG VISUAL EFFECTS
 //
 let winnerLightRing = invokeNewImage('images/light.png');
+// с новой годой, с новой снегой, это к НГ крч эффект снега
+let novyigodSanta = invokeNewImage('images/chibi_santa.png');
+let novyigodElka = invokeNewImage('images/christmas_tree.png');
+let noviygodSize = new Vector2(160);
+let noviygodOffset = new Vector2(200, 0);
+//
+let snowflake = {
+    image: invokeNewImage('images/snowflake.png'),
+    depth: new Range(0.3, 1),
+    sizeMax: 40,
+    velX: new Range(-40, 40),
+    velY: new Range(40, 150),
+    rotate: new Range(-180, 180),
+    flow: new Range(0.15, 0.4),
+    flowX: new Range(50, 150),
+    //
+    count: 200,
+    array: [],
+};
+class Snowflake {
+    constructor() {
+        this.pos = fullsize.multxy(Math.random(), -Math.random()).minxy(snowflake.sizeMax);
+        var depth = Math.random()*(snowflake.depth.max-snowflake.depth.min)+snowflake.depth.min;
+        this.depth = depth;
+        this.size = new Vector2(snowflake.sizeMax * depth);
+        this.velocity = new Vector2();
+        this.velocity.x = (snowflake.velX.max-snowflake.velX.min)*Math.random()+snowflake.velX.min;
+        this.velocity.y = (snowflake.velY.max-snowflake.velY.min)*Math.random()+snowflake.velY.min;
+        this.alpha = 0.5 + 0.5*depth;
+        this.rotate = Math.random()*360;
+        this.rotatespeed = Math.random()*(snowflake.rotate.max-snowflake.rotate.min)+snowflake.rotate.min;
+        this.parallax = new Vector2();
+        this.flow = 2*Math.random();
+        this.flowspeed = Math.random()*(snowflake.flow.max-snowflake.flow.min)+snowflake.flow.min;
+        this.flowX = Math.random()*(snowflake.flowX.max-snowflake.flowX.min)+snowflake.flowX.min;
+        this.wave = 0;
+    }
+    draw() {
+        // flow (такого замороченного снега нет нигде нихуя, агада)
+        var dt = deltaTime/1000;
+        if(this.flow >= 2) {this.flow = 0} else {this.flow += this.flowspeed*dt};
+        this.wave = Math.sin(Math.PI*this.flow) * this.flowX;
+        // parallax
+        if(pref.parallax) {
+            this.parallax.setv(parallaxOffset.multxy(this.depth - (snowflake.depth.max+snowflake.depth.min)/2))
+        };
+        // transform
+        this.pos = this.pos.sumv(this.velocity.multxy(dt*_scaleDynamic)).sumxy(-roulette.speed.get()/1.5, 0);
+        this.rotate += this.rotatespeed*dt;
+        this.rotate >= 360 ? this.rotate -= 360 : this.rotate < 0 ? this.rotate += 360 : null;
+        // draw
+        setRotation(this.pos.sumxy(this.wave, 0), this.rotate);
+        ctx.globalAlpha = this.alpha;
+        drawImageSized(snowflake.image, this.pos.sumxy(this.wave, 0).minv(this.size.multxy(_scaleDynamic/2)).sumv(this.parallax), this.size.multxy(_scaleDynamic));
+        ctx.globalAlpha = 1;
+        ctx.resetTransform();
+    }
+    getPos() {return this.pos.sumxy(this.wave, 0).minv(this.size.multxy(_scaleDynamic/2)).sumv(this.parallax)}
+};
+let resetSnowflakes = () => {snowflake.array=[];for(let i=0; i<snowflake.count; i++) {snowflake.array[i] = new Snowflake()}};
+function novyigodSnowflakes() {
+    // приколы
+    if(firstMouseEvent) {
+        noviygodOffset.update();
+        var ngsize = noviygodSize.multxy(_scaleDynamic);
+        drawImageSized(novyigodSanta, new Vector2(-noviygodOffset.get().x, fullsize.y-ngsize.y), ngsize);
+        drawImageSized(novyigodElka, new Vector2(fullsize.x-ngsize.x+noviygodOffset.get().x, fullsize.y-ngsize.y), ngsize)
+    } else {
+        noviygodOffset.movexy(0, 0, 1.5, easeOutCirc)
+    };
+    // снежинки
+    var sfs = snowflake.sizeMax * _scaleDynamic, sfp = new Vector2();
+    if(snowflake.image.complete) {
+        for(var sf in snowflake.array) {
+            snowflake.array[sf].draw();
+            sfp = snowflake.array[sf].getPos();
+            // bottom portal
+            if(sfp.y - sfs > fullsize.y) {
+                snowflake.array[sf].pos = new Vector2(Math.random()*fullsize.x, 0).minxy(sfs);
+            };
+            // side portals
+            if(sfp.x < -sfs) {snowflake.array[sf].pos.x += fullsize.x+sfs}
+            else if(sfp.x > fullsize.x) {snowflake.array[sf].pos.x -= fullsize.x+sfs};
+            // mouse (тип чтоб они мышкой толкались, но на деле это кал)
+            // if(mouse.pos.overSAND(snowflake.array[sf].pos) && mouse.pos.lessSAND(snowflake.array[sf].pos.sumv(snowflake.array[sf].size))) {
+            //     snowflake.array[sf].pos = snowflake.array[sf].pos.sumv(mouse.delta.multxy(0.8))
+            // }
+        }
+    }
+};
 //
 let visual = {
     // caching
@@ -6568,13 +8333,14 @@ let visual = {
         setRotation(center, visual.lightAngle2);
         drawImageSized(winnerLightRing, center.minxy(radius/2), new Vector2(radius));
         ctx.resetTransform();
-        //
-        visual.lightAngle1 += visual.lightAngle1 < 360 ? (deltaTime/1000) * 45 : -360;
-        visual.lightAngle2 -= visual.lightAngle2 > 0 ? (deltaTime/1000) * 30 : -360
     },
-    // layers @RELEASE
+    // layers
     backgroundLayer: () => {
+        if(pref.snowflakes) {
+            novyigodSnowflakes()
+        };
         if(pref.visual) {
+            // соме щит
             musicAnalysis.update();
             musicEqualizer.draw()
         }
@@ -6593,12 +8359,19 @@ let wallpaperbase = [
     '12-zKGioSwrkF2I0AP1TYMckuEc7EcdQd',    // кейон
     '1V1z15_uWfU41CjgRFjP2_OxmBv8hI8Px',    // спай фемили
     '1EKW-y834w3tvo3ZSiEeEUr58n0nOKjpq',    // вайолетт
+    '1t-hIY13vYZglxKA__zzVEPB7sQ9jPtZF',    // речка самолётик
+    '1bn16CjkEwL7FRlHiS0WQcn9SB3tRMbUa',    // babazaki
+    '103wWTm_X_wgXuTb7mHOYFmB6y9dq4dnW',    // тянки в лесу
+    '1DboZz7Nb2vqWNfje2aw_j4eH2125qzUV',    // кил ми беби
+    '1gy89pzNN9G85nPlQ6u_xEwF7h5AELwZW',    // 14.1 (бл)
+    '1nUpOoktsHQzzmB_gFHMIUIBqTUQlWJOs',    // лаки стар
+    '1iUdkBulCeHA1fCNNTzP34L7m8XugbvWb',    // да, я алисофаг, идите нахуй
+    '1R89q1eQ0PDXw5L5LchhrZLqkOSHfwdgj',    // хитори гото
+    '1e1j7KbNoiaNj9hQNuIoJyuHymWDpD2v7',    // глухомань
+    '16-M4spSf8lBEUmqff640baP81rrRG7jr',    // килл ла килл (соска)
+    '1lF6zgpkzX0DWfLuywzutpFjJF9BN-nar',    // ююшики
 ];
-// это зачатки видео на заднем фоне, пока что сложно и лень
-// let wallvideo = document.createElement('video');
-// wallvideo.src = '';
-// wallvideo.preload = 'auto';
-// wallvideo.onended = () => {wallvideo.pause()};
+//
 let wlpsize = new Vector2();
 let parallaxSize = new Vector2();
 let parallaxOffset = new Vector2();
@@ -6606,15 +8379,19 @@ let oldwallpaper = randomWallpaperGD();
 let _wphide = new Vector1(1);
 let _wphided = true;
 let wallerror = null;
-wallpaper.src = lsLoadString('wallpaper', randomWallpaperGD());
 wallpaper.onerror = () => {
-    wallpaper.src = oldwallpaper;
-    wallpaper.onerror = () => {
-        wallpaper.src = '';
-        lsSaveValue('wallpaper', randomWallpaperGD());
-        wallerror = true
+    if(navigator.onLine) {
+        wallpaper.onerror = () => {
+            wallpaper.src = '';
+            lsSaveValue('wallpaper', randomWallpaperGD());
+            wallerror = true
+        };
+        wallpaper.src = oldwallpaper
+    } else {
+        wallpaper.src = ''
     }
 };
+wallpaper.src = lsLoadString('wallpaper', randomWallpaperGD());
 //
 function setWallpaper(src) {
     oldwallpaper = wallpaper.src;
@@ -6629,11 +8406,10 @@ function setWallpaper(src) {
     }
 };
 function randomWallpaperGD(apply = false) {
-    const prefix = 'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=';
     const base = JSON.parse(JSON.stringify(wallpaperbase));
     return apply
-    ? setWallpaper(prefix + randomItemsFrom(base, 1)[0])
-    : prefix + randomItemsFrom(base, 1)[0]
+    ? setWallpaper(_gdPrefix + randomItemsFrom(base, 1)[0])
+    : _gdPrefix + randomItemsFrom(base, 1)[0]
 };
 //
 function updateWallSize() {
@@ -6672,12 +8448,16 @@ function wallpaperImage() {
             drawWallpaper = drawWallpaperInit
         }
     } else {
-        drawWallpaper()
+        clipmainAlpha.get() !== 1 ? drawWallpaper() : updateWallSize()
     };
-    // if(!wallvideo.paused) {
-    //     [wallvideo.width, wallvideo.height] = [wlpsize.x, wlpsize.y];
-    //     drawImageSized(wallvideo, fullAlign(new Vector2(0.5), wlpsize).sumv(parallaxOffset), wlpsize);
-    // }
+    if(!clipmain.paused) {
+        [clipmain.width, clipmain.height] = [wlpsize.x, wlpsize.y];
+        ctx.globalAlpha = clipmainAlpha.get();
+        drawImageSized(clipmain, fullAlign(new Vector2(0.5), wlpsize).sumv(parallaxOffset), wlpsize);
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        fillRectFast(fullsize, new Vector2());
+        ctx.globalAlpha = 1;
+    }
 };
 //
 function drawWallpaperInit() {
@@ -6743,17 +8523,22 @@ function developInfo() {
         var limit = bytesStringify(performance.memory.jsHeapSizeLimit);
         var total = bytesStringify(performance.memory.totalJSHeapSize);
         var usage = bytesStringify(performance.memory.usedJSHeapSize);
-        // @RELEASE
+        // @RELEASE (убрать, если чет добавлял для себя)
         fillRectRounded(new Vector2(devinfoValues.width, devinfoValues.height), new Vector2(devinfoValues.xanchor, devinfoValues.offset), '#0029', devinfoValues.margin);
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(1)), 'FPS: '+FPS, '#fff', 'bold 16px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(2)), 'memLimit: '+limit, '#fcc', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(3)), 'memUsage/Total: ' + usage + ' / ' + total, '#fcc', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(4)), 'roulette: '+Math.floor(roulette.progress.get()*10)/10+'/'+(roulette.picsCount-1), '#ffc', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(5)), 'full: '+Math.floor(fullsize.x)+'x'+Math.floor(fullsize.y) + ', cvs: '+Math.floor(cvssize.x)+'x'+Math.floor(cvssize.y), '#ccf', 'bold 12px Consolas');
-        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(6)), 'scale: '+floatNumber(cvsscale.get(), 2), '#cfc', 'bold 12px Consolas');
+        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(6)), 'scale: '+floatNumber(_scaleDynamic, 2), '#cfc', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(7)), 'session: '+bytesStringify(getSessionSize())+ ` (${floatNumber(getSessionSize()/sessionLimit*100, 1)}%)`, '#fc7', 'bold 12px Consolas');
+        // хуй
         //
         graphFPS.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(8)), 3, 0);
+        if(pref.playClip) {
+            graphClipSync.update(Math.floor(((clipmain.currentTime - _cliptimestamp) - (musicRoll.currentTime - _musictimestamp))*1000));
+            graphClipSync.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(8)+85), 1, 0)
+        };
         ctx.textAlign = 'start';
     } else if(pref.showFPS) {
         fillText(new Vector2(14, 30), 'FPS: '+FPS, '#fff', 'bold 16px Consolas');
