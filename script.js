@@ -7430,6 +7430,10 @@ let edList = {
         fileManager.uploadJSON();
         fileManager.onupload = () => {
             var file = JSON.parse(JSON.stringify(fileManager.result));
+	    // проверяем, список ли это вообще
+            if(file.anime === undefined) {return};
+            if(file.anime[0] === undefined) {return};
+            if(file.data === undefined) {return};
             // если список пуст, ниче не делаем дальше
             if(file.anime.length == 0) {alert(txt('editorUploadEmpty')); return};
             // проверяем совместимость, предупреждаем
