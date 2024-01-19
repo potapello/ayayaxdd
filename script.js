@@ -179,7 +179,7 @@ function findCent(array) {
 };
 //
 let graphFPS = new Graph('FPS', 80, 100);
-let graphClipSync = new Graph('VcSO', 50, 300);
+// let graphClipSync = new Graph('VcSO', 50, 300);
 //
 // @EAG VECTOR1 CLASS
 //
@@ -829,7 +829,7 @@ let _cheats = {
             //
             setTimeout(() => {buttonDoRoll.text = txt('rbRoll')}, 2000)
         };
-        videoClipSet(new videoClip(['audio/clip1.ogg', 0, 'Shikitashi - Botagiri (YTPMV)'], 0, 63.1,   '1zJClTrta3u_PYZh1LLW240-qzb4q7Aqy'))
+        videoClipSet(new videoClip(['audio/clip1.ogg', 0, 'Shikitashi - Botagiri (YTPMV)'], 0, 63.1,   'w0i5vrvg2qat8mawfjy2i/video1.webm?rlkey=vc7tda62c9s0kfcznxnm02240'))
     },
     'clip': (args) => {
         if(args[1] === undefined) {return};
@@ -863,9 +863,12 @@ function moreThanZero(value) {
     return value < 0 ? 0 : value
 }
 function timeStringify(sec) {
-    const m = Math.floor(sec/60);
-    const s = Math.floor(sec - m*60);
-    return `${m}:${s>=10?s:'0'+s}`
+    if(String(sec) == 'NaN') {return `0:00`}
+    else {
+        const m = Math.floor(sec/60);
+        const s = Math.floor(sec - m*60);
+        return `${m}:${s>=10?s:'0'+s}`
+    }
 };
 function floatNumber(x, digits=1) {
     const d = Math.pow(10, Math.abs(digits))
@@ -893,11 +896,16 @@ function bytesStringify(bytes) {
 //
 // @EAG VIDEO CLIP CLASS
 //
-const _gdPrefix = 'https://drive.google.com/uc?export=download&confirm=no_antivirus&id=';
+const _gdPrefix = 'https://drive.google.com/uc?export=download&id=';
+const _dropboxAffix = ['https://www.dropbox.com/scl/fi/','&raw=1'];
+function _dropboxURL(key) {
+    return  String(_dropboxAffix[0] + key + _dropboxAffix[1])
+};
+//
 class videoClip {
     constructor(music, video_anchor, time, video_url) {
         this.m = music;
-        this.v = [_gdPrefix + video_url, video_anchor];
+        this.v = [_dropboxURL(video_url), video_anchor];
         this.time = time;
     }
 };
@@ -950,6 +958,7 @@ function videoClipSet(clip) {
     clipmain.onended = () => {clipmain.pause()};
     //
     clipWaiting = clipTimeout;
+    _clipmainBuffered = [];
 };
 function videoClipEnd(time = 1) {
     //
@@ -984,6 +993,15 @@ function videoClipUnload(time = 1) {
     musicNormalVolume.move(1, time, easeInOutSine);
     //
     console.error('Clip downloading time out! (20 s.)\nTry roll again OR disable \'Videoclips\' in Options.')
+};
+//
+let _clipmainBuffered = [];
+function videoClipBuffered() {
+    for(let i = 0; i < clipmain.buffered.length; i++) {
+        _clipmainBuffered[i] = [];
+        _clipmainBuffered[i][0] = clipmain.buffered.start(i) / clipmain.duration;
+        _clipmainBuffered[i][1] = clipmain.buffered.end(i) / clipmain.duration
+    };
 };
 //
 let clipmain = document.createElement('video');
@@ -1071,20 +1089,20 @@ let cliponly = [
 let _clipSelected = null;
 let clips = [
     // new videoClip(music[x], rolltime, lifetime, 'key'), (* = ytpmv)
-    new videoClip(cliponly[0], 31, 32.1,    '1zJClTrta3u_PYZh1LLW240-qzb4q7Aqy'), // botagiri *
-    new videoClip(cliponly[1], 55, 37,      '1W2FWAN_xPb2SR3ZGIS5K336mdWzjbDpe'), // aquarius *
-    new videoClip(cliponly[2], 21.35, 35.4, '18jL8uof6s4iuByj3JIOKu4HfFAKZyigZ'), // bad apple
-    new videoClip(cliponly[3], 35, 43.2,    '1ZUowAnm0Nis8VXk-g7i5uwwWNVw0tXLZ'), // point of no k-on *
-    new videoClip(cliponly[4], 78, 38.8,    '1i1Ixlydmfz1ZUC9ORarvAEU5XtBD7hFC'), // yuyushiki factory *
-    new videoClip(cliponly[5], 48, 36,      '1iYfburpiJRM3tULXwueCmroxIeKR__hB'), // k-on op
-    new videoClip(cliponly[6], 51, 37,      '1qnLjwU6-IlOkfqFtrxoQeXZbIFfW-rPj'), // ado antisystem
-    new videoClip(cliponly[7], 6, 28.5,     '1bXG8gE5krgS0UNarA_DqYvM03LT32zm6'), // shimoneta ed
-    new videoClip(cliponly[8], 38, 34,      '1kgyFPsTo0l0IdXaHZ-bVtxg96KuftrJh'), // kick back
-    new videoClip(cliponly[9], 0, 69.5,     '1ZPwaLRh_vexoJ5pueWclUDClJSSY5H5O'), // fatima
-    new videoClip(cliponly[10], 48, 40,     '1x8z3fSUvxqfbWwNUZ0OUuuzxM4vL7zc8'), // gate 1
-    new videoClip(cliponly[11], 0, 26.5,    '1GJWncomoVaN-_oOw-77K066zwPHORB7j'), // INTR *
-    new videoClip(cliponly[12], 0, 37,      '1IWK9gonuimByli7BzVvuUa-o-boMLFlu'), // HTDN *
-    new videoClip(cliponly[13], 0, 46.4,    '1oVxmcF3IGKnSGyOKlgscaOhQjyuPfhWm'), // old castle baby *
+    new videoClip(cliponly[0], 31, 32.1,    'w0i5vrvg2qat8mawfjy2i/video1.webm?rlkey=vc7tda62c9s0kfcznxnm02240'), // botagiri *
+    new videoClip(cliponly[1], 55, 37,      'ieofoxdaqm4jmumczph92/video2.webm?rlkey=mss80z4v2rcjl0qq3mvz0qwky'), // aquarius *
+    new videoClip(cliponly[2], 21.35, 35.4, '4f2z5ksu6bxu0l68vhslf/video3.webm?rlkey=sli7839jj0sn7dtndkqdr9vdb'), // bad apple
+    new videoClip(cliponly[3], 35, 43.2,    'drhq7vy4mcb32jcq9jtot/video4.webm?rlkey=69155pksd9z5gbn80zm0ungku'), // point of no k-on *
+    new videoClip(cliponly[4], 78, 38.8,    'xvdt3he159lduqixpffk0/video5.webm?rlkey=zbe9w4z7kkslnggz67mw3pf2h'), // yuyushiki factory *
+    new videoClip(cliponly[5], 48, 36,      '9snur9h8l5cftf47n3ln1/video6.webm?rlkey=2qv31z6q5gf98sy01emowo8ct'), // k-on op
+    new videoClip(cliponly[6], 51, 37,      'a4bfdi4hnbzj1t8l4f39q/video7.webm?rlkey=7zolbpa1ptyizc4vgub9e2dwe'), // ado antisystem
+    new videoClip(cliponly[7], 6, 28.5,     'cujxc4en713r25f20iz4a/video8.webm?rlkey=0qpxdx4fwwtwg74szmbhs4vc0'), // shimoneta ed
+    new videoClip(cliponly[8], 38, 34,      'upfai6wav5gy5dq4nogoy/video9.webm?rlkey=fs8dhy9djvp64tukntarhbto6'), // kick back
+    new videoClip(cliponly[9], 0, 69.5,     'b5tlu916tcn3r5f9ezau2/video10.webm?rlkey=bgfoiorex4sirmn898rqcfx4p'), // fatima
+    new videoClip(cliponly[10], 48, 40,     'z5pq4uemtopjii80yeh1k/video11.webm?rlkey=godc4mzev23jxezdu99o5of29'), // gate 1
+    new videoClip(cliponly[11], 0, 26.5,    '41z7s482j3wqgk3ua1ugs/video12.webm?rlkey=3wqgbwn2phyifv0egj3aoms9c'), // INTR *
+    new videoClip(cliponly[12], 0, 37,      '0g4hye7mc3iv3vp783qfj/video13.webm?rlkey=6m5rc64tmuht2rq4nsm0tdpzs'), // HTDN *
+    new videoClip(cliponly[13], 0, 46.4,    'rtk3o32aoe9xy5tzur21x/video14.webm?rlkey=0jc0tz7r1fz9lvnennj12wvpf'), // old castle baby *
     // nasruto
     // neverland
     // kaguya 1 op
@@ -1137,6 +1155,9 @@ function updateMusicCache() {
     clipmainAlpha.update();
     musicNormal.volume = (pref.bgmusic / 100) * musicNormalVolume.get();
     musicRoll.volume = (pref.rollmusic / 100) * musicRollVolume.get();
+    // play button
+    buttonPauseTrack.image = !musicNormal.paused && pref.bgmusic > 0
+    ? mlcPauseImage : mlcPlayImage;
     // check
     musicNormalComplete = String(musicNormal.duration) !== 'NaN';
     // продолжаем играть, если громкость > 0
@@ -1161,7 +1182,7 @@ function updateMusicCache() {
         buttonPauseTrack.state = 'unaval';
         setTimeout(() => {
             musicNormalNew();
-            musicNormalVolume.move(1, 2, easeInOutSine);
+            // musicNormalVolume.move(1, 2, easeInOutSine);
             musicNormalLoop = false;
             buttonNextTrack.state = 'idle';
             buttonPauseTrack.state = 'idle';
@@ -1200,7 +1221,6 @@ function musicNormalSelect(id) {
     musicNormal.pause();
     musicNormal.currentTime = 0;
     musicNormalVolume.move(1, 1, easeInOutSine);
-    buttonPauseTrack.image = mlcPauseImage;
     musicNormal.src = music[id][0];
     musicLite.name = music[id][2];
     if(pref.bgmusic > 0) {musicNormal.play()}
@@ -1210,11 +1230,10 @@ function musicRandomTrack() {
     return music[Math.floor(Math.random() * (music.length - 0.001))]; 
 };
 function musicNormalNew() {
-    if(pref.bgmusic > 0) {
+    if(pref.bgmusic > 0 && !clipmainPlay) {
         musicNormal.pause();
         musicNormal.currentTime = 0;
-        musicNormalVolume.move(1, 1, easeInOutSine);
-        buttonPauseTrack.image = mlcPauseImage;
+        musicNormalVolume.move(1, 2, easeInOutSine);
         const track = musicRandomTrack()
         musicNormal.src = track[0];
         musicLite.name = track[2];
@@ -1225,12 +1244,10 @@ function musicNormalNew() {
 function musicNormalPause(time = 0.25) {
     if(musicNormal.paused) {
         if(pref.bgmusic > 0) {
-            buttonPauseTrack.image = mlcPauseImage;
             musicNormal.play();
             musicNormalVolume.move(1, time, easeInOutSine)
         }
     } else {
-        buttonPauseTrack.image = mlcPlayImage;
         musicNormalVolume.move(0, time, easeInOutSine);
         setTimeout(() => {musicNormal.pause()}, time*1000)
     }
@@ -1530,7 +1547,7 @@ let pref = {
     visual: false,
     visualQuality: 128, // 2^n
     playClip: true,
-    snowflakes: true,
+    snowflakes: false,
     // other
     language: 'en',
     parallax: true,
@@ -7430,7 +7447,7 @@ let edList = {
         fileManager.uploadJSON();
         fileManager.onupload = () => {
             var file = JSON.parse(JSON.stringify(fileManager.result));
-	    // проверяем, список ли это вообще
+            // проверяем, список ли это вообще
             if(file.anime === undefined) {return};
             if(file.anime[0] === undefined) {return};
             if(file.data === undefined) {return};
@@ -8355,25 +8372,25 @@ let visual = {
 //
 let wallpaper = new Image();
 let wallpaperbase = [
-    '1Vms2RLx82NUKreiDxmmQLv3fD-87XlMM',    // пять невест
-    '1ZpoUGc4GDB_BNI70I_uQEq7PsbzERpI5',    // повар боец сома
-    '1ecD4IWwzis4Cd1rpITZRcHBorKUm2qQY',    // дракон горничная
-    '1YtlziStVpf17_0C1zCtYz_E2efUGvEYt',    // школа дхд
-    '1XMwpoYMTP7stprsuCTe-uFwveXiXIxqC',    // сакурасо
-    '12-zKGioSwrkF2I0AP1TYMckuEc7EcdQd',    // кейон
-    '1V1z15_uWfU41CjgRFjP2_OxmBv8hI8Px',    // спай фемили
-    '1EKW-y834w3tvo3ZSiEeEUr58n0nOKjpq',    // вайолетт
-    '1t-hIY13vYZglxKA__zzVEPB7sQ9jPtZF',    // речка самолётик
-    '1bn16CjkEwL7FRlHiS0WQcn9SB3tRMbUa',    // babazaki
-    '103wWTm_X_wgXuTb7mHOYFmB6y9dq4dnW',    // тянки в лесу
-    '1DboZz7Nb2vqWNfje2aw_j4eH2125qzUV',    // кил ми беби
-    '1gy89pzNN9G85nPlQ6u_xEwF7h5AELwZW',    // 14.1 (бл)
-    '1nUpOoktsHQzzmB_gFHMIUIBqTUQlWJOs',    // лаки стар
-    '1iUdkBulCeHA1fCNNTzP34L7m8XugbvWb',    // да, я алисофаг, идите нахуй
-    '1R89q1eQ0PDXw5L5LchhrZLqkOSHfwdgj',    // хитори гото
-    '1e1j7KbNoiaNj9hQNuIoJyuHymWDpD2v7',    // глухомань
-    '16-M4spSf8lBEUmqff640baP81rrRG7jr',    // килл ла килл (соска)
-    '1lF6zgpkzX0DWfLuywzutpFjJF9BN-nar',    // ююшики
+    'kyxbor3aw5hud3ek7xpik/1.jpg?rlkey=1s9dvj533143jago8lt5hymlh',    // пять невест
+    'q34euwi9ktfz0mnl4a2oe/2.jpg?rlkey=u79lsps7ty61xmkzzfgtp3boa',    // повар боец сома
+    'r0uom6cjam85700csbi7d/3.jpg?rlkey=cf65zhme2wtc78f4dp5u5bs1k',    // дракон горничная
+    'v95fp9b4bn5zfxhiuz1bk/4.jpg?rlkey=thuhga2sdxfhqekn661c57jcv',    // школа дхд
+    'c7d3bptxl0tvgost4kdwy/5.jpg?rlkey=khrz91dgwbxdttavz19tfre05',    // сакурасо
+    'iwk9izyskxwpqa2tr1eg3/7.jpg?rlkey=mi7o08qfcl1nyza2rnf3hohz3',    // кейон
+    'dfhht3gs1nho3p5c43sgi/9.jpg?rlkey=ntb79u0pkw7e2pls6gcq84tle',    // спай фемили
+    '02oqjqer6yzujhdhn7iyd/10.jpg?rlkey=zcvohf7oltsc170vjfop3x8p6',    // вайолетт
+    '0m6ff16ci2r2vob9pj4op/8.webp?rlkey=ulyyqggsib2iwiwqi0pco6ccd',    // речка самолётик
+    '9dhc9s3cb161fz51supz6/9.webp?rlkey=8jgvodzg0jrjo4aq66ed6kl6y',    // babazaki
+    '0pmwgme0p7ailyrv5du44/10.webp?rlkey=365qa0yvpp068gjr7ba62w1yy',    // тянки в лесу
+    'htuffcrbcxyd6e9oytxuh/11.webp?rlkey=vmbfr24u3by3mb6u0cs6cxaj4',    // кил ми беби
+    '9ij1hhutwpzkqoqk4povs/12.webp?rlkey=v9rppcc9x3ol6a0lsusbnmv5g',    // 14.1 (бл)
+    'l2ppz31fopz21tn4frwk4/13.webp?rlkey=px0tjz5agbq4fqgiv7a5o9wbu',    // лаки стар
+    'ag6vw67wibubxqwpjc6ok/14.webp?rlkey=shogjr7prha32lxl83yy7oqyz',    // да, я алисофаг, идите нахуй
+    '4k3we5e8q9jbaot64ozt8/15.webp?rlkey=jtsdm12xkx2139uq6z6i0q1me',    // хитори гото
+    't4k42do7c5e4elozfp2e8/16.webp?rlkey=7hdcxcppz4yv0ik3gp2n0i877',    // глухомань
+    '6lmwvqr071txdf0xavnjo/17.webp?rlkey=w7r67potqkh2g8pg7l01ca07i',    // килл ла килл (соска)
+    'i3tzg6j39h1uyt5v3jh8d/18.webp?rlkey=ykmtajbepzpbs9oow1wevpbgc',    // ююшики
 ];
 //
 let wlpsize = new Vector2();
@@ -8390,7 +8407,7 @@ wallpaper.onerror = () => {
             lsSaveValue('wallpaper', randomWallpaperGD());
             wallerror = true
         };
-        wallpaper.src = oldwallpaper
+        wallpaper.src = String(oldwallpaper)
     } else {
         wallpaper.src = ''
     }
@@ -8398,28 +8415,29 @@ wallpaper.onerror = () => {
 wallpaper.src = lsLoadString('wallpaper', randomWallpaperGD());
 //
 function setWallpaper(src) {
-    oldwallpaper = wallpaper.src;
+    oldwallpaper = String(wallpaper.src);
     wallpaper.src = src !== null ? src : randomWallpaperGD();
     wallpaper.onerror = () => {
-        wallpaper.src = oldwallpaper;
+        wallpaper.src = String(oldwallpaper);
         wallpaper.onerror = () => {
             wallpaper.src = '';
             lsSaveValue('wallpaper', randomWallpaperGD());
             wallerror = true
         }
-    }
+    };
+    wallerror = false
 };
 function randomWallpaperGD(apply = false) {
     const base = JSON.parse(JSON.stringify(wallpaperbase));
     return apply
-    ? setWallpaper(_gdPrefix + randomItemsFrom(base, 1)[0])
-    : _gdPrefix + randomItemsFrom(base, 1)[0]
+    ? setWallpaper(_dropboxURL(randomItemsFrom(base, 1)[0]))
+    : _dropboxURL(randomItemsFrom(base, 1)[0])
 };
 //
 function updateWallSize() {
     if(oldwallpaper !== wallpaper.src && wallpaper.naturalHeight > 0) {
         lsSaveValue('wallpaper', wallpaper.src); 
-        oldwallpaper = wallpaper.src
+        oldwallpaper = String(wallpaper.src)
     };
     //
     var ir = wallpaper.naturalHeight / wallpaper.naturalWidth;
@@ -8540,8 +8558,26 @@ function developInfo() {
         //
         graphFPS.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(8)), 3, 0);
         if(pref.playClip) {
-            graphClipSync.update(Math.floor(((clipmain.currentTime - _cliptimestamp) - (musicRoll.currentTime - _musictimestamp))*1000));
-            graphClipSync.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(8)+85), 1, 0)
+            // clip sync offset
+            // graphClipSync.update(Math.floor(((clipmain.currentTime - _cliptimestamp) - (musicRoll.currentTime - _musictimestamp))*1000));
+            // graphClipSync.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(8)+85), 1, 0);
+            // buffered ranges
+            videoClipBuffered();
+            ctx.fillStyle = '#0008';
+            fillRectFast(new Vector2(devinfoValues.width, devinfoValues.spacing*(_clipmainBuffered.length+1)), new Vector2(devinfoValues.xanchor, devinfoValues.texty(8)+85));
+            ctx.fillStyle = '#fffd'; ctx.textAlign = 'start';
+            fillTextFast(new Vector2(devinfoValues.text, devinfoValues.texty(8)+85+devinfoValues.spacing), `videoClipBufferedRanges (${_clipmainBuffered.length})`);
+            ctx.textAlign = 'end';
+            fillTextFast(new Vector2(devinfoValues.xanchor + devinfoValues.width, devinfoValues.texty(8)+85+devinfoValues.spacing), `${timeStringify(clipmain.currentTime)} - ${timeStringify(clipmain.duration)}`);
+            for(var r in _clipmainBuffered) {
+                var w = (_clipmainBuffered[r][1] - _clipmainBuffered[r][0]) * devinfoValues.width;
+                var x = _clipmainBuffered[r][0] * devinfoValues.width;
+                ctx.fillStyle = `hsla(${Math.round(360*(r/_clipmainBuffered.length))} 80% 60% / 0.4)`;
+                fillRectFast(new Vector2(w, devinfoValues.spacing), new Vector2(devinfoValues.xanchor + x, devinfoValues.texty(8)+85+devinfoValues.spacing*(Number(r)+1)))
+            };
+            ctx.fillStyle = '#fffa';
+            var pos = (clipmain.currentTime/clipmain.duration)*devinfoValues.width;
+            fillRectFast(new Vector2(3, devinfoValues.spacing*_clipmainBuffered.length), new Vector2(devinfoValues.xanchor + pos, devinfoValues.texty(8)+85+devinfoValues.spacing))
         };
         ctx.textAlign = 'start';
     } else if(pref.showFPS) {
