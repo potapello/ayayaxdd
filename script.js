@@ -37,8 +37,8 @@ function databaseShorter() {
 //
 let $appInfo = {
     // main @rel
-    version: '1.2 beta',
-    date: '20-12-2023',
+    version: '1.2.1 beta',
+    date: '20-01-2024',
     name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
     fullname: 'AYAYA - Anime Roulette',
     author: 'potapello',
@@ -46,7 +46,7 @@ let $appInfo = {
     licenseURL: 'https://github.com/potapello/ayayaxdd/blob/main/LICENSE',
     // other
     codename: 'ayayaxdd', // EAG? в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
-    cleft: 'ayayaxdd 1.2 beta',
+    cleft: 'ayayaxdd 1.2.1 beta',
     cright: 'created by potapello',
 };
 //
