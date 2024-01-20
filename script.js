@@ -5543,7 +5543,8 @@ let roulette = {
             roulette.pics[i] = new Image();
             roulette.pics[i].onerror = () => {roulette.pics[i].src = 'images/notfound.png'};
             if(array[i]['picture'] !== undefined) {
-                roulette.pics[i].src = array[i]['picture']
+                roulette.pics[i].src = array[i]['picture'];
+                // roulette.pics[i].lowsrc = array[i]['thumbnail'];
             } else {
                 roulette.pics[i].src = 'images/notfound.png';
                 console.warn(`roulette.picsGet -> argument -> array[${i}]['picture'] is undefined!`);
@@ -7708,7 +7709,8 @@ function actualPrefAudio() {
     prefAudioRoll .update(pref['rollmusic'], 100);
     prefAudioShowPlayer.active = pref.playerShow;
     prefAudioNewTrack.active = pref.rollNewTrack;
-    prefAudioClips.active = pref.playClip
+    // поскольку в визуале сейчас только аудио
+    prefRenderVisual.active = pref.visual
 };
 // render
 let prefRenderText = [txt('pstDisable'), txt('pstLow'), txt('pstMedium'), txt('pstHigh')];
@@ -7815,7 +7817,7 @@ function actualPrefRender() {
     prefRenderParallax.active = pref.parallax;
     prefRenderShowFps.active = pref.showFPS;
     prefRenderDevInfo.active = pref.showDebugInfo;
-    prefRenderVisual.active = pref.visual;
+    prefAudioClips.active = pref.playClip
 };
 // filter attempts
 let buttonFilterAttempts = new ShapedSelectBar(prefButtonSizes[0], colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
