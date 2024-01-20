@@ -599,6 +599,7 @@ function inputListener() {
             cheatPrompt = String(prompt('Write a command...')).split(' ');
             checkCheatPrompt()
         };
+        if(keyPressed('!')) {pref.showDebugInfo = pref.showDebugInfo ? false : true};
         // end
         keyboard = {}
     };
@@ -2776,8 +2777,8 @@ class animeList {
         // compatibility
         this.compat = {
             version: '1.0',
-            adb: adb_information.lastUpdate,
-            app: $appInfo.version,
+            adb: String(adb_information.lastUpdate),
+            app: String($appInfo.version),
         };
         this.timestamp = {
             created: (new Date()).toLocaleDateString() + ' ' + (new Date()).toLocaleTimeString(),
@@ -2797,8 +2798,8 @@ class animeList {
     }
     compatibility() {
         var status = {app: true, adb: true, version: this.compat.version};
-        if(this.compat.adb != adb_information.lastUpdate) {status.adb = false};
-        if(this.compat.app != $appInfo.version) {status.app = false};
+        if(this.compat.adb != adb_information.lastUpdate && this.compat.adb !== undefined) {status.adb = false};
+        if(this.compat.app != $appInfo.version && this.compat.app !== undefined) {status.app = false};
         return status
     }
     //
@@ -6009,7 +6010,10 @@ function screenLoading() {
         awaitForDatabase();
         if(databaseRequestResult = 'error') {sload.state = 'timeout'};
         if(databaseRequestResult = 'success') {
+            // оптималим датабазу
             databaseShorter();
+            // создаём пустой список в редактор здесь, только после загрузки датабазы
+            edList.edited = new animeList();
             //
             sload.state = 'wait'
         }
@@ -7369,7 +7373,7 @@ function animeSStateBrowser(header, fbSpacing, swidth, xanchor) {
 // @EAG ANIME - EDITOR
 //
 let edList = {
-    edited: new animeList(),
+    edited: {},
     images: {},
     anime: {},
     //
