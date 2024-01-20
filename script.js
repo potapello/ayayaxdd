@@ -8298,7 +8298,7 @@ class Snowflake {
         this.wave = Math.sin(Math.PI*this.flow) * this.flowX;
         // parallax
         if(pref.parallax) {
-            this.parallax.setv(parallaxOffset.multxy(this.depth - (snowflake.depth.max+snowflake.depth.min)/2))
+            this.parallax.setv(parallaxOffsW.multxy(this.depth - (snowflake.depth.max+snowflake.depth.min)/2))
         };
         // transform
         this.pos = this.pos.sumv(this.velocity.multxy(dt*_scaleDynamic)).sumxy(-roulette.speed.get()/1.5, 0);
@@ -8399,9 +8399,14 @@ let wallpaperbase = [
     'i3tzg6j39h1uyt5v3jh8d/18.webp?rlkey=ykmtajbepzpbs9oow1wevpbgc',    // ююшики
 ];
 //
+let wlpNatSize = new Vector2();
+let clipNatSize = new Vector2();
 let wlpsize = new Vector2();
-let parallaxSize = new Vector2();
-let parallaxOffset = new Vector2();
+let clipmsize = new Vector2();
+let parallaxOffsW = new Vector2();
+let parallaxOffsC = new Vector2();
+let parallaxValue = 0.025;
+//
 let oldwallpaper = randomWallpaperGD();
 let _wphide = new Vector1(1);
 let _wphided = true;
@@ -8446,24 +8451,30 @@ function updateWallSize() {
         oldwallpaper = String(wallpaper.src)
     };
     //
-    var ir = wallpaper.naturalHeight / wallpaper.naturalWidth;
-    if(fullsize.x / fullsize.y > ir) {
-        wlpsize = new Vector2(fullsize.y / ir, fullsize.y);
-        if(wlpsize.x < fullsize.x) {
-            wlpsize = new Vector2(fullsize.x, fullsize.x * ir)
-        }
-    } else {
-        wlpsize = new Vector2(fullsize.x, fullsize.x * ir);
-        if(wlpsize.y < fullsize.y) {
-            wlpsize = new Vector2(fullsize.y / ir, fullsize.y)
-        }
+    wlpNatSize.setxy(wallpaper.naturalWidth, wallpaper.naturalHeight);
+    var ratio = wlpNatSize.x / wlpNatSize.y;
+    ratio > fullsize.x/fullsize.y
+        ? wlpsize.setxy(fullsize.y * ratio, fullsize.y)
+        : wlpsize.setxy(fullsize.x, fullsize.x / ratio)
+    //
+    if(pref.playClip) {
+        clipNatSize.setxy(clipmain.videoWidth, clipmain.videoHeight);
+        ratio = clipNatSize.x / clipNatSize.y;
+        ratio > fullsize.x/fullsize.y
+        ? clipmsize.setxy(fullsize.y * ratio, fullsize.y)
+        : clipmsize.setxy(fullsize.x, fullsize.x / ratio)
     };
+    //
     if(pref.parallax) {
-        parallaxSize = fullsize.multxy(5/100);
-        wlpsize = wlpsize.sumv(parallaxSize);
-        parallaxOffset = parallaxSize.multv(mouse.pos.minv(fullsize.dividexy(2)).dividev(fullsize))
+        wlpsize = wlpsize.multxy(1 + parallaxValue);
+        parallaxOffsW = wlpsize.multxy(parallaxValue).multv(mouse.pos.minv(fullsize.dividexy(2)).dividev(fullsize));
+        if(pref.playClip) {
+            clipmsize = clipmsize.multxy(1 + parallaxValue);
+            parallaxOffsC = clipmsize.multxy(parallaxValue).multv(mouse.pos.minv(fullsize.dividexy(2)).dividev(fullsize));
+        }
     } else {
-        parallaxOffset.reset()
+        parallaxOffsC.reset();
+        parallaxOffsW.reset();
     }
 };
 //
@@ -8479,9 +8490,8 @@ function wallpaperImage() {
         clipmainAlpha.get() !== 1 ? drawWallpaper() : updateWallSize()
     };
     if(!clipmain.paused) {
-        [clipmain.width, clipmain.height] = [wlpsize.x, wlpsize.y];
         ctx.globalAlpha = clipmainAlpha.get();
-        drawImageSized(clipmain, fullAlign(new Vector2(0.5), wlpsize).sumv(parallaxOffset), wlpsize);
+        drawImageSized(clipmain, fullAlign(new Vector2(0.5), clipmsize).sumv(parallaxOffsC), clipmsize);
         ctx.fillStyle = 'rgba(0,0,0,0.2)';
         fillRectFast(fullsize, new Vector2());
         ctx.globalAlpha = 1;
@@ -8492,14 +8502,14 @@ function drawWallpaperInit() {
     if(_wphided) {_wphide.move(0, 1, easeInOutSine); _wphided=false};
     _wphide.update();
     updateWallSize();
-    drawImageSized(wallpaper, fullAlign(new Vector2(0.5), wlpsize).sumv(parallaxOffset), wlpsize);
+    drawImageSized(wallpaper, fullAlign(new Vector2(0.5), wlpsize).sumv(parallaxOffsW), wlpsize);
     fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), '#0004');
     fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), `rgba(11,11,18,${_wphide.get()})`)
     setTimeout(() => {drawWallpaper = drawWallpaperNormal; _wphided=false}, 1200)
 };
 function drawWallpaperNormal() {
     updateWallSize();
-    drawImageSized(wallpaper, fullAlign(new Vector2(0.5), wlpsize).sumv(parallaxOffset), wlpsize);
+    drawImageSized(wallpaper, fullAlign(new Vector2(0.5), wlpsize).sumv(parallaxOffsW), wlpsize);
     fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), '#0004')
 };
 let drawWallpaper = drawWallpaperInit;
