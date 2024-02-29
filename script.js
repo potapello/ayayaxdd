@@ -37,8 +37,8 @@ function databaseShorter() {
 //
 let $appInfo = {
     // main @rel
-    version: '1.2.1 beta',
-    date: '20-01-2024',
+    version: '1.2.2 beta',
+    date: '29-02-2024',
     name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
     fullname: 'AYAYA - Anime Roulette',
     author: 'potapello',
@@ -46,18 +46,17 @@ let $appInfo = {
     licenseURL: 'https://github.com/potapello/ayayaxdd/blob/main/LICENSE',
     // other
     codename: 'ayayaxdd', // EAG? в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
-    cleft: 'ayayaxdd 1.2.1 beta',
-    cright: 'created by potapello',
+    comment: 'ayayaxdd 1.2.2 beta',
 };
 //
 // @EAG FPS
 // уёбск
-let fpsCalcFreq = 10;
+const fpsCalcFreq = 10;
 var FPS = 0, deltaTime = 0, oldTime = 0;
 let fpsFrames = 0, fpsSumm = 0;
 let timeMultiplier = 1;
 //
-let fpsFocusLimiter = 20;
+const fpsFocusLimiter = 20;
 let fpsFocusLast = Number();
 let fpsFocusSwitch = false;
 function workWithFPS() {
@@ -178,7 +177,7 @@ function findCent(array) {
     return Math.floor(summ/array.length*10)/10
 };
 //
-let graphFPS = new Graph('FPS', 80, 100);
+const graphFPS = new Graph('FPS', 80, 100);
 // let graphClipSync = new Graph('VcSO', 50, 300);
 //
 // @EAG VECTOR1 CLASS
@@ -444,7 +443,7 @@ function easeInQuint(x) {
     return Math.pow(x, 5)
 };
 function easeOutQuint(x) {
-return 1 - Math.pow(1 - x, 5)
+    return 1 - Math.pow(1 - x, 5)
 };
 //
 // @EAG MOUSE INPUT
@@ -544,20 +543,20 @@ let keyboard = {};
 let cheatPrompt = [];
 function keyPressed(key = String()) {
     if(keyboard[key] === undefined) {
-        return false
+        return false;
     } else {
         const k = keyboard[key];
         keyboard[key] = false;
-        return k
+        return k;
     }
 };
 //
 document.addEventListener('keyup', (e) => {
-    keyboard[e.key] = false
+    keyboard[e.code] = false;
 });
 document.addEventListener('keydown', (e) => {
     keyboard.EVENT = true;
-    keyboard[e.key] = true;
+    keyboard[e.code] = true;
 });
 //
 // @EAG INPUT LISTENER
@@ -566,8 +565,8 @@ function inputListener() {
     // KEYBOARD
     if(keyboard.EVENT !== undefined) {
         // scaling
-        if(keyPressed('+') || keyPressed('=')) {_scaleFixed < 3.9 ? cvsscale.move(_scaleFixed+0.1, 0.25, easeOutCirc) : false; globalRescale()};
-        if(keyPressed('-')) {_scaleFixed >= 0.6 ? cvsscale.move(_scaleFixed-0.1, 0.25, easeOutCirc) : false; globalRescale()};
+        if(keyPressed('Plus') || keyPressed('Equal')) {_scaleFixed < 3.9 ? cvsscale.move(_scaleFixed+0.1, 0.25, easeOutCirc) : false; globalRescale()};
+        if(keyPressed('Minus')) {_scaleFixed >= 0.6 ? cvsscale.move(_scaleFixed-0.1, 0.25, easeOutCirc) : false; globalRescale()};
         // return to roulette screen
         if(keyPressed('Escape') || mouse.preview) {
             mouse.preview = false;
@@ -583,7 +582,7 @@ function inputListener() {
             } else if(keyPressed('ArrowRight')) {
                 roulette.pause(5000);
                 roulette.progress.move(Math.round(roulette.progress.getFixed())+1, 0.3, easeOutCirc)
-            } else if(keyPressed(' ')) {
+            } else if(keyPressed('Space')) {
                 buttonDoRoll.onclick()
             };
             // music menu keys
@@ -593,13 +592,17 @@ function inputListener() {
                 mnMenu.active(1);
             };
             if(keyPressed('Enter')) {mnMenu.apply = true} 
-            else if(keyPressed('1')) {mnMenu.plan = true}
+            else if(keyPressed('Digit1')) {mnMenu.plan = true};
+            if(keyPressed('Backslash')) {pref.showDebugInfo = pref.showDebugInfo ? false : true};
         };
-        if(keyPressed('~')) {
-            cheatPrompt = String(prompt('Write a command...')).split(' ');
-            checkCheatPrompt()
+        if(keyPressed('Backquote')) {
+            var prom = prompt('Write a command...', _cheats.last);
+            if(prom !== null) {
+                _cheats.last = String(prom);
+                cheatPrompt = _cheats.last.split(' ');
+                checkCheatPrompt()
+            }
         };
-        if(keyPressed('!')) {pref.showDebugInfo = pref.showDebugInfo ? false : true};
         // end
         keyboard = {}
     };
@@ -774,6 +777,13 @@ function cheater(cheat) {
 //
 let _cheats = {
     values: {},
+    last: '',
+    'js': (args) => {
+        if(args[1] !== undefined) {
+            console.log('cheat evaluate => '+args[1]);
+            eval(args[1])
+        }
+    },
     'winner': () => {
         if(!roulette.hidemap) {
             if(roulette.winnerPos >= 0) {
@@ -837,8 +847,20 @@ let _cheats = {
         if(String(Number(args[1])) == 'NaN') {return};
         var number = Number(args[1]);
         if(number < 0 || number >= clips.length) {return};
+        if(args[2] !== undefined) {
+            if(args[2] == 'pm') {
+                musicNormal.pause();
+                musicNormal.currentTime = 0;
+                musicNormalVolume.reset();
+                musicNormalVolume.move(1, 1, easeInOutSine);
+                musicNormal.src = cliponly[number][0];
+                musicLite.name = cliponly[number][2];
+                if(pref.bgmusic > 0) {musicNormal.play()}
+            }
+        } else {
         _clipSelected = number;
         playSound(sound['taginc'])
+        }
     },
     'snowflakes': (args) => {
         if(args[1] === undefined) {return};
@@ -851,8 +873,8 @@ let _cheats = {
 //
 // @EAG OTHER CLASSES
 //
-class Range {
-    constructor(min, max) {this.min = min; this.max = max}
+function range(min, max) {
+    return {min, max};
 };
 //
 // @EAG MATH FUNCTIONS
@@ -864,7 +886,7 @@ function moreThanZero(value) {
     return value < 0 ? 0 : value
 }
 function timeStringify(sec) {
-    if(String(sec) == 'NaN') {return `0:00`}
+    if(String(sec) == 'NaN' || String(sec) == 'Infinity' || sec == undefined) {return `0:00`}
     else {
         const m = Math.floor(sec/60);
         const s = Math.floor(sec - m*60);
@@ -876,7 +898,7 @@ function floatNumber(x, digits=1) {
     return Math.round(x * d) / d
 };
 //
-let powsOfTwo = {
+const powsOfTwo = {
     '10': Math.pow(2, 10),
     '20': Math.pow(2, 20),
     '30': Math.pow(2, 30),
@@ -897,7 +919,6 @@ function bytesStringify(bytes) {
 //
 // @EAG VIDEO CLIP CLASS
 //
-const _gdPrefix = 'https://drive.google.com/uc?export=download&id=';
 const _dropboxAffix = ['https://www.dropbox.com/scl/fi/','&raw=1'];
 function _dropboxURL(key) {
     return  String(_dropboxAffix[0] + key + _dropboxAffix[1])
@@ -929,18 +950,27 @@ function videoClipPlay(time = 1) {
     }, 1000*time);
     // initial sync
     setTimeout(videoClipSync, _videoclipsyncrate);
+    _videoclipsyncattempts = 8; _videoclipsyncdl = 0.08
 };
 function videoClipCan() {
     return clipmainLoaded && musicrollLoaded
 };
-let _videoclipsyncrate = 2000;
+const _videoclipsyncrate = 2000;
+let _videoclipsyncdl = 0.08;
+let _videoclipsyncattempts = 0;
 function videoClipSync() {
-    if(Math.abs((clipmain.currentTime - _cliptimestamp) - (musicRoll.currentTime - _musictimestamp)) > 0.1) {
-        console.log(`Sync clip... (offset: ${(clipmain.currentTime - _cliptimestamp) - (musicRoll.currentTime - _musictimestamp)})`);
-        musicRoll.currentTime = _musictimestamp + (clipmain.currentTime - _cliptimestamp) + 0.05;
-        setTimeout(videoClipSync, _videoclipsyncrate)
-    } else {console.info('Clip sync stopped.')}
-}
+    if(Math.abs((clipmain.currentTime - _cliptimestamp) - (musicRoll.currentTime - _musictimestamp)) > _videoclipsyncdl) {
+        console.log(`Sync clip... (offset: ${floatNumber((clipmain.currentTime - _cliptimestamp) - (musicRoll.currentTime - _musictimestamp), 3)}, rate: ${floatNumber(_videoclipsyncdl, 2)})`);
+        musicRoll.currentTime = _musictimestamp + (clipmain.currentTime - _cliptimestamp);
+        if(_videoclipsyncattempts > 0) {
+            setTimeout(videoClipSync, _videoclipsyncrate);
+            _videoclipsyncattempts--;
+            _videoclipsyncdl += 0.02
+        } else {
+            console.info(`Clip sync canceled after 8 attempts. (offset: ${floatNumber((clipmain.currentTime - _cliptimestamp) - (musicRoll.currentTime - _musictimestamp), 3)}, rate:${floatNumber(_videoclipsyncdl, 2)})`)
+        }
+    } else {console.info(`Clip sync success.`)}
+};
 function videoClipSet(clip) {
     //
     musicrollLoaded = false;
@@ -992,13 +1022,14 @@ function videoClipUnload(time = 1) {
     musicRollVolume.set(0);
     clipmainAlpha.set(0);
     musicNormalVolume.move(1, time, easeInOutSine);
+    rollBar.rollStarted = false;
     //
     console.error('Clip downloading time out! (20 s.)\nTry roll again OR disable \'Videoclips\' in Options.')
 };
 //
 let _clipmainBuffered = [];
 function videoClipBuffered() {
-    for(let i = 0; i < clipmain.buffered.length; i++) {
+    for(var i = 0; i < clipmain.buffered.length; i++) {
         _clipmainBuffered[i] = [];
         _clipmainBuffered[i][0] = clipmain.buffered.start(i) / clipmain.duration;
         _clipmainBuffered[i][1] = clipmain.buffered.end(i) / clipmain.duration
@@ -1019,11 +1050,12 @@ let clipmainPlay = false;
 let clipmainOnCanPlay = null;
 //
 let clipWaiting = 20;
-let clipTimeout = 20;
+let musicWaiting = 20;
+const clipTimeout = 20;
 //
 // @EAG ALL AUDIO DATA
 //
-let sound = {
+const sound = {
     'scroll': new Audio('sounds/scroll.ogg'),
     'button': new Audio('sounds/button.ogg'),
     'tagnone': new Audio('sounds/tagnone.ogg'),
@@ -1036,7 +1068,8 @@ let sound = {
     'prompt': new Audio('sounds/prompt.ogg'),
     'player': new Audio('sounds/player.ogg'),
 };
-let music = [
+//
+const music = [
     //['src', rolltime, 'name'],
     // music
     ['audio/music1.ogg', 61, 'Kuhaku Gokko - Lil\'b'],
@@ -1070,7 +1103,7 @@ let music = [
     // guren no yumiya - титосы оп, с клипом
 ];
 // 
-let cliponly = [
+const cliponly = [
     ['audio/clip1.ogg', 31, 'Shikitashi - Botagiri (YTPMV)'],
     ['audio/clip2.ogg', 55, 'skwd - Aquarius (YTPMV)'],
     music[26], // тайминг прост 1 и тот же, нхй ещ рз не буд писать, и так NASRAL
@@ -1085,10 +1118,13 @@ let cliponly = [
     ['audio/clip5.weba', 0, 'aku rin - INTR (YTPMV)'],
     ['audio/clip6.weba', 0, 'aku rin - HTDN (YTPMV)'],
     ['audio/clip7.weba', 0, 'beoh - Old Castle Baby (YTPMV)'],
+    ['audio/clip8.weba', 0, 'Kyoro - Survive (YTPMV)'],
+    ['audio/clip9.weba', 0, 'beoh - hpes-shiki (YTPMV)'],
+    ['audio/clip10.weba', 62, 'nanodot - It\'s just your fault (YTPMV)'],
 ];
 //
 let _clipSelected = null;
-let clips = [
+const clips = [
     // new videoClip(music[x], rolltime, lifetime, 'key'), (* = ytpmv)
     new videoClip(cliponly[0], 31, 32.1,    'w0i5vrvg2qat8mawfjy2i/video1.webm?rlkey=vc7tda62c9s0kfcznxnm02240'), // botagiri *
     new videoClip(cliponly[1], 55, 37,      'ieofoxdaqm4jmumczph92/video2.webm?rlkey=mss80z4v2rcjl0qq3mvz0qwky'), // aquarius *
@@ -1104,6 +1140,9 @@ let clips = [
     new videoClip(cliponly[11], 0, 26.5,    '41z7s482j3wqgk3ua1ugs/video12.webm?rlkey=3wqgbwn2phyifv0egj3aoms9c'), // INTR *
     new videoClip(cliponly[12], 0, 37,      '0g4hye7mc3iv3vp783qfj/video13.webm?rlkey=6m5rc64tmuht2rq4nsm0tdpzs'), // HTDN *
     new videoClip(cliponly[13], 0, 46.4,    'rtk3o32aoe9xy5tzur21x/video14.webm?rlkey=0jc0tz7r1fz9lvnennj12wvpf'), // old castle baby *
+    new videoClip(cliponly[14], 0, 49.5,    '322csul3wvt4gt9wy2co5/video15.webm?rlkey=kk1i0webz34xsisd4b97g3xj6'), // eshatos survive *
+    new videoClip(cliponly[15], 0, 56,      'p7dct166v6ekx2obnceft/video16.webm?rlkey=vg2oym9jxs6r7as64qj8qhn5k'), // hpes-shiki *
+    new videoClip(cliponly[16], 62, 36.7,   'rsa1cvk0tbf33gh8ogptn/video17.mp4?rlkey=mmqond1w63sbwpac8xkgocihe'), // your fault *
     // nasruto
     // neverland
     // kaguya 1 op
@@ -1111,7 +1150,7 @@ let clips = [
     // bocchi
     // jojo
     // titosy ebat'
-    // минимум 9 ещё будет catDespair SnowTime
+    // минимум 7 ещё будет catDespair SnowTime
 ];
 //
 let musicNormal = new Audio();
@@ -1289,7 +1328,7 @@ function musicRollEnd(time = 0.5) {
 //
 // @EAG MUSIC NORMAL MENU
 //
-let musicMenuWidth = 420;
+const musicMenuWidth = 420;
 function getCurrentMusic() {
     for(var a in music) {
         if(music[a][2] === musicLite.fullname) {return Number(a)}
@@ -1473,7 +1512,7 @@ let musicEqualizer = {
 //
 let filterAttempts = 0;
 let filterAttemptTags = false;
-let filterAttRange = new Range(0, 4);
+let filterAttRange = range(0, 4);
 //
 let filterDefault = {
     //tags
@@ -1535,7 +1574,7 @@ let pref = {
     imageQuality: 'medium',
     imageSmoothing: true,
     lockfps: true,
-    framerate: 90,        
+    framerate: 60,        
     bgalpha: 0.7,
     scale: 4,
     // audio
@@ -1555,7 +1594,7 @@ let pref = {
     showFPS: false,          // false
     showDebugInfo: false,
 };
-let prefDefault = JSON.stringify(pref);
+const prefDefault = JSON.stringify(pref);
 function prefSetValue(name, value) {
     pref[name] = value;
     lsSaveObject('pref.'+name, pref[name])
@@ -1569,7 +1608,7 @@ function updatePreferences() {
 //
 // @EAG SAVELOAD DATA TYPES
 //
-let savePrefix = 'eagsv_';
+const savePrefix = 'eagsv_';
 //
 function lsItemUndefined(name) {
     return localStorage[savePrefix + name] === undefined
@@ -1617,8 +1656,8 @@ function prefVisualSwitch() {
 // @EAG SESSION STORAGE
 //
 let session = sessionStorage;
-let sessionLimit = (4 * 1024 * 1024) - 1;
-let sessionPref = 'eagsession_';
+const sessionLimit = (4 * 1024 * 1024) - 1;
+const sessionPref = 'eagsession_';
 //
 function sesWrite(key, value) {
     session.setItem(String(key), String(value))
@@ -1678,9 +1717,89 @@ function optimizeAnimeArray(array) {
     return arr
 };
 //
+// @EAG INDEXED DB FOR LISTS
+//
+let lidb = {
+    error: false,
+    version: 1,
+    //
+    max: 50,
+    saved: 0,
+    //
+    response: false,
+    request: false,
+    lists: [],
+};
+lidb.openreq = indexedDB.open("db", lidb.version);
+lidb.openreq.onerror = () => {
+    lidb.error = lidb.openreq.error;
+    console.error("ILDB error", lidb.openreq.error)
+};
+lidb.openreq.onsuccess = () => {
+    lidb.db = lidb.openreq.result;
+    console.log('Connected to ILDB');
+};
+lidb.openreq.onupgradeneeded = function(event) {
+    lidb.db = lidb.openreq.result;
+    switch(event.oldVersion) {
+        case 0:
+            if(!lidb.db.objectStoreNames.contains('lists')) {
+                console.log('Init ILDB "lists" store...');
+                lidb.db.createObjectStore('lists', {keyPath: 'name'})
+            };
+        case 1:
+            console.log('Connected to ILDB')
+        case 2:
+            // update
+    }
+};
+// lidb upload, download, delete
+function lidbUploadObject(obj, store) {
+    var t = lidb.db.transaction(store, "readwrite");
+    var s = t.objectStore(store);
+    //
+    var req = s.add(obj);
+    req.onerror = () => {
+      console.warn(`Error with uploading ${obj.name} to "${store}"\n`, req.error)
+    }
+};
+function lidbDownloadObject(name, store) {
+    lidb.request = true;
+    lidb.response = null;
+    var t = lidb.db.transaction(store, "readonly");
+    var s = t.objectStore(store);
+    //
+    var req = s.get(name);
+    req.onerror = () => {
+      console.warn(`Error with downloading ${name} from "${store}"\n`, req.error)
+    };
+    req.onsuccess = () => {lidb.response = req.result; lidb.request = false}
+};
+function lidbDeleteObject(name, store) {
+    var t = lidb.db.transaction(store, "readwrite");
+    var s = t.objectStore(store);
+    //
+    var req = s.delete(name);
+    req.onerror = () => {
+      console.warn(`Error with deleting ${name} from "${store}"\n`, req.error)
+    };
+};
+// lidb get all lists
+function lidbGetKeys(store) {
+    lidb.request = true;
+    var t = lidb.db.transaction(store, "readonly");
+    var s = t.objectStore(store);
+    //
+    var req = s.getAllKeys();
+    req.onerror = () => {
+      console.warn(`Error with getting all "${store} keys"\n`, req.error)
+    };
+    req.onsuccess = () => {lidb.lists = req.result; lidb.request = false} 
+};
+//
 // @EAG TRANSLATED TEXT
 //
-let _TextTranslations = {
+const _TextTranslations = {
     'ru': {
         // global
         eagName: 'Аниме Рулетка',
@@ -1855,15 +1974,18 @@ let _TextTranslations = {
         filterStateArrays: 'Списки',
         filterStateEditor: 'Редактор',
         filterStateBrowser: 'Поиск',
-        filterBrowserFind: 'Искать',
-        filterBrowserPrompt: 'Введите название тайтла, который хотите найти...',
+        filterBrowserFind: 'База данных',
+        filterBrowserPrompt: 'Введите слово (-а) из названия тайтла, который хотите найти, на английском языке.',
         filterAttTags: 'Только для тэгов',
+        filterMALPrompt: 'Поиск аниме с помощью сайта MyAnimeList. Писать запрос нужно на английском языке.',
+        filterMALFind: 'MyAnimeList',
         // browser, arrays
         browserEnter: 'Ввести', browserPage: 'Страница', browserNext: 'Вперёд', browserPrev: 'Назад',
         browserAddNote: 'Зажмите, чтобы добавить тайтл в редактируемый список',
         browserAlreadyNote: 'Тайтл уже в редактируемом списке',
         browserNoResult: 'Нет ни одного результата по запросу: ',
         browserResultCount: ' результатов по запросу: ',
+        browserMALWait: 'Поиск аниме на сайте MyAnimeList, пожалуйста подождите...',
         // editor
         editorDeleteNote: 'Зажмите, чтобы удалить тайтл из списка',
         editorClaimRoulette: 'Взять с рулетки',
@@ -1878,7 +2000,7 @@ let _TextTranslations = {
         editorUploadJSON: 'Загрузить .json',
         editorJSON: 'Списки в JSON формате',
         // load
-        loadJkrg: `Думаем...`,
+        loadJkrg: `Загрузка аниме датабазы...`,
         loadPics: `Грузим картинки...`,
         loadGen: `Генерируем рулетку...`,
         loadDone: `Готово!`,
@@ -2124,15 +2246,18 @@ let _TextTranslations = {
         filterStateArrays: 'Arrays',
         filterStateEditor: 'Editor',
         filterStateBrowser: 'Search',
-        filterBrowserFind: 'Find',
-        filterBrowserPrompt: 'Enter the name of the title you want to find...',
-        filterAttTags: 'Only for tags',
+        filterBrowserFind: 'Database',
+        filterBrowserPrompt: 'Enter the name of the title you want to find... (in English)',
+        filterAttTags: 'Tags only',
+        filterMALPrompt: 'Search for anime using the MyAnimeList site. You need to write the request in English.',
+        filterMALFind: 'MyAnimeList',
         // browser & arrays
         browserEnter: 'Enter', browserPage: 'Page', browserNext: 'Next', browserPrev: 'Prev',
         browserAddNote: 'Hold for add title to editable list',
         browserAlreadyNote: 'Title is already in editable list!',
         browserNoResult: 'There are no results for the query: ',
         browserResultCount: ' results for the query: ',
+        browserMALWait: 'Searching anime on the MyAnimeList site, please wait...',
         // editor
         editorDeleteNote: 'Hold for delete title from list',
         editorClaimRoulette: 'Claim roll',
@@ -2147,7 +2272,7 @@ let _TextTranslations = {
         editorUploadJSON: 'Upload .json',
         editorJSON: 'Lists in JSON format',
         // load
-        loadJkrg: `Thinkge...`,
+        loadJkrg: `Loading anime database...`,
         loadPics: `Loading pictures...`,
         loadGen: `Generating roulette...`,
         loadDone: `Success!`,
@@ -2232,7 +2357,7 @@ function txtPreset(key) {
     return _Text.presetnames[key] === undefined ? key : _Text.presetnames[key]
 };
 //
-let langInitialized = pref.language;
+const langInitialized = pref.language;
 let langSelected = pref.language;
 let allTranslations = {
     'en': {
@@ -2261,7 +2386,7 @@ class animeTag {
 //
 // @EAG TAGS VARIANTS & TRANSLATE
 //
-let tagbase = {
+const tagbase = {
     // main
     'action':           new animeTag('action', ['action']),
     'adventure':        new animeTag('adventure', ['adventure', 'travel']),
@@ -2365,165 +2490,90 @@ class Preset {
 //
 // @EAG ALL PRESETS
 //
-let YEARS = new Range(1900, 2024);
-let SCORES = new Range(5, 10);
-let presetbase = {
+const YEARS = range(1900, 2024);
+const SCORES = range(5, 10);
+const presetbase = {
+    //'Перерождение в 2007-й': new Preset(name, 
+    // includes, excludes,years, episodes, score, mult, others)
     'Дефолтный': new Preset('Дефолтный', 
-    includes = null, excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(5, 10),
-    mult = 1, others = null),
+    null, null, YEARS, range(1, 50), range(5, 10), 1, null),
     'Cтарая романтика': new Preset('Cтарая романтика', 
-    includes = ['romance'], excludes = null,
-    years = new Range(YEARS.min, 2007), episodes = new Range(1, 50), score = new Range(6, 10),
-    mult = 1, others = null),
+    ['romance'], null, range(YEARS.min, 2007), range(1, 50), range(6, 10), 1, null),
     'Перерождение в 2007-й': new Preset('Перерождение в 2007-й', 
-    includes = ['isekai'], excludes = null,
-    years = new Range(2005, 2009), episodes = new Range(1, 50), score = new Range(5, 10),
-    mult = 1, others = null),
+    ['isekai'], null, range(2005, 2009), range(1, 50), range(5, 10), 1, null),
     'Современный кал': new Preset('Современный кал', 
-    includes = null, excludes = null,
-    years = new Range(2018, YEARS.max), episodes = new Range(1, 50), score = new Range(3, 7),
-    mult = 1.5, others = null),
+    null, null, range(2018, YEARS.max), range(1, 50), range(3, 7), 1.5, null),
     'Хорошая ностальгия': new Preset('Хорошая ностальгия', 
-    includes = null, excludes = null,
-    years = new Range(YEARS.min, 2000), episodes = new Range(1, 50), score = new Range(7, 10),
-    mult = 1, others = null),
+    null, null, range(YEARS.min, 2000), range(1, 50), range(7, 10), 1, null),
     'Мужская магия': new Preset('Мужская магия', 
-    includes = ['seinen', 'magic'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(6, 10),
-    mult = 1, others = null),
+    ['seinen', 'magic'], null, YEARS, range(1, 50), range(6, 10), 1, null),
     'Сверхъестественная школа': new Preset('Сверхъестественная школа', 
-    includes = ['supernatural', 'school'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(5, 10),
-    mult = 1, others = null),
+    ['supernatural', 'school'], null, YEARS, range(1, 50), range(5, 10), 1, null),
     'Девочки колдуют': new Preset('Девочки колдуют', 
-    includes = ['female', 'magic'], excludes = null,
-    years = new Range(YEARS.min, 2010), episodes = new Range(1, 50), score = new Range(5, 10),
-    mult = 1, others = null),
+    ['female', 'magic'], null, range(YEARS.min, 2010), range(1, 50), range(5, 10), 1, null),
     'Женский исекай': new Preset('Женский исекай', 
-    includes = ['female', 'isekai'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(5, 10),
-    mult = 1, others = null),
+    ['female', 'isekai'], null, YEARS, range(1, 50), range(5, 10), 1, null),
     'Можно короче?': new Preset('Можно короче?', 
-    includes = null, excludes = null,
-    years = YEARS, episodes = new Range(1, 13), score = new Range(5, 10),
-    mult = 1, others = null),
-    'Лучшая эротика': new Preset('Лучшая эротика', 
-    includes = ['ecchi'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(7, 10),
-    mult = 1, others = null),
+    null, null, YEARS, range(1, 13), range(5, 10), 1, null),
+    'Лучшая эротика': new Preset('Лучшая эротика',  
+    ['ecchi'], null, YEARS, range(1, 50), range(7, 10), 1, null),
     'Бывалые гаремы': new Preset('Бывалые гаремы', 
-    includes = ['harem'], excludes = null,
-    years = new Range(YEARS.min, 2007), episodes = new Range(1, 50), score = new Range(5, 10),
-    mult = 1, others = null),
+    ['harem'], null, range(YEARS.min, 2007), range(1, 50), range(5, 10), 1, null),
     'Девочки в танках': new Preset('Девочки в танках', 
-    includes = ['female', 'military'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(5, 10),
-    mult = 1, others = null),
+    ['female', 'military'], null, YEARS, range(1, 50), range(5, 10), 1, null),
     'Новая психология': new Preset('Новая психология', 
-    includes = ['psychological'], excludes = null,
-    years = new Range(2016, YEARS.max), episodes = new Range(1, 50), score = new Range(6, 10),
-    mult = 1, others = null),
+    ['psychological'], null, range(2016, YEARS.max), range(1, 50), range(6, 10), 1, null),
     'Повседневность нулевых': new Preset('Повседневность нулевых', 
-    includes = ['slice of life'], excludes = null,
-    years = new Range(2001, 2010), episodes = new Range(1, 50), score = new Range(5, 10),
-    mult = 1, others = null),
+    ['slice of life'], null, range(2001, 2010), range(1, 50), range(5, 10), 1, null),
     '\"Сполт это фыфнь\".': new Preset('\"Сполт это фыфнь\".', 
-    includes = ['sports'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(4, 10),
-    mult = 1.25, others = null),
+    ['sports'], null, YEARS, range(1, 50), range(4, 10), 1.25, null),
     'Игры десятых': new Preset('Игры десятых', 
-    includes = ['game'], excludes = null,
-    years = new Range(2011, 2020), episodes = new Range(1, 50), score = new Range(5, 10),
-    mult = 1, others = null),
+    ['game'], null, range(2011, 2020), range(1, 50), range(5, 10), 1, null),
     'Пережитая история': new Preset('Пережитая история', 
-    includes = ['historical'], excludes = null,
-    years = new Range(YEARS.min, 2000), episodes = new Range(1, 50), score = new Range(5, 10),
-    mult = 1, others = null),
+    ['historical'], null, range(YEARS.min, 2000), range(1, 50), range(5, 10), 1, null),
     'Лучшие приключения': new Preset('Лучшие приключения', 
-    includes = ['adventure', 'action'], excludes = null,
-    years = YEARS, episodes = new Range(20, 50), score = new Range(7, 10),
-    mult = 1.25, others = null),
+    ['adventure', 'action'], null, YEARS, range(20, 50), range(7, 10), 1.25, null),
     'Когда плакать?': new Preset('Когда плакать?', 
-    includes = ['drama'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(3, 7),
-    mult = 1.5, others = null),
+    ['drama'], null, YEARS, range(1, 50), range(3, 7), 1.5, null),
     'Пожилые слёзы': new Preset('Пожилые слёзы', 
-    includes = ['drama'], excludes = null,
-    years = new Range(YEARS.min, 2000), episodes = new Range(1, 50), score = new Range(7, 10),
-    mult = 1, others = null),
+    ['drama'], null, range(YEARS.min, 2000), range(1, 50), range(7, 10), 1, null),
     'Что это было?': new Preset('Что это было?', 
-    includes = ['mystery'], excludes = null,
-    years = new Range(2007, YEARS.max), episodes = new Range(1, 50), score = new Range(5, 10),
-    mult = 1, others = null),
+    ['mystery'], null, range(2007, YEARS.max), range(1, 50), range(5, 10), 1, null),
     'Новое приключение': new Preset('Новое приключение', 
-    includes = ['adventure'], excludes = null,
-    years = new Range(2018, YEARS.max), episodes = new Range(1, 50), score = new Range(6, 10),
-    mult = 1, others = null),
+    ['adventure'], null, range(2018, YEARS.max), range(1, 50), range(6, 10), 1, null),
     'Фентезийная любовь': new Preset('Фентезийная любовь', 
-    includes = ['fantasy', 'romance'], excludes = null,
-    years = new Range(2007, YEARS.max), episodes = new Range(1, 50), score = new Range(5, 10),
-    mult = 1, others = null),
+    ['fantasy', 'romance'], null, range(2007, YEARS.max), range(1, 50), range(5, 10), 1, null),
     'Плюс уши': new Preset('Плюс уши', 
-    includes = ['music'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(7, 10),
-    mult = 1, others = null),
+    ['music'], null, YEARS, range(1, 50), range(7, 10), 1, null),
     'Плохие шутки': new Preset('Плохие шутки', 
-    includes = ['comedy'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(3, 7),
-    mult = 1.5, others = null),
+    ['comedy'], null, YEARS, range(1, 50), range(3, 7), 1.5, null),
     'Новаторский юмор': new Preset('Новаторский юмор', 
-    includes = ['comedy'], excludes = null,
-    years = new Range(2016, YEARS.max), episodes = new Range(1, 50), score = new Range(6, 10),
-    mult = 1, others = null),
+    ['comedy'], null, range(2016, YEARS.max), range(1, 50), range(6, 10), 1, null),
     'Грустно, но вкусно': new Preset('Грустно, но вкусно', 
-    includes = ['drama', 'romance'], excludes = null,
-    years = new Range(2018, YEARS.max), episodes = new Range(1, 50), score = new Range(5, 10),
-    mult = 1, others = null),
+    ['drama', 'romance'], null, range(2018, YEARS.max), range(1, 50), range(5, 10), 1, null),
     'Бесится, но любит': new Preset('Бесится, но любит', 
-    includes = ['tsundere'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(6, 10),
-    mult = 1, others = null),
+    ['tsundere'], null, YEARS, range(1, 50), range(6, 10), 1, null),
     'Влюбиться насмерть': new Preset('Влюбиться насмерть',
-    includes = ['yandere'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(6, 10),
-    mult = 1, others = null),
+    ['yandere'], null, YEARS, range(1, 50), range(6, 10), 1, null),
     'Прохладная любовь': new Preset('Прохладная любовь',
-    includes = ['kuudere'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(6, 10),
-    mult = 1, others = null),
+    ['kuudere'], null, YEARS, range(1, 50), range(6, 10), 1, null),
     'Бесконечное \"это\"': new Preset('Бесконечное \"это\"',
-    includes = ['ecchi'], excludes = null,
-    years = YEARS, episodes = new Range(1, 25), score = new Range(5, 10),
-    mult = 1, others = {seasonSpring: false, seasonFall: false, seasonWinter: false, seasonUndefined: false}),
+    ['ecchi'], null, YEARS, range(1, 25), range(5, 10), 1, 
+    {seasonSpring: false, seasonFall: false, seasonWinter: false, seasonUndefined: false}),
     'Работать - круто!': new Preset('Работать - круто!', 
-    includes = ['work'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(6, 10),
-    mult = 1, others = null),
+    ['work'], null, YEARS, range(1, 50), range(6, 10), 1, null),
     'Совсем не похоже': new Preset('Совсем не похоже', 
-    includes = ['parody'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(3, 7),
-    mult = 1.25, others = null),
+    ['parody'], null, YEARS, range(1, 50), range(3, 7), 1.25, null),
     'Годная сатира': new Preset('Годная сатира', 
-    includes = ['parody'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(7, 10),
-    mult = 1, others = null),
+    ['parody'], null, YEARS, range(1, 50), range(7, 10), 1, null),
     'Супер-романтика': new Preset('Супер-романтика', 
-    includes = ['romance', 'supernatural'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(5, 10),
-    mult = 1, others = null),
+    ['romance', 'supernatural'], null, YEARS, range(1, 50), range(5, 10), 1, null),
     'Выключаем свет': new Preset('Выключаем свет', 
-    includes = ['horror'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(7, 10),
-    mult = 1, others = null),
+    ['horror'], null, YEARS, range(1, 50), range(7, 10), 1, null),
     'Женский спорт': new Preset('Женский спорт', 
-    includes = ['female', 'sports'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(6, 10),
-    mult = 1, others = null),
+    ['female', 'sports'], null, YEARS, range(1, 50), range(6, 10), 1, null),
     'Кухня, 7 сезон': new Preset('Кухня, 7 сезон', 
-    includes = ['cooking', 'comedy'], excludes = null,
-    years = YEARS, episodes = new Range(1, 50), score = new Range(6, 10),
-    mult = 1, others = null),
+    ['cooking', 'comedy'], null, YEARS, range(1, 50), range(6, 10), 1, null),
 };
 //
 // @EAG ARRAY METHODS
@@ -2788,9 +2838,9 @@ class animeList {
         this.presetname = null;
         // ranges
         this.rangesMode = 'auto'; // auto, manual
-        this.eps = new Range(-1, 1);
-        this.years = new Range(-1, 1);
-        this.scores = new Range(-1, 1);
+        this.eps = range(-1, 1);
+        this.years = range(-1, 1);
+        this.scores = range(-1, 1);
     }
     //
     updateTimestamp() {
@@ -2847,9 +2897,9 @@ class animeList {
     }
     updateRangesAll() {
         if(this.rangesMode == 'auto') {
-            this.eps = new Range(-1, 1);
-            this.years = new Range(-1, 1);
-            this.scores = new Range(-1, 1);
+            this.eps = range(-1, 1);
+            this.years = range(-1, 1);
+            this.scores = range(-1, 1);
             //
             for(var i in this.list) {
                 this.updateRangesSingle(adb[this.list[i]])
@@ -2933,7 +2983,7 @@ class animeList {
 // @EAG JIKAN REST API
 //
 let jikan = {
-    _prefix: `https://api.jikan.moe/v4/anime/`,
+    _prefix: `https://api.jikan.moe/v4/anime`,
     _request: () => {},
     _xhr: new XMLHttpRequest(),
     _result: null,
@@ -2943,6 +2993,7 @@ let jikan = {
     _progress: 0,
     _waitResponse: false,
     _timeout: 0,
+    _onresult: false,
     //
     _update: () => {
         if(jikan._waitResponse) {
@@ -2961,7 +3012,7 @@ let jikan = {
         jikan._result = jikan._response = JSON.parse(sesRead('jikan'+mal_id));
         jikan._loaded = true
     },
-    _send: (mal_id) => {
+    _send: (mal_id, sess=true) => {
         jikan._loaded = false;
         jikan._error = false;
         jikan._result = 'wait';
@@ -2973,14 +3024,19 @@ let jikan = {
             //
             jikan._xhr.onload = () => {
                 if (jikan._xhr.status != 200) {
-                    console.log(`Jikan API error with status: ${jikan._xhr.status}. (${jikan._xhr.statusText})`);
+                    console.log(`Jikan API error with status: ${jikan._xhr.status}.\n${jikan._xhr.statusText}`);
                     jikan._loaded = true;
                     jikan._error = true;
                     jikan._result = `failed`;
                 } else {
-                    sesWrite(`jikan${mal_id}`, JSON.stringify(jikan._xhr.response));
+                    sess ? sesWrite(`jikan${mal_id}`, JSON.stringify(jikan._xhr.response)) : null;
                     jikan._result = jikan._response = jikan._xhr.response;
                     jikan._loaded = true;
+                    //
+                    if(jikan._onresult !== false) {
+                        jikan._onresult();
+                        jikan._onresult = false
+                    }
                 }
             };
             jikan._xhr.onerror = () => {
@@ -3000,23 +3056,35 @@ let jikan = {
     },
     //
     stats: (mal_id) => {
-        jikan._xhr.open("GET", jikan._prefix + mal_id + '/statistics');
-        jikan._send(mal_id)
+        jikan._xhr.open("GET", jikan._prefix + '/' + mal_id + '/statistics');
+        jikan._send(mal_id, false)
     },
     full: (mal_id) => {
         if(sesRead('jikan'+mal_id) !== null) {
             jikan._cache(mal_id)
         } else {
-            jikan._xhr.open("GET", jikan._prefix + mal_id + '/full');
+            jikan._xhr.open("GET", jikan._prefix + '/' + mal_id + '/full');
             jikan._send(mal_id)
         }
+    },
+    //
+    page: 1,
+    lastQ: '',
+    search: (q) => {
+        if(q.length < 2) {return};
+        if(q != jikan.lastQ) {
+            jikan.lastQ = q;
+            jikan.page = 1
+        };
+        jikan._xhr.open("GET", jikan._prefix + `?q=${q}&page=${jikan.page}&sfw=${!pref.nsfw}`);
+        jikan._send(0, false)
     },
 };
 //
 // @EAG JIKAN METHODS
 //
 function malAnimeID(sources) {
-    source = null;
+    var source = null;
     for(var s in sources) {
         if(sources[s].includes('myanimelist.net')) {
             source = sources[s]
@@ -3175,12 +3243,21 @@ function stringIncludeRequest(str, req, hard=false) {
     }
 };
 //
+function searchByMALPage(url) {
+    var malid = url.substring(url.indexOf('anime/')+6);
+    if(String(Number(malid)) == 'NaN') {malid = malid.substring(0, malid.indexOf('/'))};
+    for(var a in adb) {
+        if(malAnimeID(adb[a].sources) == malid) {return Number(a)}
+    };
+    return false
+};
+//
 // @EAG RESIZE DOCUMENT METHODS
 //
-let docsize = new Vector2(960, 540);
+let docsize = new Vector2(window.innerWidth, window.innerHeight);
 let doczoom = 1;
 let cvssize = new Vector2();
-let fullsize = new Vector2();
+let fullsize = new Vector2(window.innerWidth, window.innerHeight);
 let cvsorient = 'album';
 let cvsxoffset = 0;
 //
@@ -3189,10 +3266,8 @@ let _scaleFixed = 1;
 let _scaleDynamic = 1;
 //
 let casState = 'idle';
-let casscale = new Vector2();
 let casTimeout = 0.25;
 let casResized = new Vector2();
-let cvsField = 0;
 function canvasActualSize() {
     // const doc = new Vector2(document.documentElement.clientWidth, document.documentElement.clientHeight);
     const doc = new Vector2(window.innerWidth, window.innerHeight);
@@ -3250,7 +3325,7 @@ function canvasActualSize() {
             cvsxoffset = (fullsize.x - fullsize.y*2)/2;
             cvssize.setxy(fullsize.y*2, fullsize.y)
         }
-    }
+    };
     cvsscale.update();
     _scaleFixed = cvsscale.getFixed();
     _scaleDynamic = cvsscale.get()
@@ -3540,8 +3615,8 @@ function colorMapMatrix(string) {
         colorMatrix(map[3]))
 };
 //
-let colorMapBackDefault = `rgba(31,31,31,1)#rgba(63,63,63,1)#rgba(63,63,63,1)#rgba(0,0,0,0.5)`;
-let colorMapForeDefault = `rgba(225,225,225,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(191,191,191,0.75)`;
+const colorMapBackDefault = `rgba(31,31,31,1)#rgba(63,63,63,1)#rgba(63,63,63,1)#rgba(0,0,0,0.5)`;
+const colorMapForeDefault = `rgba(225,225,225,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(191,191,191,0.75)`;
 //
 // @EAG PATH2D METHODS
 //
@@ -3734,7 +3809,7 @@ class TextButtonShaped {
 //
 // @EAG SHAPED IMAGEBUTTON
 //
-let _imagebuttonheight = 6;
+const _imagebuttonheight = 6;
 class ImageButtonShaped {
     constructor(shape, image, spacing, colormap_shape) {
         this.shapefunc = shape; this.image = image; this.spacing = spacing;
@@ -4021,7 +4096,7 @@ class ShapedSelectBar {
 //
 // @EAG SHAPED HOLDBUTTON
 //
-let _holdbuttonbhvr = {
+const _holdbuttonbhvr = {
     time: '1000',
     ease: easeInOutSine,
 };
@@ -4161,7 +4236,7 @@ function getMaxTextLength(array) {
 };
 //
 function textStringLimit(text, limit) {
-    width = getTextMetrics(text).x;
+    var width = getTextMetrics(text).x;
     if(width <= limit) {
         return text
     } else {
@@ -4430,15 +4505,13 @@ let hoverHint = {
 //
 // @EAG IMAGE METHODS
 //
-let fitFrameSize = new Vector2(240);
-let fitFrameBg = new Color(0, 0, 0, 0.8);
-let fitImageBorder = 4;
-let fitImageSquared = false;
+const fitFrameSize = new Vector2(240);
+const fitImageBorder = 4;
 let allInvokedImages = [];
 // for predict 404
-let imageNotFound = invokeNewImage('images/notfound.png');
+const imageNotFound = invokeNewImage('images/notfound.png');
 //
-let imageWorkInProgress = invokeNewImage('images/wip.png');
+const imageWorkInProgress = invokeNewImage('images/wip.png');
 let imageWIPSize = new Vector2();
 imageWorkInProgress.onload = () => {
     imageWIPSize.setxy(imageWorkInProgress.naturalWidth, imageWorkInProgress.naturalHeight)
@@ -4514,7 +4587,7 @@ class imageFitFrame {
 //
 // @EAG SITES LIST DATA & BAR
 //
-let siteNames = { 
+const siteNames = { 
     'shikimori.one': 'Shikimori',
     'myanimelist.net': 'My Anime List',
     'anidb.net': 'AniDB',
@@ -4525,7 +4598,7 @@ let siteNames = {
     'notify.moe': 'NOTIFY.MOE',
     'livechart.me': 'LiveChart.me',
 };
-let siteSequence = [
+const siteSequence = [
     'shikimori.one',
     'myanimelist.net',
     'anidb.net',
@@ -4537,8 +4610,8 @@ let siteSequence = [
     'livechart.me',
 ];
 //
-let _slpp = 'images/';
-let siteLogos = [
+const _slpp = 'images/';
+const siteLogos = [
     invokeNewImage(_slpp+'shikimori.png'),
     //
     invokeNewImage(_slpp+'myanimelist.png'),
@@ -4551,10 +4624,10 @@ let siteLogos = [
     invokeNewImage(_slpp+'livechart.png'),
 ];
 //
-let siteButtonColormap = `rgba(0,0,0,0)#rgba(0,255,127,0.2)#rgba(0,255,127,1)#rgba(255,63,63,0.2)`;
-let siteimageSpacing = new Vector2(0);
-let siteButtonSize = 32;
-let siteButtonTime = 0.3;
+const siteButtonColormap = `rgba(0,0,0,0)#rgba(0,255,127,0.2)#rgba(0,255,127,1)#rgba(255,63,63,0.2)`;
+let siteimageSpacing = new Vector2(1);
+const siteButtonSize = 32;
+const siteButtonTime = 0.3;
 //
 function sitesButtonShape(pos, size) {
     var shape = new Path2D();
@@ -4568,7 +4641,13 @@ let sitesSearchShikimori = new ImageButtonShaped(
 );
 sitesSearchShikimori.onclick = () => {
     playSound(sound['player']);
-    window.open(`https://shikimori.me/animes?search=${roulette.centerAnime['title']}`)
+    const title = roulette.centerAnime;
+    const malid = malAnimeID(title.sources);
+    if(malid != null) {
+        window.open('https://shikimori.one/animes/'+malid)
+    } else {
+    window.open(`https://shikimori.one/animes?search=${title.title}`)
+    }
 };
 //
 let sites = {
@@ -4716,15 +4795,15 @@ function siteUpdateURLs(sources) {
 //
 // @EAG TITLE INFO OBJECT
 //
-let tinfBoxSize = 250;
-let tinfBoxZoom = 1.2;
-let tinfBoxZoom2 = 0.8;
-let tinfSpacing = 5;
-let tinfTime = 0.3;
-let tinfHeaderSize = 24;
-let tinfFontSize = 16;
+const tinfBoxSize = 250;
+const tinfBoxZoom = 1.2;
+const tinfBoxZoom2 = 0.8;
+const tinfSpacing = 5;
+const tinfTime = 0.3;
+const tinfHeaderSize = 24;
+const tinfFontSize = 16;
 // 
-let seasonsDataMap = {
+const seasonsDataMap = {
     WINTER:     [`rgba(0,196,255,1)`,   `seasonWinter`],
     SPRING:     [`rgba(0,255,72,1)`,    `seasonSpring`],
     SUMMER:     [`rgba(234,255,0,1)`,   `seasonSummer`],
@@ -4736,7 +4815,7 @@ function tinfEpisodesColor(x) {
     ? x < 0.5 ? `rgba(${255*x*2},255,63,1)` : `rgba(255,${255-255*(x-0.5)*2},63,1`
     : `rgba(255, 63, ${Math.norma(x-1)*255}, 1)`
 };
-let typesDataMap = {
+const typesDataMap = {
     SPECIAL:    `typeSpecial`,
     ONA:        `typeONA`,
     OVA:        `typeOVA`,
@@ -4900,10 +4979,10 @@ let tInfo = {
 //
 // @EAG DESCRIPTION OBJECT
 //
-let descrFontFamily = 'Segoe UI';
-let descrFontSize = 13;
-let descrFontSpacing = 0.2;
-let descrWaiting = 0.5;
+const descrFontFamily = 'Segoe UI';
+const descrFontSize = 13;
+const descrFontSpacing = 0.2;
+const descrWaiting = 0.5;
 //
 let descrTransFunctions = {
     'get-ru': () => {
@@ -5193,15 +5272,16 @@ let tDesc = {
 //
 // @EAG ROLL BAR OBJECT
 //
-let rbBodyHeight = 60;
-let rbSpacing = 5;
+const rbBodyHeight = 60;
+const rbSpacing = 5;
 let rbRollWidth = (rbBodyHeight - rbSpacing*2)*2 + rbSpacing;
 //
 let buttonDoRoll = new TextButtonShaped(shapeRectRounded, txt('rbRoll'), new Vector2(200, 40),
     colorMapMatrix(colorMapForeDefault),
     colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.25)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
 buttonDoRoll.onclick = () => {
-    if(!roulette.hidemap) {
+    if(!roulette.hidemap && !rollBar.rollStarted) {
+        rollBar.rollStarted = true;
         rollBar.state = 'hide';
         buttonDoRoll.text = txt('rbWait');
         musicLite.hide();
@@ -5259,8 +5339,8 @@ buttonDoRoll.onhover = () => {
     }
 };
 //
-let imageChangeFilter = invokeNewImage('images/filter.png');
-let imagePrefMenu = invokeNewImage('images/pref.png');
+const imageChangeFilter = invokeNewImage('images/filter.png');
+const imagePrefMenu = invokeNewImage('images/pref.png');
 let buttonChangeFilter = new ImageButtonShaped(shapeRectRounded, imageChangeFilter, new Vector2(5),
     colorMapMatrix(`rgba(0,0,0,0)#rgba(255,63,255,0.25)#rgba(255,63,255,1)#rgba(0,0,0,0)`));
 buttonChangeFilter.onclick = () => {saf.scroll.set(0); playSound(sound['player']); requestScreen(screenAnimeFilter)};
@@ -5281,6 +5361,7 @@ let rollBar = {
     spacing: 0,
 
     //
+    rollStarted: false,
     state: 'init',
     time: 1,
     //
@@ -5360,14 +5441,14 @@ let rollBar = {
 //
 // @EAG MUSIC LITE CONTROLS
 //
-let mlcSpacing = 5;
-let mlcBarSpacing = 2;
-let mlcBarSize = new Vector2(360, 10);
-let mlcButtonSize = 40;
+const mlcSpacing = 5;
+const mlcBarSpacing = 2;
+const mlcBarSize = new Vector2(360, 10);
+const mlcButtonSize = 40;
 //
-let mlcPlayImage = invokeNewImage('images/play.png');
-let mlcPauseImage = invokeNewImage('images/pause.png');
-let mlcNextTrackImage = invokeNewImage('images/random.png');
+const mlcPlayImage = invokeNewImage('images/play.png');
+const mlcPauseImage = invokeNewImage('images/pause.png');
+const mlcNextTrackImage = invokeNewImage('images/random.png');
 //
 let buttonPauseTrack = new ImageButtonShaped(shapeRectRounded, mlcPauseImage, new Vector2(5),
     colorMapMatrix(`rgba(0,0,0,0)#rgba(127,255,127,0.2)#rgba(127,255,127,0.5)#rgba(255,127,127,0.2)`));
@@ -5426,14 +5507,14 @@ let musicLite = {
         // отрисовка плеера
         if(pref.playerShow && musicLite.active) {musicLite.drawfunc()};
         // отрисовка ожидания
+        if(pref.playClip) {
+
+        };
         musicLite.walpha.update();
-        if(musicLite.wait && musicLite.walpha.getFixed() == 0) {musicLite.walpha.move(1,1,easeInCirc)};
-        if(!musicLite.wait && musicLite.walpha.getFixed() == 1) {musicLite.walpha.move(0,0.5,easeOutCirc)};
+        if(musicLite.wait && musicLite.walpha.getFixed() == 0) {musicLite.walpha.move(1,1,easeInCirc)} 
+        else if(!musicLite.wait && musicLite.walpha.getFixed() == 1) {musicLite.walpha.move(0,0.5,easeOutCirc)};
         //
         if(musicLite.walpha.get() > 0) {
-            var wtext = pref.playClip
-            ? txt('hintAwaitingClip')
-            : txt('hintAwaitingMusic');
             ctx.globalAlpha = musicLite.walpha.get();
             //
             var wsize = new Vector2(400, 24).multxy(_scaleDynamic);
@@ -5441,7 +5522,7 @@ let musicLite = {
             scaleFont(16, 'Segoe UI');
             ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
             fillTextFast(normalAlign(new Vector2(0.5,0.95), wsize).sumxy(wsize.x/2, wsize.y*0.8),
-            `${wtext} (${floatNumber(clipTimeout-clipWaiting, 1)} sec.)`);
+            `${txt('hintAwaitingClip')} (${floatNumber(clipTimeout-clipWaiting, 1)} s.)`);
             //
             ctx.globalAlpha = 1
         }
@@ -5766,13 +5847,7 @@ let roulette = {
                 };
                 roulette.sorted.push(item)
             };
-            roulette.sorted.sort((a,b) => {
-                if(a.zoom === b.zoom) {
-                    return 0
-                } else {
-                    if(a.zoom > b.zoom) {return 1} else {return -1}
-                }
-            });
+            roulette.sorted.sort(rouletteSortPosters);
             //
             for(var a in roulette.sorted) {
                 roulette.sorted[a].draw()
@@ -5846,6 +5921,14 @@ function rouletteItemsBezier(p) {
     return tf
 };
 //
+function rouletteSortPosters(a,b) {
+    if(a.zoom === b.zoom) {
+        return 0
+    } else {
+        if(a.zoom > b.zoom) {return 1} else {return -1}
+    }
+};
+//
 // @EAG STUFF ROULETTE
 //
 function radialShadow(p=0) {
@@ -5859,7 +5942,7 @@ function radialShadow(p=0) {
     return g
 };
 //
-let rmpBarHeight = 10;
+const rmpBarHeight = 10;
 let rouletteMapBar = new ShapedSelectBar(new Vector2(cvssize.x*0.3, rmpBarHeight*_scaleDynamic), colorMatrix(`rgba(0,0,0,0)`), colorMatrix(`rgba(0,0,0,0.5)`));
 rouletteMapBar.permanent = true;
 rouletteMapBar.onset = (value) => {
@@ -5906,16 +5989,18 @@ let sload = {
 // downloading database
 let databaseRequestResult = null;
 let adb = {}, adb_information = {};
+let _adb_xml_request = new XMLHttpRequest();
+let _adb_xml_loadprogress = bytesStringify(0);
+_adb_xml_request.onprogress = (e) => {_adb_xml_loadprogress = bytesStringify(e.loaded)};
 function getAnimeDatabase() {
-    var xml = new XMLHttpRequest();
-    xml.open("GET",'https://raw.githubusercontent.com/manami-project/anime-offline-database/master/anime-offline-database.json',false);
-    xml.onload = () => {databaseRequestResult = xml.responseText};
-    xml.onerror = () => {databaseRequestResult = false};
-    xml.send(null)
+    _adb_xml_request.open("GET",'https://raw.githubusercontent.com/manami-project/anime-offline-database/master/anime-offline-database.json',true);
+    _adb_xml_request.onload = () => {databaseRequestResult = _adb_xml_request.responseText};
+    _adb_xml_request.onerror = () => {databaseRequestResult = false};
+    _adb_xml_request.send(null);
 };
 function awaitForDatabase() {
     if(databaseRequestResult !== null) {
-        if(databaseRequestResult !== false) {
+        if(databaseRequestResult[0] !== false) {
             var fulldata = JSON.parse(databaseRequestResult);
             adb = fulldata.data;
             adb_information = {
@@ -5943,6 +6028,7 @@ function awaitForDatabase() {
                 object: adb_information.lastUpdate,
                 url: false
             };
+            console.log(`anime-offline-database ${fulldata.lastUpdate} loaded.`);
             databaseRequestResult = 'success'
         } else {
             databaseRequestResult = 'error'
@@ -5958,7 +6044,7 @@ let dynamicBgcolor = colorMatrix(sload.bgcolor).alpha(0);
 let staticBgcolor = '#000';
 let imageLoadProgress = new TextBox(normalAlign(new Vector2(0.5, 0.3)), new Vector2(400 * _scaleDynamic));
 imageLoadProgress.iterlimit = 4;
-let loadImagesBar = `rgba(200,200,200,0.2)#rgba(255,255,255,0.8)#rgba(0,0,0,1)#rgba(0,0,0,1)`;
+const loadImagesBar = `rgba(200,200,200,0.2)#rgba(255,255,255,0.8)#rgba(0,0,0,1)#rgba(0,0,0,1)`;
 //
 function screenLoading() {
     imageLoadProgress.size.setxy(400 * _scaleDynamic);
@@ -6000,7 +6086,7 @@ function screenLoading() {
         globalRescale();
         //
         sload.alpha.move(1, sload.time, easeInOutSine);
-        imageLoadProgress.text = txt('loadJkrg');
+        imageLoadProgress.text = txt('loadJkrg') + _adb_xml_loadprogress;
         imageLoadProgress.shadow.x = imageLoadProgress.size.x;
         getAnimeDatabase();
         //
@@ -6008,8 +6094,9 @@ function screenLoading() {
     //
     } else if(sload.state === 'wait_adb') {
         awaitForDatabase();
-        if(databaseRequestResult = 'error') {sload.state = 'timeout'};
-        if(databaseRequestResult = 'success') {
+        imageLoadProgress.text = txt('loadJkrg') +' '+ _adb_xml_loadprogress;
+        if(databaseRequestResult == 'error') {sload.state = 'timeout'};
+        if(databaseRequestResult == 'success') {
             // оптималим датабазу
             databaseShorter();
             // создаём пустой список в редактор здесь, только после загрузки датабазы
@@ -6140,9 +6227,9 @@ namebox.dissolving = true;
 namebox.shadow.x = namebox.size.x/2;
 namebox.iterlimit = 4;
 let rollProgressBar = colorMapMatrix(`rgba(0,0,0,0.2)#rgba(225,225,255,0.8)#rgba(0,0,0,1)#rgba(0,0,0,1)`);
-let rollProgressHeight = 3;
+const rollProgressHeight = 3;
 //
-_lastbufferedtitle = '';
+let _lastbufferedtitle = '';
 namebox.onupd = () => {
     // scale
     namebox.size.x = cvssize.x * 0.45;
@@ -6413,10 +6500,10 @@ function sbTitleObject(titleobject, pos, width, spacing, scroll=0) {
     return spacing*2 + h
 };
 //
-let filterBrowserTabHeight = 100;
-let filterBrowserItemName = {style: false, font: 'Segoe UI', size: 20};
-let filterBrowserItemAbout = {style: false, font: 'Segoe UI', size: 16};
-let buttonEditorDeleteSize = new Vector2(90, 30);
+const filterBrowserTabHeight = 100;
+const filterBrowserItemName = {style: false, font: 'Segoe UI', size: 20};
+const filterBrowserItemAbout = {style: false, font: 'Segoe UI', size: 16};
+const buttonEditorDeleteSize = new Vector2(90, 30);
 //
 function sbBrowserItem(item, image, pos, width, spacing, scroll=0) {
     var taby = filterBrowserTabHeight * _scaleDynamic;
@@ -6484,8 +6571,8 @@ function sbEditorItem([item, image], pos, width, spacing, scroll=0) {
     return taby + spacing
 };
 //
-let pageManagerFont = {style: false, font: 'Segoe UI', size: 20};
-let pageManagerButton = new Vector2(150, 30);
+const pageManagerFont = {style: false, font: 'Segoe UI', size: 20};
+const pageManagerButton = new Vector2(150, 30);
 //
 function sbPageManager(control, button3, pos, width, spacing, scroll=0) {
     var bsize = pageManagerButton.multxy(_scaleDynamic);
@@ -6602,30 +6689,30 @@ let presetOnRoulette =  lsLoadString('presetOnRoulette', presetbase[presetSelect
 let listOnRoulette = lsLoadString('listOnRoulette', 'ListName');
 //
 let presetButtons = {};
-let presetButtonFont = {
+const presetButtonFont = {
     style: 'bold',
     font: 'Segoe UI Light',
     size: 16
 };
 let tagButtons = {};
-let tagButtonsFont = {
+const tagButtonsFont = {
     style: 'bold',
     font: 'Segoe UI Light',
     size: 18
 };
-let titleCounterFont = {
+const titleCounterFont = {
     style: 'bold',
     font: 'Consolas',
     size: 18
 };
-let filterHeaderFont = {
+const filterHeaderFont = {
     style: false,
     font: 'Segoe UI',
     size: 50
 };
 //
-let filterButtonsSpacing = 8;
-let filterCounterHeight = 60;
+const filterButtonsSpacing = 8;
+const filterCounterHeight = 60;
 //
 function generatePresetButtons() {
     var measure, size;
@@ -6718,8 +6805,8 @@ let statusButtons = {
     statusUnknown: generateAnotherButton('statusUnknown'),
 };
 //
-filterPromptSize = new Vector2(150, 40);
-filterThreeSize = new Vector2(200, 50);
+const filterPromptSize = new Vector2(150, 40);
+const filterThreeSize = new Vector2(200, 50);
 let filterSwitchPalette = `rgba(220,63,63,1)#rgba(220,220,63,1)#rgba(63,220,63,1)#rgba(220,220,63,0.3)`;
 //
 let buttonFilterYearMin = new TextButtonShaped(shapeRectRounded, filterDefault['yearMin'], filterPromptSize,
@@ -6806,7 +6893,7 @@ function rescaleFilterButtons() {
     for(var key in typeButtons) {rescaleAnotherButton(typeButtons, key)};
     for(var key in statusButtons) {rescaleAnotherButton(statusButtons, key)};
     // prep*
-    var s = [
+    const s = [
         filterPromptSize.multxy(_scaleDynamic),
         filterThreeSize.multxy(_scaleDynamic),
         buttonAnimeStateSize.multxy(_scaleDynamic),
@@ -6953,7 +7040,7 @@ function animeListApply(list) {
     }, tss.fulltime * 1000);
 };
 //
-let changeableValues = [
+const changeableValues = [
     'NSFW', 'scoreAllow', 'scoreMin', 'scoreMax',
     'episodeMin', 'episodeMax', 'yearMin', 'yearMax',
     'statusFinished', 'statusOngoing', 'statusUpcoming', 'statusUnknown',
@@ -6975,7 +7062,7 @@ function calcPresetChanges() {
     return changes
 };
 // state buttons
-let buttonAnimeStateSize = new Vector2(240, 35);
+const buttonAnimeStateSize = new Vector2(240, 35);
 let buttonAnimeStateColor = `rgba(110,24,110,1)#rgba(160,40,160,1)#rgba(255,255,255,1)#rgba(200,50,200,0.8)`;
 let buttonAnimeFilter = new TextButtonShaped(shapeRectRounded, txt('filterStateFilter'), buttonAnimeStateSize,
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
@@ -7044,8 +7131,19 @@ function filterTabSwitcher(posx, swidth, fbSpacing) {
 let buttonBrowseTitles = new TextButtonShaped(shapeRectRounded, txt('filterBrowserFind'), buttonAnimeStateSize, 
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`), 
     colorMapMatrix(filterMainThreePal));
-buttonBrowseTitles.onclick = () => {sDBs.find(String(prompt(txt('filterBrowserPrompt')), sDBs.string))};
+buttonBrowseTitles.onclick = () => {
+    var p = prompt(txt('filterBrowserPrompt'));
+    if(p == null) {return} else {sDBs.find(p)}
+};
 buttonBrowseTitles.needshadow = false;
+let buttonBrowseTitlesMAL = new TextButtonShaped(shapeRectRounded, txt('filterMALFind'), buttonAnimeStateSize, 
+    colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`), 
+    colorMapMatrix(filterMainThreePal));
+buttonBrowseTitlesMAL.onclick = () => {
+    var p = prompt(txt('filterMALPrompt'));
+    if(p == null) {return} else {sDBs.findMAL(p)}
+};
+buttonBrowseTitlesMAL.needshadow = false;
 //
 // @EAG SCREEN ANIME FILTER
 //
@@ -7068,7 +7166,7 @@ let saf = {
     //
     head: 100,
     state: 'filter', // filter, arrays, editor, search
-    edstate: 'list', // list, meta
+    viewmeta: false, // list, meta
 }; 
 //
 function screenAnimeFilter() {
@@ -7249,35 +7347,90 @@ let sDBs = {
     images: [],
     anime: [],
     //
+    all: 0,
     max: 50,
     pages: 1,
     current: 1,
+    where: 'db',
+    state: 'empty',
+    //
+    newQuerry: (where, max) => {
+        sDBs.max = max;
+        sDBs.where = where;
+        sDBs.current = 0;
+        sDBs.all = 0;
+    },
     //
     find: (req, hard) => {
         if(req == '') {return};
+        sDBs.state = 'start_db';
+        sDBs.newQuerry('db', 50);
         var res = searchByTitle(req, hard);
-        if(!res) {return} else {
+        if(!res) {
+            sDBs.state = 'no_anime';
+            return
+        } else {
             sDBs.string = req;
             sDBs.result = [];
             for(var r in res) {
                 sDBs.result[r] = res[r];
                 sDBs.pages = Math.ceil(sDBs.result.length / sDBs.max);
             };
+            sDBs.state = 'success';
+            sDBs.all = sDBs.result.length;
             sDBs.getPage(1)
         }
     },
+    findMAL: (q) => {
+        if(q.length < 2) {return};
+        sDBs.state = 'start_mal';
+        sDBs.newQuerry('mal', 25);
+        sDBs.string = String(q);
+        sDBs.getPage()
+    },
+    //
     getPage: (number = 1) => {
         if(number > sDBs.pages || number < 0) {return};
-        sDBs.current = number;
         sDBs.anime = [];
         sDBs.images = [];
-        if(number == sDBs.pages) {
-            for(var i = (number-1) * sDBs.max; i < sDBs.result.length; i++) {sDBs.drawing(i)}
-        } else {
-            for(var i = (number-1) * sDBs.max; i < number * sDBs.max; i++) {sDBs.drawing(i)}
+        //
+        if(sDBs.current !== number) {
+            if(sDBs.where == 'db') {
+                sDBs.current = number;
+                if(number == sDBs.pages) {
+                    for(var i = (number-1) * sDBs.max; i < sDBs.result.length; i++) {sDBs.drawing(i)}
+                } else {
+                    for(var i = (number-1) * sDBs.max; i < number * sDBs.max; i++) {sDBs.drawing(i)}
+                }
+            } else if(sDBs.where == 'mal') {
+                if(jikan._result == 'wait') {return};
+                sDBs.pages = 1;
+                sDBs.current = 1;
+                sDBs.result = [];
+                jikan._onresult = () => {
+                    var res = JSON.parse(JSON.stringify(jikan._result));
+                    sDBs.pages = res.pagination.last_visible_page;
+                    sDBs.current = res.pagination.current_page;
+                    sDBs.all = res.pagination.items.total;
+                    if(res.data.length > 0) {
+                        sDBs.state = 'success';
+                        for(var i in res.data) {
+                            var a = searchByMALPage(`/anime/${res.data[i].mal_id}/asd`);
+                            if(a !== false) {sDBs.result.push(adb[a])}
+                        };
+                        for(var a in sDBs.result) {sDBs.drawing(a)}
+                    } else {
+                        sDBs.state = 'no_anime';
+                    }
+                };
+                jikan.page = number;
+                jikan.search(sDBs.string)
+            }
         }
+        //
     },
     drawing: (id) => {
+        if(sDBs.result[id] === undefined) {return};
         sDBs.anime[id] = new AnimeItem(sDBs.result[id]);
         sDBs.images[id] = new Image();
         eval(`sDBs.images[id].onerror = () => {sDBs.images[${id}].src = 'images/notfound.png'}`);
@@ -7286,7 +7439,7 @@ let sDBs = {
     controls: () => {
         return {
             max: sDBs.max,
-            all: sDBs.result.length,
+            all: sDBs.all,
             current: sDBs.current,
             pages: sDBs.pages,
         }
@@ -7338,23 +7491,28 @@ function animeSStateBrowser(header, fbSpacing, swidth, xanchor) {
     var pos = new Vector2(xanchor, fbSpacing*2 + h);
     scaleFont(24, 'Segoe UI');
     buttonFilterLeave.pos.setv(pos.sumxy(fbSpacing, 0));
-    buttonBrowseTitles.pos.setv(pos.sumxy(fbSpacing*4 + width*3, 0))
-    buttonBrowseTitles.size = buttonFilterLeave.size = new Vector2(width, h);
-    buttonFilterLeave.draw();
-    buttonBrowseTitles.draw();
+    buttonBrowseTitlesMAL.pos.setv(pos.sumxy(fbSpacing*3 + width*2, 0));
+    buttonBrowseTitles.pos.setv(pos.sumxy(fbSpacing*4 + width*3, 0));
+    buttonBrowseTitlesMAL.size = buttonBrowseTitles.size = buttonFilterLeave.size = new Vector2(width, h);
+    buttonFilterLeave.draw(); buttonBrowseTitles.draw(); buttonBrowseTitlesMAL.draw();
     // отрезаем
     clipCanvas(fullsize.minxy(0, header), new Vector2(cvsxoffset, header));
     saf.height = fbSpacing + header;
     // count n пагес
     scaleFont(18, 'Segoe UI');
     if(sDBs.string != '') {
-        sDBs.result.length > 0
-        ? saf.height += sbTextFit(sDBs.result.length + txt('browserResultCount') + sDBs.string, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get())
-        : saf.height += sbTextFit(txt('browserNoResult') + sDBs.string, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
+        sDBs.all > 0
+        ? saf.height += sbTextFit(sDBs.all + txt('browserResultCount') + sDBs.string, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get())
+        : sDBs.state == 'start_mal' 
+            ? saf.height += sbTextFit(txt('browserMALWait'), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get())
+            : saf.height += sbTextFit(txt('browserNoResult') + sDBs.string, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
         saf.height += fbSpacing
     };
-    if(sDBs.pages > 1 && saf.scroll.get() < _saf_browserheight/2) {
-        saf.height += sbPageManager(sDBs.controls(), [browserPrevPage, browserPromptPage, browserNextPage], new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
+    if(sDBs.pages > 1) {
+        if(saf.scroll.get() < _saf_browserheight/2) {
+            saf.height += sbPageManager(sDBs.controls(), [browserPrevPage, browserPromptPage, browserNextPage], new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get())
+        // тут прикол, переключалку страниц низя нарисовать 2 раза на экране, поэтому когда мы пролистали половину то вместо того чтобы рисовать верхнюю просто добавляем пустоты ровно столько, сколько дали бы кнопки, если просто не рисовать кнопки то при пролистывании вниз список в один момент дёрнется, подумайте нахуй почему Jokerge я ебу нахуя вам это?
+        } else {saf.height += fbSpacing*2 + pageManagerFont.size*_scaleDynamic + browserPromptPage.size.y}
     };
     // анимехи (бляъ)
     if(sDBs.anime.length !== 0) {
@@ -7521,6 +7679,17 @@ buttonEditorClaimRoll.onclick = () => {if(roulette.anime.length > 0) {
     if(conf) {edList.edited.compressArray(roulette.anime); edList.getMeta()}
 }};
 //
+let buttonClearEditable = new TextButtonShaped(shapeRectRounded, txt('wordReset'), new Vector2(500,40),
+    colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+    colorMapMatrix(`rgba(130,29,29,1)#rgba(160,40,40,1)#rgba(255,63,63,1)#rgba(47,47,200,0.3)`));
+buttonClearEditable.needshadow = false; buttonClearEditable.waitanim = false; buttonClearEditable.height = 0;
+buttonClearEditable.onclick = () => {
+    if(edList.edited.list.length > 0) {
+        edList.clear();
+        buttonClearEditable.state = 'idle'
+    };
+};
+//
 let buttonEditorDownloadSize = new Vector2(200,32);
 let buttonEditorDownload = new TextButtonShaped(shapeRectRounded, txt('editorDownloadJSON'), new Vector2(500,40),
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
@@ -7545,13 +7714,14 @@ function animeSStateEditor(header, fbSpacing, swidth, xanchor) {
     buttonFilterLeave.pos.setv(pos.sumxy(fbSpacing, 0));
     buttonEditorApply.pos.setv(pos.sumxy(fbSpacing*2 + width, 0));
     buttonEditorClaimRoll.pos.setv(pos.sumxy(fbSpacing*3 + width*2, 0));
-    buttonEditorClaimRoll.size = buttonEditorApply.size = buttonFilterLeave.size = new Vector2(width, h);
-    buttonFilterLeave.draw(); buttonEditorApply.draw(); buttonEditorClaimRoll.draw();
+    buttonClearEditable.pos.setv(pos.sumxy(fbSpacing*4 + width*3, 0))
+    buttonClearEditable.size = buttonEditorClaimRoll.size = buttonEditorApply.size = buttonFilterLeave.size = new Vector2(width, h);
+    buttonFilterLeave.draw(); buttonEditorApply.draw(); buttonEditorClaimRoll.draw(); buttonClearEditable.draw();
     // отрезаем
     clipCanvas(fullsize.minxy(0, header), new Vector2(cvsxoffset, header));
     saf.height = fbSpacing + header;
     // стейт списка
-    if(saf.edstate == 'list') {
+    if(!saf.viewmeta) {
         // json d+u
         scaleFont(18, 'Segoe UI');
         buttonEditorDownload.size = buttonEditorUpload.size = buttonEditorDownloadSize.multxy(_scaleDynamic);
@@ -7580,24 +7750,24 @@ function animeSStateArrays(header, fbSpacing, swidth, xanchor) {
 //
 // @EAG STUFF PREFERENCES
 //
-let prefButtonSpacing = 5;
-let prefButtonHeight = 32;
-let prefLangButtons = new Vector2(40, 30);
-let prefBarHeight = 16;
-let prefOptionWidth = 250;
+const prefButtonSpacing = 5;
+const prefButtonHeight = 32;
+const prefLangButtons = new Vector2(40, 30);
+const prefBarHeight = 16;
+const prefOptionWidth = 250;
 // base
-let imagePrefApply = invokeNewImage('images/apply.png');
-let imagePrefDefault = invokeNewImage('images/recycle.png');
-let imageAyayaConfused = invokeNewImage('images/confused.png');
+const imagePrefApply = invokeNewImage('images/apply.png');
+const imagePrefDefault = invokeNewImage('images/recycle.png');
+const imageAyayaConfused = invokeNewImage('images/confused.png');
 // tabs
-let imagesPrefTabs = {
+const imagesPrefTabs = {
     main: invokeNewImage('images/pref_main.png'),
     audio: invokeNewImage('images/pref_audio.png'),
     draw: invokeNewImage('images/pref_draw.png'),
     other: invokeNewImage('images/pref_other.png'),
     about: invokeNewImage('images/pref_about.png'),
 };
-let prefTabsColors = {
+const prefTabsColors = {
     main: new Color(250,201,25,1),
     audio: new Color(30,30,200,1),
     draw: new Color(200,30,200,1),
@@ -7658,7 +7828,7 @@ buttonLangRussian.waitanim = false; buttonLangRussian.height = 0;
 buttonLangRussian.onclick = () => {prefSetValue('language', 'ru'); langSelected = 'ru'};
 buttonLangRussian.onhover = () => {hoverHint.invoke(allTranslations.ru.comment)};
 //
-let prefLanguages = [
+const prefLanguages = [
     buttonLangEnglish, buttonLangRussian
 ];
 // roulette
@@ -7766,7 +7936,7 @@ colorMapMatrix(`rgba(110,24,24,1)#rgba(160,40,40,1)#rgba(255,63,63,1)#rgba(47,47
 buttonResetStorage.onact = () => {localStorage.clear(); setTimeout(() => {buttonResetStorage.unblock()}, 500)};
 function prefButtonsRescale() {
     // prepare*
-    var s = [
+    const s = [
         prefButtonSizes[0].multxy(_scaleDynamic),
         prefButtonSizes[1].multxy(_scaleDynamic),
         prefButtonSizes[2].multxy(_scaleDynamic),
@@ -8244,6 +8414,7 @@ let rollWinner = {
                 rollWinner.state = 'wait';
                 visual.lightDiam.move(fitFrameSize.y*1.6, 1, easeOutCirc)
                 setTimeout(() => {
+                    rollBar.rollStarted = false;
                     rollWinner.state = 'none'
                 }, 1100)
             }
@@ -8253,22 +8424,22 @@ let rollWinner = {
 //
 // @EAG VISUAL EFFECTS
 //
-let winnerLightRing = invokeNewImage('images/light.png');
+const winnerLightRing = invokeNewImage('images/light.png');
 // с новой годой, с новой снегой, это к НГ крч эффект снега
-let novyigodSanta = invokeNewImage('images/chibi_santa.png');
-let novyigodElka = invokeNewImage('images/christmas_tree.png');
-let noviygodSize = new Vector2(160);
-let noviygodOffset = new Vector2(200, 0);
+const novyigodSanta = invokeNewImage('images/chibi_santa.png');
+const novyigodElka = invokeNewImage('images/christmas_tree.png');
+const noviygodSize = new Vector2(160);
+const noviygodOffset = new Vector2(200, 0);
 //
 let snowflake = {
     image: invokeNewImage('images/snowflake.png'),
-    depth: new Range(0.3, 1),
+    depth: range(0.3, 1),
     sizeMax: 40,
-    velX: new Range(-40, 40),
-    velY: new Range(40, 150),
-    rotate: new Range(-180, 180),
-    flow: new Range(0.15, 0.4),
-    flowX: new Range(50, 150),
+    velX: range(-40, 40),
+    velY: range(40, 150),
+    rotate: range(-180, 180),
+    flow: range(0.15, 0.4),
+    flowX: range(50, 150),
     //
     count: 200,
     array: [],
@@ -8313,7 +8484,7 @@ class Snowflake {
     }
     getPos() {return this.pos.sumxy(this.wave, 0).minv(this.size.multxy(_scaleDynamic/2)).sumv(this.parallax)}
 };
-let resetSnowflakes = () => {snowflake.array=[];for(let i=0; i<snowflake.count; i++) {snowflake.array[i] = new Snowflake()}};
+let resetSnowflakes = () => {snowflake.array=[];for(var i=0; i<snowflake.count; i++) {snowflake.array[i] = new Snowflake()}};
 function novyigodSnowflakes() {
     // приколы
     if(firstMouseEvent) {
@@ -8377,7 +8548,7 @@ let visual = {
 // @EAG WALLPAPER IMAGE
 //
 let wallpaper = new Image();
-let wallpaperbase = [
+const wallpaperbase = [
     'kyxbor3aw5hud3ek7xpik/1.jpg?rlkey=1s9dvj533143jago8lt5hymlh',    // пять невест
     'q34euwi9ktfz0mnl4a2oe/2.jpg?rlkey=u79lsps7ty61xmkzzfgtp3boa',    // повар боец сома
     'r0uom6cjam85700csbi7d/3.jpg?rlkey=cf65zhme2wtc78f4dp5u5bs1k',    // дракон горничная
@@ -8405,7 +8576,7 @@ let wlpsize = new Vector2();
 let clipmsize = new Vector2();
 let parallaxOffsW = new Vector2();
 let parallaxOffsC = new Vector2();
-let parallaxValue = 0.025;
+const parallaxValue = 0.025;
 //
 let oldwallpaper = randomWallpaperGD();
 let _wphide = new Vector1(1);
@@ -8574,9 +8745,6 @@ function developInfo() {
         //
         graphFPS.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(8)), 3, 0);
         if(pref.playClip) {
-            // clip sync offset
-            // graphClipSync.update(Math.floor(((clipmain.currentTime - _cliptimestamp) - (musicRoll.currentTime - _musictimestamp))*1000));
-            // graphClipSync.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(8)+85), 1, 0);
             // buffered ranges
             videoClipBuffered();
             ctx.fillStyle = '#0008';
@@ -8584,7 +8752,8 @@ function developInfo() {
             ctx.fillStyle = '#fffd'; ctx.textAlign = 'start';
             fillTextFast(new Vector2(devinfoValues.text, devinfoValues.texty(8)+85+devinfoValues.spacing), `videoClipBufferedRanges (${_clipmainBuffered.length})`);
             ctx.textAlign = 'end';
-            fillTextFast(new Vector2(devinfoValues.xanchor + devinfoValues.width, devinfoValues.texty(8)+85+devinfoValues.spacing), `${timeStringify(clipmain.currentTime)} - ${timeStringify(clipmain.duration)}`);
+            var dur = String(clipmain.duration) != 'Infinity' ? clipmain.duration : 300;
+            fillTextFast(new Vector2(devinfoValues.xanchor + devinfoValues.width, devinfoValues.texty(8)+85+devinfoValues.spacing), `${timeStringify(clipmain.currentTime)} - ${timeStringify(dur)}`);
             for(var r in _clipmainBuffered) {
                 var w = (_clipmainBuffered[r][1] - _clipmainBuffered[r][0]) * devinfoValues.width;
                 var x = _clipmainBuffered[r][0] * devinfoValues.width;
@@ -8592,10 +8761,13 @@ function developInfo() {
                 fillRectFast(new Vector2(w, devinfoValues.spacing), new Vector2(devinfoValues.xanchor + x, devinfoValues.texty(8)+85+devinfoValues.spacing*(Number(r)+1)))
             };
             ctx.fillStyle = '#fffa';
-            var pos = (clipmain.currentTime/clipmain.duration)*devinfoValues.width;
+            var pos = (clipmain.currentTime/dur)*devinfoValues.width;
             fillRectFast(new Vector2(3, devinfoValues.spacing*_clipmainBuffered.length), new Vector2(devinfoValues.xanchor + pos, devinfoValues.texty(8)+85+devinfoValues.spacing))
         };
         ctx.textAlign = 'start';
+        // mouse pos
+        fillRect(new Vector2(10*_scaleDynamic), mouse.pos.minxy(5*_scaleDynamic), '#0006');
+        fillRect(new Vector2(8*_scaleDynamic), mouse.pos.minxy(4*_scaleDynamic), '#0f0');
     } else if(pref.showFPS) {
         fillText(new Vector2(14, 30), 'FPS: '+FPS, '#fff', 'bold 16px Consolas');
     }
@@ -8619,7 +8791,7 @@ function render() {
     developInfo();
     // title
     scaleFont(12, 'Consolas', 'italic'); ctx.fillStyle = '#fff';
-    ctx.fillText($appInfo.cleft, 2, fullsize.y-4);
+    ctx.fillText($appInfo.comment, 2, fullsize.y-4);
     ctx.textAlign = 'end';
-    ctx.fillText($appInfo.cright, fullsize.x-4, fullsize.y-4);
+    ctx.fillText('aodb-' + adb_information.lastUpdate, fullsize.x-4, fullsize.y-4);
 };
