@@ -29,6 +29,7 @@ window.onpagehide = window.onblur = () => {
 function databaseShorter() {
     for(var a in adb) {
         delete adb[a].relations;
+        delete adb[a].relatedAnime;
         delete adb[a].thumbnail
     }
 };
@@ -1555,7 +1556,7 @@ let filterDefaultBackup = JSON.stringify(filterDefault);
 let filterPresetOnly = JSON.stringify(filterDefault);
 function resetFilter() {
     filterDefault = JSON.parse(filterDefaultBackup);
-    filterDefault.NSFW = pref.showNSFW
+    // filterDefault.NSFW = pref.showNSFW
 };
 //
 // @EAG PREFERENCES
@@ -1707,6 +1708,7 @@ function optimizeAnimeObject(object) {
     delete obj.synonyms;
     delete obj.thumbnail;
     delete obj.tags;
+    delete obj.relatedAnime;
     return obj
 };
 function optimizeAnimeArray(array) {
@@ -2749,7 +2751,8 @@ function getListFiltered(filter = filterDefault) {
         anime = adb[i];
         _filterHaveAttempts = Number(filterAttempts);
         // sort by episodes
-        if(anime['episodes'] < filter.episodeMin || anime['episodes'] > filter.episodeMax) {if(_attemptAny()){continue}};
+        if(anime['episodes'] < filter.episodeMin) {if(_attemptAny()){continue}};
+        if(anime['episodes'] > filter.episodeMax) {if(_attemptAny()){continue}};
         // sort by score, if allowed
         if(filter.scoreAllow) {
             const anime_id = malAnimeID(anime.sources);
@@ -2759,22 +2762,24 @@ function getListFiltered(filter = filterDefault) {
                 const score = adb_ratings[anime_id]['score'];
                 if(score == 'None' || score == undefined) {continue}
                 else {
-                    if(score < filter.scoreMin) {if(_attemptAny()){continue}};
-                    if(score > filter.scoreMax) {if(_attemptAny()){continue}};
+                    if(score < floatNumber(filter.scoreMin, 2)) {if(_attemptAny()){continue}};
+                    if(score > floatNumber(filter.scoreMax, 2)) {if(_attemptAny()){continue}};
                 }
             }
         };
         // sort by year
-        if(anime['animeSeason']['year'] > filter.yearMax || anime['animeSeason']['year'] < filter.yearMin) {if(_attemptAny()){continue}};
+        if(anime['animeSeason']['year'] > filter.yearMax) {if(_attemptAny()){continue}};
+        if(anime['animeSeason']['year'] < filter.yearMin) {if(_attemptAny()){continue}};
         // sort by include/exclude tags
         if(anime['tags'].length > 0) {
             if(_attemptTags(filterIncludeTags(filter.tagsIncluded, anime['tags']))) {continue};
             if(_attemptTags(filterExcludeTags(filter.tagsExcluded, anime['tags']))) {continue};
         } else {
-            if(!filter.tagsUndefined) {continue}
+            if(!pref.showNSFW) {continue}
+            if(_attemptTags()){continue}
         };
         // sort by nsfw
-        if(!filter.NSFW && filterAnimeTag('allnsfw', anime['tags'])) {continue};
+        if(!pref.showNSFW && filterAnimeTag('allnsfw', anime['tags'])) {continue};
         // sort by season
         const season = anime['animeSeason']['season'];
         if(!filter.seasonSpring && season == 'SPRING') {if(_attemptAny()){continue}};
@@ -5988,7 +5993,7 @@ let sload = {
 };
 // downloading database
 let databaseRequestResult = null;
-let adb = {}, adb_information = {};
+let adb = [], adb_information = {};
 let _adb_xml_request = new XMLHttpRequest();
 let _adb_xml_loadprogress = bytesStringify(0);
 _adb_xml_request.onprogress = (e) => {_adb_xml_loadprogress = bytesStringify(e.loaded)};
@@ -6026,6 +6031,11 @@ function awaitForDatabase() {
             _preftitles.adb_version = {
                 name: 'Last update',
                 object: adb_information.lastUpdate,
+                url: false
+            };
+            _preftitles.adb_length = {
+                name: 'Anime count',
+                object: adb.length,
                 url: false
             };
             console.log(`anime-offline-database ${fulldata.lastUpdate} loaded.`);
@@ -6679,7 +6689,6 @@ let tagSelection = {
     'shorts':           'none',
     // oh no
     'secret':           'exc',
-    'allnsfw':          'exc',
 };
 //
 let tagSelectionString = JSON.stringify(tagSelection);
@@ -6885,6 +6894,7 @@ function rescaleFilterButtons() {
     // tags
     scaleFontObject(tagButtonsFont);
     for(var key in tagbase) {
+        if(key == 'allnsfw') {continue};
         measure = ctx.measureText(tagbase[key].name);
         tagButtons[key].size = new Vector2(Math.floor(measure.width), measure.fontBoundingBoxAscent).sumxy(spacing*2)
     };
@@ -8220,6 +8230,7 @@ function screenPreferences() {
         spref.height += sbTitleObject(_preftitles.adb_author, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
         spref.height += sbTitleObject(_preftitles.adb_version, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
         spref.height += sbTitleObject(_preftitles.adb_license, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbTitleObject(_preftitles.adb_length, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
         // об остальном
         spref.height += spacing*2;
         scaleFont(32, 'Segoe UI', 'bold');
