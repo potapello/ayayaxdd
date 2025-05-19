@@ -2,7 +2,7 @@
 //  AYAYA - Anime Roulette (WIP)
 //      An application for getting random anime from a list randomly generated 
 //      or manually assembled.
-//  Copyright (C) 2023  Ilya 'potapello' Potapov
+//  Copyright (C) 2025  Ilya 'potapello' Potapov
 //  Repository -> https://github.com/potapello/ayayaxdd
 //  License -> GNU General Public License v3.0
 //  License URL -> https://github.com/potapello/ayayaxdd/blob/main/LICENSE
@@ -25,9 +25,12 @@ window.onfocus = window.onpageshow = () => {
 window.onpagehide = window.onblur = () => {
     windowVisibility = false; fpsFocusSwitch = true
 };
-// database shorter
+/** Работает с `adb` : добавляет `fake_dbid` каждому элементу и удаляет все неиспользуемые данные. */
 function databaseShorter() {
     for(var a in adb) {
+        // counter
+        adb[a].fake_dbid = Number(a);
+        // shorter
         delete adb[a].relations;
         delete adb[a].relatedAnime;
         delete adb[a].thumbnail
@@ -61,16 +64,18 @@ const fpsFocusLimiter = 20;
 let fpsFocusLast = Number();
 let fpsFocusSwitch = false;
 function workWithFPS() {
+    // for drawtime calc
+    if(pref.showDebugInfo || pref.showFPS) {_ft_start = performance.now()};
     // // limit fps, if no focus @RELEASE
-    if(fpsFocusSwitch) {
-        fpsFocusSwitch = false;
-        if(windowVisibility) {
-            lockFpsSwitch(0, false)
-        } else {
-            fpsFocusLast = Number(pref.framerate);
-            lockFpsSwitch(fpsFocusLimiter, false)
-        }
-    };
+    // if(fpsFocusSwitch) {
+    //     fpsFocusSwitch = false;
+    //     if(windowVisibility) {
+    //         lockFpsSwitch(0, false)
+    //     } else {
+    //         fpsFocusLast = Number(pref.framerate);
+    //         lockFpsSwitch(fpsFocusLimiter, false)
+    //     }
+    // };
     //
     deltaTime = performance.now() - oldTime;
     oldTime = performance.now();
@@ -88,17 +93,28 @@ setInterval(() => {
     fpsFrames = 0;
     fpsSumm = 0
 }, 1000/fpsCalcFreq);
+// drawtime calculation
+let _ft, _ft_start = 0;
+let _ft_buffer = 50, _ft_all = [];
+function calcDrawTime() {
+    if(pref.showFPS || pref.showDebugInfo) {
+        _ft_all.push(performance.now() - _ft_start);
+        if(_ft_all.length > _ft_buffer) {_ft_all.shift()};
+        var ftsum = 0;
+        _ft_all.forEach((v) => {ftsum += v});
+        _ft = floatNumber(ftsum / _ft_all.length, 1)
+    };
+};
 //
 // @EAG GRAPH CLASS
 //
 class Graph {
     constructor(name, height_pixels, width_elements) {
       this.name = name; this.height = height_pixels; this.width = width_elements;
+      this.array = [];
+      this.pickup = 0;
+      this.max = 0;
     }
-    // add array
-    array = []
-    pickup = 0;
-    max = 0;
     // updating
     update(newNumber) {
         if(this.array.length < this.width) {
@@ -136,7 +152,7 @@ class Graph {
         //
         // line path & draw
         ctx.beginPath();
-        ctx.lineWidth ="2";
+        ctx.lineWidth = "2";
         ctx.moveTo(pos.x, pos.y+this.height-(((this.array[0]+this.pickup)/this.max)*this.height)+2);
         if(this.array.length > 1) {
             for(var i = 1; i < this.array.length; i++) {
@@ -179,7 +195,6 @@ function findCent(array) {
 };
 //
 const graphFPS = new Graph('FPS', 80, 100);
-// let graphClipSync = new Graph('VcSO', 50, 300);
 //
 // @EAG VECTOR1 CLASS
 //
@@ -393,23 +408,6 @@ class Vector2 {
     }
 };
 //
-// @EAG LIGHT TRANSFORM CLASS
-//
-class Transform {
-    constructor(position = new Vector2(), size = new Vector2(), angle = new Vector1(), alpha = new Vector1(1)) {
-        this.pos = position; this.size = size; this.angle = angle; this.alpha = alpha
-    }
-    raw() {return new Transform(this.pos, this.size, this.angle, this.alpha)}
-    update() {
-        this.pos.update();
-        this.size.update();
-        this.angle.update();
-        this.alpha.update();
-    }
-    centeredAngle() {
-    }
-};
-//
 // @EAG EASINGS
 //
 function easeOutQuint(x) {
@@ -447,7 +445,7 @@ function easeOutQuint(x) {
     return 1 - Math.pow(1 - x, 5)
 };
 //
-// @EAG MOUSE INPUT
+// @EAG MOUSE & TOUCH INPUT
 //
 let mouse = {
     old: new Vector2(0),
@@ -455,6 +453,7 @@ let mouse = {
     delta: new Vector2(0),
     holdTicks: 0,
     wheelTicks: 0,
+    pressTicks: 0,
     holded: false,
     wheel: 0,
     press: false,
@@ -470,6 +469,7 @@ let wheelState = 'idle';
 let touchScroll = 0;
 let _holdTicks = 1;
 let _wheelTicks = 1;
+let _pressTicks = 100;
 mouse.holdTicks = _holdTicks;
 mouse.wheelTicks = _wheelTicks;
 // mouse position
@@ -479,23 +479,18 @@ document.addEventListener('mousemove', (e) => {
 // get wheel compatible
 if (document.addEventListener) {
     if ('onwheel' in document) {
-      // iExplorer > 8, FFox > 17, Chrome > 31
       document.addEventListener("wheel", onWheel);
     } else if ('onmousewheel' in document) {
-      // Chrome < 31
       document.addEventListener("mousewheel", onWheel);
     } else {
-      // FFox < 17
       document.addEventListener("MozMousePixelScroll", onWheel);
     }
-    // iExplorer < 8
 } else {
     document.attachEvent("onmousewheel", onWheel);
 };
 // wheel list  
 function onWheel(e) {
     e = e || window.event;
-    // wheelDelta not support count of pixels
     mouse.wheel += Math.sign(e.deltaY || e.detail || e.wheelDelta);
     getMousewheel()
 };
@@ -514,9 +509,7 @@ document.addEventListener('mouseup', (e) => {
     if(e.button == 0) {mouse.press = false};
     if(e.button == 3) {mouse.preview = false};
 });
-//
-// @EAG TOUCH INPUT
-//
+// TOUCH
 document.addEventListener('touchmove', (e) => {
     // mouse pos
     mouse.pos.setxy(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
@@ -538,7 +531,10 @@ document.addEventListener('touchmove', (e) => {
 document.addEventListener('touchstart', (e) => {mouse.press = true});
 document.addEventListener('touchend', (e) => {mouse.press = false});
 //
-// @EAG KEYBOARD INPUT
+// @EAG KEYBOARD & LISTENER
+//
+let readKeyboardInput = false;
+let inputkeys = [];
 //
 let keyboard = {};
 let cheatPrompt = [];
@@ -554,25 +550,23 @@ function keyPressed(key = String()) {
 //
 document.addEventListener('keyup', (e) => {
     keyboard[e.code] = false;
+    if(readKeyboardInput) {inputkeys.push(e.key)}
 });
 document.addEventListener('keydown', (e) => {
     keyboard.EVENT = true;
     keyboard[e.code] = true;
 });
 //
-// @EAG INPUT LISTENER
-//
 function inputListener() {
     // KEYBOARD
-    if(keyboard.EVENT !== undefined) {
+    if(keyboard.EVENT !== undefined && !readKeyboardInput) {
         // scaling
         if(keyPressed('Plus') || keyPressed('Equal')) {_scaleFixed < 3.9 ? cvsscale.move(_scaleFixed+0.1, 0.25, easeOutCirc) : false; globalRescale()};
         if(keyPressed('Minus')) {_scaleFixed >= 0.6 ? cvsscale.move(_scaleFixed-0.1, 0.25, easeOutCirc) : false; globalRescale()};
         // return to roulette screen
-        if(keyPressed('Escape') || mouse.preview) {
-            mouse.preview = false;
-            if(activeScreen !== screenRoulette && activeScreen !== screenLoading) {
-                requestScreen(screenRoulette)
+        if(activeScreen !== screenRoulette && activeScreen !== screenLoading && activeScreen != screenMarathonMap) {
+            if(keyPressed('Escape')) {
+                requestScreen(screenRoulette, false)
             }
         };
         if(activeScreen == screenRoulette && roulette.catchWinner !== true) {
@@ -594,8 +588,8 @@ function inputListener() {
             };
             if(keyPressed('Enter')) {mnMenu.apply = true} 
             else if(keyPressed('Digit1')) {mnMenu.plan = true};
-            if(keyPressed('Backslash')) {pref.showDebugInfo = pref.showDebugInfo ? false : true};
         };
+        if(keyPressed('Backslash')) {pref.showDebugInfo = pref.showDebugInfo ? false : true};
         if(keyPressed('Backquote')) {
             var prom = prompt('Write a command...', _cheats.last);
             if(prom !== null) {
@@ -604,13 +598,28 @@ function inputListener() {
                 checkCheatPrompt()
             }
         };
-        // end
-        keyboard = {}
+        // marathon map movement
+        if(activeScreen == screenMarathonMap && !mapMeta.cutscene) {
+            if(keyPressed('ArrowLeft')) {mapMovePlayer({x:-1,y:0})};
+            if(keyPressed('ArrowRight')) {mapMovePlayer({x:1,y:0})};
+            if(keyPressed('ArrowUp')) {mapMovePlayer({x:0,y:-1})};
+            if(keyPressed('ArrowDown')) {mapMovePlayer({x:0,y:1})};
+            //
+            if(keyPressed('Escape')) {
+                mapMeta.overlay ? mapOverlayMover(false) : requestScreen(screenRoulette, false)
+            };
+            if(keyPressed('Enter')) {
+                mapSelectRect(mapGetRect(mapMeta.pos))
+            }
+        }
     };
+    // end
+    keyboard = {};
     // reset
     mouse.click = false;
     // mouse button hold
     if(mouse.press) {
+        mouse.pressTicks += deltaTime;
         if(mouse.holdTicks > 0) {
             mouse.holdTicks -= deltaTime
         } else {
@@ -619,10 +628,11 @@ function inputListener() {
     } else {
         if(mouse.holdTicks != _holdTicks) {
             mouse.holdTicks = _holdTicks;
-            // focus
-            mouse.click = true
+            // disable click by pressing
+            if(mouse.pressTicks < _pressTicks) {mouse.click = true}
         };
-        if(mouse.holded) {mouse.holded = false}
+        if(mouse.holded) {mouse.holded = false};
+        mouse.pressTicks = 0;
     };
     // mouse wheel state
     if(wheelState !== 'idle') {
@@ -639,7 +649,9 @@ function inputListener() {
     // detect file manager results
     if(fileManager.result != null && fileManager.result != false) {
         if(fileManager.onupload != null) {fileManager.onupload(); fileManager.onupload = null}
-    }
+    };
+    // prevent infinity input read
+    readKeyboardInput = false;
 };
 //
 // @EAG LOCAL FILE MANAGER
@@ -747,18 +759,27 @@ let fileManager = {
         };
         fileManager.input.click()
     },
+    sizeofJSON: (object, code=1) => {
+        return Number(JSON.stringify(object).length) * code
+    },
 };
 //
-// @EAG PROMPT FUNCTIONS
+// @EAG PROMPT & CHEATS
 //
+/** 
+* Открывает окно prompt для ввода числа. Возвращает введёное число или `actual`. 
+* @overload `ayayaxdd.promptNumber`
+* @param {string} text => Описание запроса.
+* @param {number} min => Минимально-возможное возвращаемое значение.
+* @param {number} max => Мaксимально-возможное возвращаемое значение.
+* @param {number} actual => Текущее значение или значение по умолчанию. Возвращается функцией, если число введено некорректно или число не удовлетворяет условиям `min` `max`.
+*/
 function promptNumber(text, min, max, actual) {
     var p = String(Number(prompt(text, actual)));
     if(p === 'NaN' || p === 'null') {return actual}
     else {p = Number(p)};
     return p < min ? min : p > max ? max : p
 };
-//
-// @EAG CHEAT COMMANDS
 //
 function checkCheatPrompt() {
     if(activeScreen == screenRoulette && roulette.catchWinner !== true) {
@@ -781,7 +802,7 @@ let _cheats = {
     last: '',
     'js': (args) => {
         if(args[1] !== undefined) {
-            console.log('cheat evaluate => '+args[1]);
+            console.log('Cheat | Try to evaluate => '+args[1]);
             eval(args[1])
         }
     },
@@ -870,22 +891,25 @@ let _cheats = {
         snowflake.count = number < 0 ? 0 : number > 1024 ? 1024 : number;
         resetSnowflakes()
     },
+    'vsync': (args) => {
+        if(args[1] === undefined) {return};
+        enabledVsyncRAF(eval(args[1]))
+    },
+    'mrt': (args) => {setTimeout(() => {showScreenMarathon()}, 500)},
 };
 //
-// @EAG OTHER CLASSES
+// @EAG MATH FUNCTIONS
 //
 function range(min, max) {
     return {min, max};
 };
-//
-// @EAG MATH FUNCTIONS
 //
 Math.norma = (x) => {
     return x > 1 ? 1 : x < 0 ? 0 : x
 };
 function moreThanZero(value) {
     return value < 0 ? 0 : value
-}
+};
 function timeStringify(sec) {
     if(String(sec) == 'NaN' || String(sec) == 'Infinity' || sec == undefined) {return `0:00`}
     else {
@@ -926,10 +950,11 @@ function _dropboxURL(key) {
 };
 //
 class videoClip {
-    constructor(music, video_anchor, time, video_url) {
+    constructor(music, video_anchor, time, video_url, custom=false) {
         this.m = music;
         this.v = [_dropboxURL(video_url), video_anchor];
         this.time = time;
+        this.custom = custom;
     }
 };
 //
@@ -986,6 +1011,7 @@ function videoClipSet(clip) {
     _cliptimestamp = clipmain.currentTime = clip.v[1];
     clipmainTime = clip.time;
     clipmain.preload = 'auto';
+    clipmain.volume = 0;
     clipmain.oncanplay = () => {clipmainLoaded = true};
     clipmain.onended = () => {clipmain.pause()};
     //
@@ -1077,7 +1103,7 @@ const music = [
     ['audio/music2.ogg', 49, 'Miku Sawai - Gomen ne, Iiko ja Irarenai'],
     ['audio/music3.ogg', 17, 'DUSTCELL - Narazumono'],
     ['audio/music4.ogg', 0, 'Cagayake! - GIRLS'],
-    ['audio/music5.ogg', 35, 'bulow - Revolver'], // над заменить, нахуй оно тут? 
+    ['audio/music5.weba', 60, 'Sachika Misawa - Links'], // 
     ['audio/music6.ogg', 0, 'Aoi Yuki - Los! Los! Los!'],
     ['audio/music7.ogg', 41, 'Ado - AntiSystem\'s'],
     ['audio/music8.ogg', 44, 'Kenshi Yonezu - KICK BACK'],
@@ -1100,8 +1126,33 @@ const music = [
     ['audio/music25.ogg', 48, 'FELT - Summer Fever'],
     ['audio/music26.ogg', 20.5, 'SEREBRO - Мало тебя (speed up)'],
     ['audio/music27.ogg', 50, 'Touhou - Bad Apple!!'],
-    // bloody stream - жёжё оп, с клипом
-    // guren no yumiya - титосы оп, с клипом
+    ['audio/music28.weba', 42, 'ZUTOMAYO - TAIDADA'],
+    ['audio/music29.weba', 35, 'Kuhaku Gokko - Pikaro'],
+    // bloody stream        clip
+    // guren no yumiya      clip
+    // shikanoko            clip
+    // domekano op1
+    // oshi no ko op1       clip
+    // call of the night    clip
+    // bakemonogatari op4
+    // apothecary diar op1  clip
+    // parasyte
+    // deja vu
+    // black catcher        clip?
+    // hell paradise op     clip
+    // neverland            onlyclip
+    // kaguya op1           onyclip?
+    // bocchi               onlyclip
+    // ghoul tot samyy      clip
+    // frieren op
+    // solo level op2
+    // yt vAKBZeQklQw 
+    // blue lock op2
+    // April lie op     
+    // naruto ship op1
+    // overlord op1
+    // date a live op4
+    // Food Wars s3op2
 ];
 // 
 const cliponly = [
@@ -1122,36 +1173,32 @@ const cliponly = [
     ['audio/clip8.weba', 0, 'Kyoro - Survive (YTPMV)'],
     ['audio/clip9.weba', 0, 'beoh - hpes-shiki (YTPMV)'],
     ['audio/clip10.weba', 62, 'nanodot - It\'s just your fault (YTPMV)'],
+    ['audio/music5.weba', 76, 'Sachika Misawa - Links'],
+    ['audio/music28.weba', 42, 'ZUTOMAYO - TAIDADA'],
 ];
 //
 let _clipSelected = null;
 const clips = [
     // new videoClip(music[x], rolltime, lifetime, 'key'), (* = ytpmv)
-    new videoClip(cliponly[0], 31, 32.1,    'w0i5vrvg2qat8mawfjy2i/video1.webm?rlkey=vc7tda62c9s0kfcznxnm02240'), // botagiri *
-    new videoClip(cliponly[1], 55, 37,      'ieofoxdaqm4jmumczph92/video2.webm?rlkey=mss80z4v2rcjl0qq3mvz0qwky'), // aquarius *
+    new videoClip(cliponly[0], 31, 32.1,    'w0i5vrvg2qat8mawfjy2i/video1.webm?rlkey=vc7tda62c9s0kfcznxnm02240', true), // botagiri *
+    new videoClip(cliponly[1], 55, 37,      'ieofoxdaqm4jmumczph92/video2.webm?rlkey=mss80z4v2rcjl0qq3mvz0qwky', true), // aquarius *
     new videoClip(cliponly[2], 21.35, 35.4, '4f2z5ksu6bxu0l68vhslf/video3.webm?rlkey=sli7839jj0sn7dtndkqdr9vdb'), // bad apple
-    new videoClip(cliponly[3], 35, 43.2,    'drhq7vy4mcb32jcq9jtot/video4.webm?rlkey=69155pksd9z5gbn80zm0ungku'), // point of no k-on *
-    new videoClip(cliponly[4], 78, 38.8,    'xvdt3he159lduqixpffk0/video5.webm?rlkey=zbe9w4z7kkslnggz67mw3pf2h'), // yuyushiki factory *
+    new videoClip(cliponly[3], 35, 43.2,    'drhq7vy4mcb32jcq9jtot/video4.webm?rlkey=69155pksd9z5gbn80zm0ungku', true), // point of no k-on *
+    new videoClip(cliponly[4], 78, 38.8,    'xvdt3he159lduqixpffk0/video5.webm?rlkey=zbe9w4z7kkslnggz67mw3pf2h', true), // yuyushiki factory *
     new videoClip(cliponly[5], 48, 36,      '9snur9h8l5cftf47n3ln1/video6.webm?rlkey=2qv31z6q5gf98sy01emowo8ct'), // k-on op
     new videoClip(cliponly[6], 51, 37,      'a4bfdi4hnbzj1t8l4f39q/video7.webm?rlkey=7zolbpa1ptyizc4vgub9e2dwe'), // ado antisystem
     new videoClip(cliponly[7], 6, 28.5,     'cujxc4en713r25f20iz4a/video8.webm?rlkey=0qpxdx4fwwtwg74szmbhs4vc0'), // shimoneta ed
     new videoClip(cliponly[8], 38, 34,      'upfai6wav5gy5dq4nogoy/video9.webm?rlkey=fs8dhy9djvp64tukntarhbto6'), // kick back
     new videoClip(cliponly[9], 0, 69.5,     'b5tlu916tcn3r5f9ezau2/video10.webm?rlkey=bgfoiorex4sirmn898rqcfx4p'), // fatima
     new videoClip(cliponly[10], 48, 40,     'z5pq4uemtopjii80yeh1k/video11.webm?rlkey=godc4mzev23jxezdu99o5of29'), // gate 1
-    new videoClip(cliponly[11], 0, 26.5,    '41z7s482j3wqgk3ua1ugs/video12.webm?rlkey=3wqgbwn2phyifv0egj3aoms9c'), // INTR *
-    new videoClip(cliponly[12], 0, 37,      '0g4hye7mc3iv3vp783qfj/video13.webm?rlkey=6m5rc64tmuht2rq4nsm0tdpzs'), // HTDN *
-    new videoClip(cliponly[13], 0, 46.4,    'rtk3o32aoe9xy5tzur21x/video14.webm?rlkey=0jc0tz7r1fz9lvnennj12wvpf'), // old castle baby *
-    new videoClip(cliponly[14], 0, 49.5,    '322csul3wvt4gt9wy2co5/video15.webm?rlkey=kk1i0webz34xsisd4b97g3xj6'), // eshatos survive *
-    new videoClip(cliponly[15], 0, 56,      'p7dct166v6ekx2obnceft/video16.webm?rlkey=vg2oym9jxs6r7as64qj8qhn5k'), // hpes-shiki *
-    new videoClip(cliponly[16], 62, 36.7,   'rsa1cvk0tbf33gh8ogptn/video17.mp4?rlkey=mmqond1w63sbwpac8xkgocihe'), // your fault *
-    // nasruto
-    // neverland
-    // kaguya 1 op
-    // re zero
-    // bocchi
-    // jojo
-    // titosy ebat'
-    // минимум 7 ещё будет catDespair SnowTime
+    new videoClip(cliponly[11], 0, 26.5,    '41z7s482j3wqgk3ua1ugs/video12.webm?rlkey=3wqgbwn2phyifv0egj3aoms9c', true), // INTR *
+    new videoClip(cliponly[12], 0, 37,      '0g4hye7mc3iv3vp783qfj/video13.webm?rlkey=6m5rc64tmuht2rq4nsm0tdpzs', true), // HTDN *
+    new videoClip(cliponly[13], 0, 46.4,    'rtk3o32aoe9xy5tzur21x/video14.webm?rlkey=0jc0tz7r1fz9lvnennj12wvpf', true), // old castle baby *
+    new videoClip(cliponly[14], 0, 49.5,    '322csul3wvt4gt9wy2co5/video15.webm?rlkey=kk1i0webz34xsisd4b97g3xj6', true), // eshatos survive *
+    new videoClip(cliponly[15], 0, 56,      'p7dct166v6ekx2obnceft/video16.webm?rlkey=vg2oym9jxs6r7as64qj8qhn5k', true), // hpes-shiki *
+    new videoClip(cliponly[16], 62, 36.7,   'rsa1cvk0tbf33gh8ogptn/video17.mp4?rlkey=mmqond1w63sbwpac8xkgocihe', true), // your fault *
+    new videoClip(cliponly[17], 0, 33,      'v0ak24ja4eyka6ai3vbji/video18.mp4?rlkey=fjzb9jjmfdfhklaudoo90nz1n'), // railgun s 2ed
+    new videoClip(cliponly[18], 42, 44.5,     'gww945yj83uklsof8hngw/video19.mp4?rlkey=nrdtuh9hi1venj5r8yshgpzyy'), // dandadan ed
 ];
 //
 let musicNormal = new Audio();
@@ -1169,9 +1216,7 @@ let musicRollPrefound = null;
 let musicNormalLoop = false;
 let musicNormalComplete = false;
 let musicBGVOld = -1;
-//
-// @EAG AUDIO METHODS
-//
+//                                                                          METHODS
 function playSound(sound = new Audio()) {
     sound.currentTime = 0;
     sound.volume = pref.sound / 100;
@@ -1327,7 +1372,7 @@ function musicRollEnd(time = 0.5) {
     }, time*1000)
 };
 //
-// @EAG MUSIC NORMAL MENU
+// @EAG MUSIC WORK
 //
 const musicMenuWidth = 420;
 function getCurrentMusic() {
@@ -1429,9 +1474,7 @@ let mnMenu = {
         ctx.globalAlpha = 1
     },
 };
-//
-// @EAG MUSIC ANALYZER
-//
+//                                                                   ANALYZER
 let musicAnalysis = {
     ctx: null,
     //
@@ -1485,9 +1528,7 @@ let musicAnalysis = {
         }
     },
 };
-//
-// @EAG MUSIC EQUALIZER
-//
+//                                                                      EQUALIZER
 let musicEqualizer = {
     size: new Vector2(),
     // draw
@@ -1509,7 +1550,7 @@ let musicEqualizer = {
     },
 };
 //
-// @EAG FILTER DEFAULT
+// @EAG FILTER & PREFFERENCES
 //
 let filterAttempts = 0;
 let filterAttemptTags = false;
@@ -1524,6 +1565,7 @@ let filterDefault = {
     //episodes
     episodeMin: 1,
     episodeMax: 50,
+    skipSpecial: false,
     //year
     yearMin: 1970,
     yearMax: 2023,
@@ -1558,9 +1600,7 @@ function resetFilter() {
     filterDefault = JSON.parse(filterDefaultBackup);
     // filterDefault.NSFW = pref.showNSFW
 };
-//
-// @EAG PREFERENCES
-//
+//                                                                               PREFERENCES
 let pref = {
     // roulette @RELEASE
     rollTime: 30,       // 30
@@ -1578,6 +1618,7 @@ let pref = {
     framerate: 60,        
     bgalpha: 0.7,
     scale: 4,
+    vsync: false,
     // audio
     sound: 8,
     bgmusic: 6,
@@ -1604,10 +1645,9 @@ function prefSetValue(name, value) {
 function updatePreferences() {
     ctx.imageSmoothingEnabled = pref.imageSmoothing;
     ctx.imageSmoothingQuality = pref.imageQuality;
-    ctx.lineCap = 'round';
 };
 //
-// @EAG SAVELOAD DATA TYPES
+// @EAG SESSION, LOCAL, LIDB                                                LOCAL
 //
 const savePrefix = 'eagsv_';
 //
@@ -1653,9 +1693,7 @@ function prefVisualSwitch() {
         prefSetValue('visual', false)
     }
 };
-//
-// @EAG SESSION STORAGE
-//
+//                                                                                      SESSION
 let session = sessionStorage;
 const sessionLimit = (4 * 1024 * 1024) - 1;
 const sessionPref = 'eagsession_';
@@ -1699,9 +1737,7 @@ function sessionOptimize() {
     }
 };
 setInterval(() => {sessionOptimize()}, 60000);
-//
-// @EAG SAVE OPTIMIZATION
-//
+//                                                                                   SAVE OPTIMIZATION
 function optimizeAnimeObject(object) {
     var obj = JSON.parse(JSON.stringify(object));
     delete obj.relations;
@@ -1718,14 +1754,12 @@ function optimizeAnimeArray(array) {
     };
     return arr
 };
-//
-// @EAG INDEXED DB FOR LISTS
-//
+//                                                                                   INDEXED DB FOR LISTS
 let lidb = {
     error: false,
     version: 1,
     //
-    max: 50,
+    max: 100,
     saved: 0,
     //
     response: false,
@@ -1852,7 +1886,7 @@ const _TextTranslations = {
             'future':           'Футуризм',
             'crime':            'Преступления',
             'cooking':          'Еда',
-            'present':          'Подарок',
+            'present':          'Современное',
             'kids':             'Дети',
             'manga':            'По манге',
             'original':         'Оригинал',
@@ -1905,6 +1939,13 @@ const _TextTranslations = {
             'Женский спорт': 'Женский спорт',
             'Кухня, 7 сезон': 'Кухня, 7 сезон',
             'Прохладная любовь': 'Прохладная любовь',
+            'Кратко про гаремы': 'Кратко про гаремы',
+            'Дела семейные': 'Дела семейные',
+            'Cyberpunk 2077': 'Cyberpunk 2077',
+            'Страшно смешно': 'Страшно смешно',
+            'Супергероини': 'Супергероини',
+            'Трава у дома': 'Трава у дома',
+            'Аниме \"5в1\"': 'Аниме \"5в1\"',
         },
         // status
         statusFinished: 'Вышел', statusOngoing: 'Онгоинг', statusUpcoming: 'Анонс', statusUnknown: 'Неизв.',
@@ -1926,7 +1967,7 @@ const _TextTranslations = {
         malScore: 'Ср. оценка: ',
         malScoredBy: `Всего оценок: `,
         // rollbar
-        rbRoll: 'Roll!', rbWait: 'Ждём', rbMusicOff: 'Музыка выключена.', rbWarn: 'Победитель уже определён!',
+        rbRoll: 'Крутить!', rbWait: 'Ждём', rbMusicOff: 'Музыка выключена.', rbWarn: 'Победитель уже определён!',
         // desc
         descHead: 'Описание',
         descWait: 'Секундочку...',
@@ -2177,6 +2218,13 @@ const _TextTranslations = {
             'Женский спорт': 'Women\'s sports',
             'Кухня, 7 сезон': 'Kitchen, season 7',
             'Прохладная любовь': '\"Cool\" love',
+            'Кратко про гаремы': 'Briefly about harems',
+            'Дела семейные': 'Family matters',
+            'Cyberpunk 2077': 'Cyberpunk 2077',
+            'Страшно смешно': 'Terribly funny',
+            'Супергероини': 'Superheroines',
+            'Трава у дома': 'Grass at the house',
+            'Аниме \"5в1\"': 'Anime \"5in1\"',
         },
         // status
         statusFinished: 'Finished', statusOngoing: 'Ongoing', statusUpcoming: 'Upcoming', statusUnknown: 'Unknown',
@@ -2385,9 +2433,6 @@ class animeTag {
         this.name = txtTag(name); this.tags = tags
     }
 };
-//
-// @EAG TAGS VARIANTS & TRANSLATE
-//
 const tagbase = {
     // main
     'action':           new animeTag('action', ['action']),
@@ -2460,7 +2505,7 @@ class Preset {
         this.in = includes; this.ex = excludes;
         this.years = years; this.ep = episodes; 
         this.score = score;
-        this.scoreAllow = this.score.max !== 10 || this.score.min !== 5;
+        this.scoreAllow = this.score.max < 10 || this.score.min > 0;
         this.mult = mult; this.others = others
     }
     addon() {
@@ -2490,23 +2535,21 @@ class Preset {
     }
 };
 //
-// @EAG ALL PRESETS
-//
-const YEARS = range(1900, 2024);
+const YEARS = range(1900, 2025);
 const SCORES = range(5, 10);
 const presetbase = {
     //'Перерождение в 2007-й': new Preset(name, 
     // includes, excludes,years, episodes, score, mult, others)
-    'Дефолтный': new Preset('Дефолтный', 
+    'Дефолтный': new Preset('Дефолтный',
     null, null, YEARS, range(1, 50), range(5, 10), 1, null),
-    'Cтарая романтика': new Preset('Cтарая романтика', 
-    ['romance'], null, range(YEARS.min, 2007), range(1, 50), range(6, 10), 1, null),
+    'Cтарая романтика': new Preset('Cтарая романтика',
+    ['romance'], null, range(YEARS.min, 2007), range(1, 50), range(6, 10), 1.1, null),
     'Перерождение в 2007-й': new Preset('Перерождение в 2007-й', 
-    ['isekai'], null, range(2005, 2009), range(1, 50), range(5, 10), 1, null),
+    ['isekai'], null, range(2005, 2009), range(1, 50), range(5, 10), 1.1, null),
     'Современный кал': new Preset('Современный кал', 
     null, null, range(2018, YEARS.max), range(1, 50), range(3, 7), 1.5, null),
     'Хорошая ностальгия': new Preset('Хорошая ностальгия', 
-    null, null, range(YEARS.min, 2000), range(1, 50), range(7, 10), 1, null),
+    null, null, range(YEARS.min, 2000), range(1, 50), range(7, 10), 1.1, null),
     'Мужская магия': new Preset('Мужская магия', 
     ['seinen', 'magic'], null, YEARS, range(1, 50), range(6, 10), 1, null),
     'Сверхъестественная школа': new Preset('Сверхъестественная школа', 
@@ -2516,69 +2559,104 @@ const presetbase = {
     'Женский исекай': new Preset('Женский исекай', 
     ['female', 'isekai'], null, YEARS, range(1, 50), range(5, 10), 1, null),
     'Можно короче?': new Preset('Можно короче?', 
-    null, null, YEARS, range(1, 13), range(5, 10), 1, null),
+    null, null, range(2010, YEARS.max), range(1, 13), range(6, 10), 1, null),
     'Лучшая эротика': new Preset('Лучшая эротика',  
-    ['ecchi'], null, YEARS, range(1, 50), range(7, 10), 1, null),
+    ['ecchi'], null, range(2010, YEARS.max), range(1, 50), range(7, 10), 1, null),
     'Бывалые гаремы': new Preset('Бывалые гаремы', 
     ['harem'], null, range(YEARS.min, 2007), range(1, 50), range(5, 10), 1, null),
     'Девочки в танках': new Preset('Девочки в танках', 
     ['female', 'military'], null, YEARS, range(1, 50), range(5, 10), 1, null),
     'Новая психология': new Preset('Новая психология', 
-    ['psychological'], null, range(2016, YEARS.max), range(1, 50), range(6, 10), 1, null),
+    ['psychological'], null, range(2016, YEARS.max), range(1, 50), range(6, 10), 1.1, null),
     'Повседневность нулевых': new Preset('Повседневность нулевых', 
-    ['slice of life'], null, range(2001, 2010), range(1, 50), range(5, 10), 1, null),
+    ['slice of life'], null, range(2001, 2010), range(1, 50), range(5, 10), 1.1, null),
     '\"Сполт это фыфнь\".': new Preset('\"Сполт это фыфнь\".', 
     ['sports'], null, YEARS, range(1, 50), range(4, 10), 1.25, null),
     'Игры десятых': new Preset('Игры десятых', 
     ['game'], null, range(2011, 2020), range(1, 50), range(5, 10), 1, null),
     'Пережитая история': new Preset('Пережитая история', 
-    ['historical'], null, range(YEARS.min, 2000), range(1, 50), range(5, 10), 1, null),
+    ['historical'], null, range(YEARS.min, 2005), range(1, 50), range(5, 10), 1.3, null),
     'Лучшие приключения': new Preset('Лучшие приключения', 
     ['adventure', 'action'], null, YEARS, range(20, 50), range(7, 10), 1.25, null),
     'Когда плакать?': new Preset('Когда плакать?', 
-    ['drama'], null, YEARS, range(1, 50), range(3, 7), 1.5, null),
+    ['drama'], null, range(2010, YEARS.max), range(1, 50), range(3, 7), 1.4, null),
     'Пожилые слёзы': new Preset('Пожилые слёзы', 
-    ['drama'], null, range(YEARS.min, 2000), range(1, 50), range(7, 10), 1, null),
+    ['drama'], null, range(YEARS.min, 2000), range(1, 50), range(7, 10), 1.2, null),
     'Что это было?': new Preset('Что это было?', 
-    ['mystery'], null, range(2007, YEARS.max), range(1, 50), range(5, 10), 1, null),
+    ['mystery', 'psychological'], null, range(2007, YEARS.max), range(1, 50), range(5, 10), 1.1, null),
     'Новое приключение': new Preset('Новое приключение', 
-    ['adventure'], null, range(2018, YEARS.max), range(1, 50), range(6, 10), 1, null),
+    ['adventure'], null, range(2020, YEARS.max), range(1, 50), range(6, 10), 1, null),
     'Фентезийная любовь': new Preset('Фентезийная любовь', 
     ['fantasy', 'romance'], null, range(2007, YEARS.max), range(1, 50), range(5, 10), 1, null),
     'Плюс уши': new Preset('Плюс уши', 
-    ['music'], null, YEARS, range(1, 50), range(7, 10), 1, null),
+    ['music'], null, range(2000, YEARS.max), range(1, 50), range(7, 10), 1.2, null),
     'Плохие шутки': new Preset('Плохие шутки', 
-    ['comedy'], null, YEARS, range(1, 50), range(3, 7), 1.5, null),
+    ['comedy'], null, range(2010, YEARS.max), range(1, 50), range(3, 7), 1.35, null),
     'Новаторский юмор': new Preset('Новаторский юмор', 
-    ['comedy'], null, range(2016, YEARS.max), range(1, 50), range(6, 10), 1, null),
+    ['comedy'], null, range(2018, YEARS.max), range(1, 50), range(6, 10), 1, null),
     'Грустно, но вкусно': new Preset('Грустно, но вкусно', 
-    ['drama', 'romance'], null, range(2018, YEARS.max), range(1, 50), range(5, 10), 1, null),
+    ['drama', 'romance'], null, range(2016, YEARS.max), range(1, 50), range(6, 10), 1.1, null),
     'Бесится, но любит': new Preset('Бесится, но любит', 
-    ['tsundere'], null, YEARS, range(1, 50), range(6, 10), 1, null),
+    ['tsundere', 'romance'], null, YEARS, range(1, 50), range(6, 10), 1, null),
     'Влюбиться насмерть': new Preset('Влюбиться насмерть',
-    ['yandere'], null, YEARS, range(1, 50), range(6, 10), 1, null),
+    ['yandere'], null, YEARS, range(1, 50), range(6, 10), 1.1, null),
     'Прохладная любовь': new Preset('Прохладная любовь',
-    ['kuudere'], null, YEARS, range(1, 50), range(6, 10), 1, null),
+    ['kuudere'], null, range(2010, YEARS.max), range(1, 50), range(6, 10), 1, null),
     'Бесконечное \"это\"': new Preset('Бесконечное \"это\"',
     ['ecchi'], null, YEARS, range(1, 25), range(5, 10), 1, 
     {seasonSpring: false, seasonFall: false, seasonWinter: false, seasonUndefined: false}),
     'Работать - круто!': new Preset('Работать - круто!', 
-    ['work'], null, YEARS, range(1, 50), range(6, 10), 1, null),
+    ['work'], null, YEARS, range(1, 50), range(6, 10), 1.1, null),
     'Совсем не похоже': new Preset('Совсем не похоже', 
-    ['parody'], null, YEARS, range(1, 50), range(3, 7), 1.25, null),
+    ['parody'], null, YEARS, range(1, 50), range(3, 7), 1.3, null),
     'Годная сатира': new Preset('Годная сатира', 
     ['parody'], null, YEARS, range(1, 50), range(7, 10), 1, null),
     'Супер-романтика': new Preset('Супер-романтика', 
     ['romance', 'supernatural'], null, YEARS, range(1, 50), range(5, 10), 1, null),
     'Выключаем свет': new Preset('Выключаем свет', 
-    ['horror'], null, YEARS, range(1, 50), range(7, 10), 1, null),
+    ['horror'], null, YEARS, range(1, 50), range(7, 10), 1.1, null),
     'Женский спорт': new Preset('Женский спорт', 
     ['female', 'sports'], null, YEARS, range(1, 50), range(6, 10), 1, null),
     'Кухня, 7 сезон': new Preset('Кухня, 7 сезон', 
     ['cooking', 'comedy'], null, YEARS, range(1, 50), range(6, 10), 1, null),
+    //
+    'Кратко про гаремы': new Preset('Кратко про гаремы', 
+    ['harem'], null, range(2010, YEARS.max), range(1, 50), range(5, 10), 1.1, null),
+    'Дела семейные': new Preset('Дела семейные', 
+    ['family'], null, YEARS, range(1, 50), range(5, 10), 1.1, null),
+    'Cyberpunk 2077': new Preset('Cyberpunk 2077', 
+    ['future'], null, YEARS, range(1, 50), range(5, 10), 1.1, null),
+    'Страшно смешно': new Preset('Страшно смешно', 
+    ['horror', 'comedy'], null, YEARS, range(1, 50), range(6, 10), 1.1, null),
+    'Супергероини': new Preset('Супергероини', 
+    ['female', 'supernatural'], null, range(2010, YEARS.max), range(1, 50), range(5, 10), 1, null),
+    'Трава у дома': new Preset('Трава у дома', 
+    ['space', 'drama'], null, range(2010, YEARS.max), range(1, 50), range(5, 10), 1.1, null),
+    'Аниме \"5в1\"': new Preset('Аниме \"5в1\"', 
+    ['adventure', 'action', 'comedy', 'drama', 'romance'], null, YEARS, range(1, 50), range(5, 10), 1.2, null),
+};
+
+// кратко про гаремы
+//
+let _presetnames = [];
+for(var p in presetbase) {
+    _presetnames.push(p)
 };
 //
-// @EAG ARRAY METHODS
+let _mrthpresets = [
+    'Cтарая романтика', 'Современный кал', 'Хорошая ностальгия', 'Мужская магия', 'Сверхъестественная школа', 'Девочки колдуют', 'Женский исекай', 'Можно короче?', 'Лучшая эротика',
+    'Девочки в танках', 'Новая психология', 'Повседневность нулевых', '\"Сполт это фыфнь\".', 'Игры десятых', 'Пережитая история', 'Лучшие приключения', 'Когда плакать?',
+    'Пожилые слёзы', 'Что это было?', 'Новое приключение', 'Фентезийная любовь', 'Плюс уши', 'Плохие шутки', 'Новаторский юмор', 'Грустно, но вкусно', 'Бесится, но любит',
+    'Влюбиться насмерть', 'Прохладная любовь', 'Работать - круто!', 'Совсем не похоже', 'Годная сатира', 'Супер-романтика', 'Кухня, 7 сезон', 
+    'Кратко про гаремы', 'Дела семейные', 'Cyberpunk 2077', 'Страшно смешно', 'Супергероини', 'Трава у дома', 'Аниме \"5в1\"',
+];
+let _mrthpresetsEasy = [
+    'Хорошая ностальгия', 'Сверхъестественная школа', 'Женский исекай', 'Можно короче?', 'Лучшая эротика', 'Что это было?', 'Фентезийная любовь', 'Плюс уши', 'Новаторский юмор', 
+    'Грустно, но вкусно', 'Бесится, но любит', 'Влюбиться насмерть', 'Прохладная любовь', 'Годная сатира', 'Супер-романтика', 'Кухня, 7 сезон', 'Cyberpunk 2077', 'Страшно смешно', 
+    'Супергероини', 'Трава у дома', 'Аниме \"5в1\"',
+];
+//
+// @EAG ARRAY & FILTER METHODS
 //
 function arrayAddNew(main, child) {
     var temp = [].concat(main), temp2;
@@ -2650,9 +2728,7 @@ function objectSortEntries(object) {
     };
     return sorted
 }
-//
-// @EAG FILTER METHODS
-//
+//                                                                                  FILTER
 function filterModify(filter, mod) {
     var af = JSON.parse(JSON.stringify(filter));
     if(typeof mod == 'object') {
@@ -2723,15 +2799,13 @@ let filterPrecount = {
     },
 };
 //
-// @EAG FEEDBACK FUNCTIONS
-//
 function getArrayWorkProgress(iter, length, step) {
     for(var i = 1; i<100/step; i++) {
         if(iter == Math.round(length*step*i/100)) {console.info(`Work progress -> ${step*i}%`)}
     }
 };
 //
-// @EAG LIST GETTER FUNCTIONS
+// @EAG FILTERING FUNCTION
 //
 function _attemptAny(x=1) {
     if(filterAttemptTags) {return true} else {
@@ -2744,15 +2818,19 @@ function _attemptTags(x=1) {
     return _filterHaveAttempts < 0
 };
 let _filterHaveAttempts = 0;
+let _filterWorkTime = 0;
 //
 function getListFiltered(filter = filterDefault) {
     var list = [], anime;
+    var ts = performance.now();
     for(var i in adb) {
         anime = adb[i];
         _filterHaveAttempts = Number(filterAttempts);
         // sort by episodes
         if(anime['episodes'] < filter.episodeMin) {if(_attemptAny()){continue}};
         if(anime['episodes'] > filter.episodeMax) {if(_attemptAny()){continue}};
+        // skip if 1 episode & it not a film
+        if(filter.skipSpecial) {if(anime['episodes'] == 1 && anime['type'] != 'MOVIE') {continue}};
         // sort by score, if allowed
         if(filter.scoreAllow) {
             const anime_id = malAnimeID(anime.sources);
@@ -2804,6 +2882,8 @@ function getListFiltered(filter = filterDefault) {
         //
         list.push(anime)
     };
+    //
+    _filterWorkTime = floatNumber(performance.now() - ts, 1);
     return list
 };
 //
@@ -2821,6 +2901,7 @@ function randomItemsFrom(array, count) {
 //
 // @EAG ANIME LIST CLASS
 //
+let _alist_limit = 200;
 class animeList {
     constructor(name = 'AnimeListName') {
         this.list = [];
@@ -3072,6 +3153,10 @@ let jikan = {
             jikan._send(mal_id)
         }
     },
+    custom: (string) => {
+        jikan._xhr.open("GET", string);
+        jikan._send(0, false)
+    },
     //
     page: 1,
     lastQ: '',
@@ -3085,8 +3170,6 @@ let jikan = {
         jikan._send(0, false)
     },
 };
-//
-// @EAG JIKAN METHODS
 //
 function malAnimeID(sources) {
     var source = null;
@@ -3180,7 +3263,7 @@ let translator = {
     },
 };
 //
-// @EAG GET DATA METHODS
+// @EAG BROWSE DB METHODS
 //
 var _lastTypeDataArray = [];
 var _lastCalcEntries = [];
@@ -3217,8 +3300,6 @@ function calcDataEntries(root, database=adb) {
     console.info(`Entries in "${root}" calculated to "_lastCalcEntries".`);
     return data
 };
-//
-// @EAG BROWSE DB METHODS
 //
 function searchByTitle(request='', hard=false, db=adb) {
     var names = [], item = {}, result = [], req = request.toLowerCase();
@@ -3257,7 +3338,7 @@ function searchByMALPage(url) {
     return false
 };
 //
-// @EAG RESIZE DOCUMENT METHODS
+// @EAG RESIZE WINDOW
 //
 let docsize = new Vector2(window.innerWidth, window.innerHeight);
 let doczoom = 1;
@@ -3336,7 +3417,7 @@ function canvasActualSize() {
     _scaleDynamic = cvsscale.get()
 };
 //
-// @EAG RESCALE METHODS
+// @EAG MARKUP & RESCALE
 //
 function globalRescale() {
     setTimeout(() => {
@@ -3350,8 +3431,6 @@ function globalRescale() {
         prefButtonsRescale();
     }, 300);
 };
-//
-// @EAG MARKUP METHODS
 //
 function normalAlign(align=new Vector2(0.5), size=new Vector2(0)) {
     return new Vector2(cvsxoffset + cvssize.x*align.x-(size.x*align.x), cvssize.y*align.y-(size.y*align.y))
@@ -3431,36 +3510,15 @@ function fillTextFast(pos, text) {
 function fillTextArray(pos, [array, size], spacing=5) {
     if(ctx.textAlign === 'start') {
         for(var i = 0; i < array.length; i++) {
-            ctx.fillText(array[i], pos.x, pos.y + (size.y + spacing) * (i+1))
+            ctx.fillText(array[i], pos.x, (pos.y + size.y) + (size.y + spacing) * i)
         }
     } else if(ctx.textAlign === 'end') {
         for(var i = 0; i < array.length; i++) {
-            ctx.fillText(array[i], pos.x + size.x, pos.y + (size.y + spacing) * (i+1))
+            ctx.fillText(array[i], pos.x + size.x, (pos.y + size.y) + (size.y + spacing) * i)
         }
     } else {
         for(var i = 0; i < array.length; i++) {
-            ctx.fillText(array[i], pos.x + size.x/2, pos.y + size.y * (i+1))
-        }
-    }
-};
-//
-// @EAG COLLISION CLASS
-//
-class Collision {
-    constructor(pos, size) {
-        this.pos = pos; this.size = size
-    }
-    scrollable = false;
-    state() {
-        if(mouse.pos.overAND(this.pos.get()) && mouse.pos.lessAND(this.pos.get().vsum(this.size.get()))) {
-            if(mouse.click) {
-                mouse.click = false;
-                return 'click'
-            } else if(scrollable && wheelState !== 'idle') {
-                return wheelState === 'btm' ? 'scrollup' : 'scrolldown'
-            } else return 'hover'
-        } else {
-            return 'idle'
+            ctx.fillText(array[i], pos.x + size.x/2, (pos.y + size.y) + (size.y + spacing) * i)
         }
     }
 };
@@ -3571,9 +3629,7 @@ function colorMatrix(string) {
         return new Color(Number(string[0]), Number(string[1]), Number(string[2]), Number(string[3]))
     }  
 };
-//
-// @EAG UI MAP CLASSES
-//
+//                                                                                                      UI MAP CLASS
 class ColorMap {
     constructor(idle, hover, click, unaval) {
         this.idle = idle; this.hover = hover; this.click = click; this.unaval = unaval
@@ -3646,9 +3702,7 @@ function shapeCollisionState(shape, scrollable=false) {
     };
     return 'idle'
 };
-//
-// @EAG 2D STYLED SHAPES
-//
+//                                                                                       2D STYLED SHAPES
 function shapeProgressBar(pos, size, prog, colormap) {
     const p = pos.get();
     const r = size.y/2;
@@ -4275,7 +4329,7 @@ function textSplitByLength(full='', len, max=199) {
 //
 function textWidthFit(text, width, max) {
     // textbox fill
-    var iter = 0, state = 'measure', strings = [], measure, pointer, settext = text;
+    var real=0, state = 'measure', strings = [], measure, pointer, settext = text;
     while(state !== '') {
         if(state === 'measure') {
             measure = getTextMetrics(settext);
@@ -4299,7 +4353,8 @@ function textWidthFit(text, width, max) {
             }
         };
         // iter limit
-        iter++; if(iter >= max) {break}
+        real++;
+        if(strings.length >= max || real >= 99) {break}
     };
     return [strings, new Vector2(width, measure.y)]
 };
@@ -4426,6 +4481,24 @@ class TextBox {
         fillRectRounded(new Vector2(this.shadow.get().x, this.shadow.getFixed().y), this.getShadowPos(), `rgba(0,0,0,${pref.bgalpha})`)
     }
 };
+// editing text by custom input
+function editTextInput(text = '') {
+    var edit = text;
+    for(let i=0; i<inputkeys.length; i++) {
+        var c = inputkeys[i];
+        if(c.length > 1) {
+            // it is command
+            if(c == 'Backspace') {edit = edit.slice(0, edit.length-1)};
+            if(c == 'Escape') {edit = ''};
+            if(c == 'Delete') {edit = edit.slice(0, edit.lastIndexOf(' '))};
+        } else {
+            // it a character
+            edit = edit.concat(c)
+        }
+    };
+    inputkeys = [];
+    return edit
+};
 //
 // @EAG HOVER ELEMENTS HINTS
 //
@@ -4445,15 +4518,18 @@ let hoverHint = {
     color: '#fff',
     //
     scaletime: 0,
+    yaccur: -1,
     //
     time: 0.33,
     cd: 0,
     alpha: new Vector1(0),
     //
     invoke: (text, color = '#fff') => {
-        hoverHint.text = text;
-        hoverHint.cd = hoverHint.time;
-        hoverHint.color = color
+        if(mouse.pos.y >= hoverHint.yaccur) {
+            hoverHint.text = text;
+            hoverHint.cd = hoverHint.time;
+            hoverHint.color = color
+        }
     },
     //
     draw: () => {
@@ -4869,7 +4945,7 @@ let tInfo = {
     episodes: new Vector1(0),
     episodest: '',
     year: new Vector1(0),
-    yeart: '',
+    yeart: 0,
     status: '',
     season: '',
     type: '',
@@ -4880,7 +4956,7 @@ let tInfo = {
         tInfo.updater = tinfTime;
         tInfo.title = title;
         tInfo.episodes.move(title['episodes'], tinfTime, easeInOutCubic);
-        tInfo.year.move(title['animeSeason']['year'], tinfTime, easeInOutCubic);
+        tInfo.year.move(Number(title['animeSeason']['year']), tinfTime, easeInOutCubic);
         tInfo.season = txt([seasonsDataMap[title['animeSeason']['season']][1]]);
         tInfo.type = txt([typesDataMap[title['type']]]);
         tInfo.status = txt([typesDataMap[title['status']]]);
@@ -4978,6 +5054,18 @@ let tInfo = {
             fillTextFast(tInfo.posit(6).sumxy(tInfo.width*0.5, tInfo.height*0.5), txt('malScore') +  tInfo.score);
             fillTextFast(tInfo.posit(7).sumxy(tInfo.width*0.5, tInfo.height*0.3), txt('malScoredBy') + tInfo.scoredby)
         };
+        // malid & dbid
+        ctx.fillStyle = '#fff8';
+        ctx.textAlign = 'start';
+        scaleFont(10, 'Consolas');
+        fillTextFast(tInfo.pos.sumxy(tInfo.spacing*3, tInfo.box-tInfo.spacing/2), '#' + tInfo.title['fake_dbid']);
+        ctx.textAlign = 'end';
+        if(tInfo.rating  !== null) {
+            fillTextFast(tInfo.pos.sumxy(tInfo.box-tInfo.spacing*3, tInfo.box-tInfo.spacing/2), 'malid' + tInfo.rating)
+        } else {
+            fillTextFast(tInfo.pos.sumxy(tInfo.box-tInfo.spacing*3, tInfo.box-tInfo.spacing/2), 'no malid')
+        };
+        //
         ctx.globalAlpha = 1
     },
 };
@@ -5240,11 +5328,11 @@ let tDesc = {
         clipRestore();
         if(pref.language !== 'en') {
             ctx.globalAlpha = tInfo.alpha.get();
-            // кнопка перевода
+            // кнопка перевода (апи дало сбой, пока что вырубил нхй)
             ctx.textAlign = 'center';
             decsrTranslate.size.setxy(tInfo.box/3, tDesc.fsize);
             decsrTranslate.pos = tDesc.pos.sumxy(tInfo.box/2, tInfo.box).minxy(tInfo.spacing+decsrTranslate.size.x/2, tInfo.spacing*2+decsrTranslate.size.y);
-            decsrTranslate.draw();
+            // decsrTranslate.draw();
             // перевод текста
             if(!tDesc.original && !tDesc.translate && !tDesc.terror) {
                 if(tDesc.tstate === 'work') {
@@ -5346,14 +5434,19 @@ buttonDoRoll.onhover = () => {
 //
 const imageChangeFilter = invokeNewImage('images/filter.png');
 const imagePrefMenu = invokeNewImage('images/pref.png');
+const imageMarathonLogo = invokeNewImage('images/marathon.png');
 let buttonChangeFilter = new ImageButtonShaped(shapeRectRounded, imageChangeFilter, new Vector2(5),
     colorMapMatrix(`rgba(0,0,0,0)#rgba(255,63,255,0.25)#rgba(255,63,255,1)#rgba(0,0,0,0)`));
 buttonChangeFilter.onclick = () => {saf.scroll.set(0); playSound(sound['player']); requestScreen(screenAnimeFilter)};
 let buttonOpenPref = new ImageButtonShaped(shapeRectRounded, imagePrefMenu, new Vector2(5),
     colorMapMatrix(`rgba(0,0,0,0)#rgba(255,255,63,0.25)#rgba(255,255,63,1)#rgba(0,0,0,0)`));
 buttonOpenPref.onclick = () => {playSound(sound['player']); spref.scroll.set(0); requestScreen(screenPreferences)};
+let buttonOpenMarathon = new ImageButtonShaped(shapeRectRounded, imageMarathonLogo, new Vector2(5),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(63,255,63,0.25)#rgba(63,255,63,1)#rgba(0,0,0,0)`));
+buttonOpenMarathon.onclick = () => {playSound(sound['player']); showScreenMarathon()};
 buttonChangeFilter.waitanim = false;
 buttonOpenPref.waitanim = false;
+buttonOpenMarathon.waitanim = false;
 //
 let rollBar = {
     anchor: new Vector2(0.5, 1.2),
@@ -5364,7 +5457,11 @@ let rollBar = {
     size: new Vector2(cvssize.x * 0.45, rbBodyHeight*_scaleDynamic),
     alpha: new Vector1(0),
     spacing: 0,
-
+    //
+    light: 0,
+    lighttime: 1000,
+    lightrect: 0,
+    lightcolor: 0,
     //
     rollStarted: false,
     state: 'init',
@@ -5380,7 +5477,7 @@ let rollBar = {
         // размеры и задний фон
         rollBar.size.setxy(cvssize.x * 0.45, rbBodyHeight * _scaleDynamic);
         rollBar.pos = normalAlign(rollBar.anchor.get(), rollBar.size);
-        rbRollWidth = (rollBar.size.y - rollBar.spacing*2)*2 + rollBar.spacing;
+        rbRollWidth = rollBar.size.y *3;
         // рисуем
         if(rollBar.state !== 'init' && rollBar.state !== 'invis') {
             fillRectRounded(rollBar.size, rollBar.pos, `rgba(0,0,0,${pref.bgalpha})`, 10*_scaleDynamic);
@@ -5389,17 +5486,46 @@ let rollBar = {
             scaleFont(36, 'Arial', 'bold');
             buttonDoRoll.size.setxy(rbRollWidth, rollBar.size.y-rollBar.spacing*2);
             buttonDoRoll.pos.setv(rollBar.pos.sumxy(rollBar.spacing));
-            buttonDoRoll.draw()
+            buttonDoRoll.draw();
+            // подсветка кнопки ролла, чтобы её выделить
+            if(roulette.winnerPos == -1 && roulette.catchWinner == false) {
+                rollBar.light += deltaTime;
+                if(rollBar.light > rollBar.lighttime) {
+                    rollBar.light = 0; 
+                    rollBar.lightrect = rollBar.lighttime;
+                    rollBar.lightcolor = Math.round(Math.random() * 360);
+                }
+            };
+            if(rollBar.lightrect > 0) {
+                ctx.fillStyle = `hsla(${rollBar.lightcolor} 100% 80% / ${rollBar.lightrect/1500})`;
+                var mult = 1.4 - (rollBar.lightrect / rollBar.lighttime)/2;
+                fillRectRounded(buttonDoRoll.size.multxy(mult), 
+                    buttonDoRoll.pos.sumv(buttonDoRoll.size.dividexy(2)).minv(buttonDoRoll.size.multxy(mult/2)),
+                    `hsla(${rollBar.lightcolor} 100% 80% / ${rollBar.lightrect/2000})`, 10*_scaleDynamic);
+                rollBar.lightrect -= deltaTime
+            };
             // карта
-            scaleFont(16, 'Segoe UI', 'bold');
-            drawMapRoulette(rollBar.size.x - (rbRollWidth*2 + rollBar.spacing*4), rollBar.pos.sumxy(rbRollWidth + rollBar.spacing*2, rollBar.size.y*0.75 - rmpBarHeight/2));
+            drawMapRoulette(rollBar.size.x - (rbRollWidth*2 + rollBar.spacing*4), rollBar.pos.sumxy(rbRollWidth + rollBar.spacing*4, rollBar.size.y*0.75 - rmpBarHeight/2));
             // фильтр, настройки
-            scaleFont(36, 'Arial', 'bold');
-            buttonChangeFilter.sizedZoom(new Vector2(buttonDoRoll.size.y));
-            buttonOpenPref.sizedZoom(new Vector2(buttonDoRoll.size.y));
-            buttonChangeFilter.pos.setv(rollBar.pos.sumxy(rollBar.size.x, 0).minxy(rbRollWidth + rollBar.spacing, -rollBar.spacing));
-            buttonOpenPref.pos.setv(rollBar.pos.sumxy(rollBar.size.x, 0).minxy(buttonDoRoll.size.y + rollBar.spacing, -rollBar.spacing));
-            buttonChangeFilter.draw();
+            // scaleFont(36, 'Arial', 'bold');
+            var btnsize = new Vector2(buttonDoRoll.size.y);
+            if(!roulette.marathon) {
+                // block button while marathon is selecting anime
+                buttonOpenMarathon.sizedZoom(btnsize);
+                buttonOpenMarathon.pos.setv(rollBar.pos.sumxy(rollBar.size.x, rollBar.spacing).minxy(buttonDoRoll.size.y*3 + rollBar.spacing*3, 0));
+                buttonOpenMarathon.draw();
+                buttonChangeFilter.sizedZoom(btnsize);
+                buttonChangeFilter.pos.setv(rollBar.pos.sumxy(rollBar.size.x, rollBar.spacing).minxy(buttonDoRoll.size.y*2 + rollBar.spacing*2, 0));
+                buttonChangeFilter.draw();
+            };
+            if(mrthGetItem('marathon_key') !== false) {
+                // draw filter button by marathon_key
+                buttonChangeFilter.sizedZoom(btnsize);
+                buttonChangeFilter.pos.setv(rollBar.pos.sumxy(rollBar.size.x, rollBar.spacing).minxy(buttonDoRoll.size.y*2 + rollBar.spacing*2, 0));
+                buttonChangeFilter.draw();
+            };
+            buttonOpenPref.sizedZoom(btnsize);
+            buttonOpenPref.pos.setv(rollBar.pos.sumxy(rollBar.size.x, rollBar.spacing).minxy(buttonDoRoll.size.y + rollBar.spacing, 0));
             buttonOpenPref.draw();
             // полоска с ссылками
             sites.draw(rollBar.pos.sumxy(rollBar.size.x/2, rollBar.spacing))
@@ -5615,6 +5741,8 @@ let roulette = {
     hidemap: false,
     isempty: false,
     //
+    marathon: false,
+    //
     mapper: rouletteItemsMapper,
     winnerStyle: new Color(63, 255, 63, 1),
     nameboxcolor: new Color(255, 255, 255, 1),
@@ -5717,14 +5845,20 @@ let roulette = {
         roulette.progress.update();
         roulette.sorted = [];
         roulette.speed.update();
+        //
+        // if(roulette.progress.value > 9999 || roulette.progress.value < 9999) {roulette.progress.set(0)};
         if(roulette.speed.get() !== 0) {roulette.progress.value += roulette.speed.get() * (deltaTime/1000)};
         // крутим
         if(roulette.time < roulette.atime) {
             roulette.time += deltaTime/1000;
-            if(roulette.time <= roulette.atime/3) {
-                roulette.speed.set(roulette.speedMax * easeInQuad((roulette.time / roulette.atime)*3))
+            //тут думать надо, мб всё это хуйня ыааыыыааооууо уэээээ :{
+            var diff = roulette.time / roulette.atime;
+            if(diff <= 0.25) {
+                roulette.speed.set(roulette.speedMax * easeInQuad(diff*4))
+            } else if(diff > 0.25 && diff <= 0.5) {
+                roulette.speed.set(roulette.speedMax * (1 - (diff-0.25)*3.5))
             } else {
-                roulette.speed.set(roulette.speedMax * easeInCirc(Math.abs(((roulette.time / roulette.atime)-1)*1.5)))
+                roulette.speed.set((roulette.speedMax/8) * easeInCirc(Math.abs((diff-1)*2)))
             }
         } else {
             if(roulette.catchWinner === true) {
@@ -5733,11 +5867,28 @@ let roulette = {
                 roulette.winnerPos = roulette.centerNumber();
                 roulette.nameboxcolor = roulette.winnerStyle;
                 roulette.progress.move(roulette.winnerPos, 0.5, easeOutQuint);
-                roulette.time = roulette.atime;
+                roulette.time = Number(roulette.atime);
                 console.log('Winner: '+roulette.catchWinner['title'] + '\n    ' + roulette.catchWinner['sources'][0]);
                 !pref.playClip ? musicRollEnd() : null;
                 rollWinner.invoke(roulette.centerAnime.title);
-                lsSaveObject('roulette.winner', [roulette.winnerPos, roulette.catchWinner])
+                lsSaveObject('roulette.winner', [roulette.winnerPos, roulette.catchWinner]);
+                // marathon work
+                if(roulette.marathon) {
+                    // update anime rect
+                    mapGetRect(mapMeta.pos).object.animedata = roulette.centerItem();
+                    mapGetRect(mapMeta.pos).object.state = 'jikan_wait';
+                    // delete key if have
+                    if(mrthGetItem('marathon_key') !== false) {mrthDeleteItem('marathon_key')};
+                    setTimeout(() => {
+                        mapMeta.cutscene = false;
+                        roulette.marathon = false;
+                        buttonChangeFilter.state = 'idle';
+                        buttonOpenPref.state = 'idle';
+                        //
+                        mapMeta.watching = true;
+                        showScreenMarathon()
+                    }, 2500);
+                }
             }
         };
         // звучим и обновляем ссылки
@@ -5798,7 +5949,7 @@ let roulette = {
                 roulette.progress.value -= Math.floor(roulette.progress.value / roulette.picsCount) * roulette.picsCount;
                 if(roulette.picsCount === 1) {
                     playSound(sound['scroll'])
-                }
+                };
             } else if(roulette.progress.get() <= -1) {
                 roulette.progress.value -= Math.floor(roulette.progress.value / roulette.picsCount) * roulette.picsCount;
                 if(roulette.picsCount === 1) {
@@ -5881,7 +6032,7 @@ function rouletteSetItems(array, limit=true) {
 };
 //
 function rouletteApplyPreset(preset = presetbase['Дефолтный'], max = pref.rouletteItems) {
-    sload.state = 'loadstart';
+    sload.state = 'loadnew';
     filterPreset(preset);
     rouletteSetItems(randomItemsFrom(getListFiltered(), max))
 };
@@ -5921,7 +6072,7 @@ function rouletteItemsBezier(p) {
     // else if (p > 0.4 && p <= 0.6) {tf.zoom *= 0.8 + 0.2 * easeParabolaQuad((p-0.4)*5); tf.alpha = 1} 
     // else {tf.zoom *= 0.8 - 0.5 * ((p-0.6)*2.5); tf.alpha = 1 - (p-0.6)*2.5};
     tf.alpha = easeParabolaQuad(p);
-    tf.zoom = 0.2 + 0.6 * easeParabolaQuad(p);
+    tf.zoom *= 0.2 + 0.6 * easeParabolaQuad(p);
     //
     return tf
 };
@@ -5990,15 +6141,18 @@ let sload = {
     bgcolor: 'rgba(11,11,18,1)',
     head: txt('eagName'),
     headsize: 50,
+    //
+    dbSize: 40*1024*1024,
+    dbProgress: 0,
 };
 // downloading database
 let databaseRequestResult = null;
 let adb = [], adb_information = {};
 let _adb_xml_request = new XMLHttpRequest();
-let _adb_xml_loadprogress = bytesStringify(0);
-_adb_xml_request.onprogress = (e) => {_adb_xml_loadprogress = bytesStringify(e.loaded)};
+let _adb_xml_loadprogress = 0;
+_adb_xml_request.onprogress = (e) => {_adb_xml_loadprogress = e.loaded};
 function getAnimeDatabase() {
-    _adb_xml_request.open("GET",'https://raw.githubusercontent.com/manami-project/anime-offline-database/master/anime-offline-database.json',true);
+    _adb_xml_request.open("GET",'https://raw.githubusercontent.com/manami-project/anime-offline-database/master/anime-offline-database-minified.json',true);
     _adb_xml_request.onload = () => {databaseRequestResult = _adb_xml_request.responseText};
     _adb_xml_request.onerror = () => {databaseRequestResult = false};
     _adb_xml_request.send(null);
@@ -6062,6 +6216,7 @@ function screenLoading() {
     var spbsize =  new Vector2(fullsize.x, 8 * _scaleDynamic);
     //
     sload.alpha.update();
+    sload.dbProgress = Math.norma(_adb_xml_loadprogress / sload.dbSize);
     fillRect(fullsize, normalAlign(new Vector2(0.5), fullsize), dynamicBgcolor.alpha(sload.alpha.get()).getColor());
     //
     if(!navigator.onLine && !firstMouseEvent) {
@@ -6096,7 +6251,7 @@ function screenLoading() {
         globalRescale();
         //
         sload.alpha.move(1, sload.time, easeInOutSine);
-        imageLoadProgress.text = txt('loadJkrg') + _adb_xml_loadprogress;
+        imageLoadProgress.text = txt('loadJkrg') + bytesStringify(_adb_xml_loadprogress);
         imageLoadProgress.shadow.x = imageLoadProgress.size.x;
         getAnimeDatabase();
         //
@@ -6104,7 +6259,8 @@ function screenLoading() {
     //
     } else if(sload.state === 'wait_adb') {
         awaitForDatabase();
-        imageLoadProgress.text = txt('loadJkrg') +' '+ _adb_xml_loadprogress;
+        imageLoadProgress.text = txt('loadJkrg') +' '+ bytesStringify(_adb_xml_loadprogress);
+        shapeProgressBar(normalAlign(new Vector2(0.5, 0), spbsize), spbsize, sload.dbProgress, colorMapMatrix(loadImagesBar));
         if(databaseRequestResult == 'error') {sload.state = 'timeout'};
         if(databaseRequestResult == 'success') {
             // оптималим датабазу
@@ -6174,7 +6330,7 @@ function screenLoading() {
             if((mouse.click && mouse.pos.overSAND(new Vector2()) && mouse.pos.lessSAND(cvssize)) || firstMouseEvent) {
                 roulette.progress.set(-20);
                 roulette.speed.reset();
-                if(!lsItemUndefined('roulette.winner')) {
+                if(!lsItemUndefined('roulette.winner') && !roulette.marathon) {
                     [roulette.winnerPos, roulette.catchWinner] = lsLoadObject('roulette.winner', [roulette.winnerPos, roulette.catchWinner]);
                     roulette.progress.move(roulette.winnerPos, 3, easeOutQuint);
                     setTimeout(() => {setTimeout(() => {playSound(sound['winner'])}, 100)}, 3*1000)
@@ -6239,7 +6395,6 @@ namebox.iterlimit = 4;
 let rollProgressBar = colorMapMatrix(`rgba(0,0,0,0.2)#rgba(225,225,255,0.8)#rgba(0,0,0,1)#rgba(0,0,0,1)`);
 const rollProgressHeight = 3;
 //
-let _lastbufferedtitle = '';
 namebox.onupd = () => {
     // scale
     namebox.size.x = cvssize.x * 0.45;
@@ -6250,7 +6405,8 @@ namebox.onupd = () => {
         hoverHint.invoke(txt('promHoverCopy'));
         if(mouse.click) {
             mouse.click = false;
-            _lastbufferedtitle = prompt('Ctrl+C   :P', roulette.centerAnime['title'])
+            playSound(sound['scroll']);
+            navigator.clipboard.writeText(String(roulette.centerAnime['title']))
         }
     }
 };
@@ -6342,7 +6498,12 @@ function screenRoulette() {
             srv.hideProgress.move(0, srv.hideTime, easeOutExpo);
             srv.state = 'roll_stop';
             tInfo.hidereq = false;
-            rollBar.state = 'show'
+            // if marathon - delay for rollbar showing
+            if(roulette.marathon) {
+                setTimeout(() => {rollBar.state = 'show'}, tss.fulltime*2000);
+            } else {
+                rollBar.state = 'show'
+            }
         }
     //
     } else if(srv.state === 'roll_stop') {
@@ -6409,11 +6570,11 @@ function sbTextHeader(text, pos, width, spacing, scroll=0) {
     //
     return sizey
 };
-function sbTextFit(text, pos, width, spacing, scroll=0, color='#fff') {
+function sbTextFit(text, pos, width, spacing, scroll=0, fsize, color='#fff') {
     var [array, measure] = textWidthFit(text, width - spacing*2);
     ctx.fillStyle = color;
-    fillTextArray(pos.sumxy(spacing, spacing - scroll), [array, measure], spacing);
-    return spacing*2 + measure.y * array.length;
+    fillTextArray(pos.sumxy(spacing, spacing - scroll), [array, measure], fsize*0.5*_scaleDynamic);
+    return spacing + (measure.y + fsize*0.5*_scaleDynamic) * array.length;
 };
 function sbButtonPrefix(text, button, pos, width, spacing, scroll=0) {
     var sizey = spacing*2 + button.size.y;
@@ -6612,7 +6773,7 @@ function getAnimeDBID(data) {
     for(var a in adb) {
         if(adb[a].title == data.title) {return Number(a)}
     };
-    console.error(`Тайтл ${data.title} не был найден в датабазе!`);
+    console.error(`Title "${data.title}" not found in DB!`);
     return null
 };
 //
@@ -7120,6 +7281,12 @@ buttonAnimeBrowser.needshadow = buttonAnimeEditor.needshadow =
 buttonAnimeArrays.needshadow = buttonAnimeFilter.needshadow = false;
 buttonAnimeBrowser.waitanim = buttonAnimeEditor.waitanim = 
 buttonAnimeArrays.waitanim = buttonAnimeFilter.waitanim = false;
+// filter tabs images
+let filterImageBackward = invokeNewImage('images/fs_backward.png');
+let filterImageFilter = invokeNewImage('images/fs_filter.png');
+let filterImageArrays = invokeNewImage('images/fs_arrays.png');
+let filterImageEditor = invokeNewImage('images/fs_editor.png');
+let filterImageBrowser = invokeNewImage('images/fs_browser.png');
 // filter tabs switcher
 function filterTabSwitcher(posx, swidth, fbSpacing) {
     var pos = new Vector2(posx, fbSpacing);
@@ -7213,6 +7380,7 @@ function screenAnimeFilter() {
     else if(saf.state == 'browser') {animeSStateBrowser(header, fbSpacing, saf.width, saf.xanchor)} 
     else if(saf.state == 'arrays') {animeSStateArrays(header, fbSpacing, saf.width, saf.xanchor)};
     // убираем резку
+    hoverHint.yaccur = -1;
     clipRestore()
 };
 function positionsWidthBox(array, width, spacing, height=0, scroll=0) {
@@ -7258,12 +7426,13 @@ function animeSStateFilter(header, fbSpacing, swidth, xanchor) {
     clipCanvas(fullsize.minxy(0, header), new Vector2(cvsxoffset, header));
     saf.height = fbSpacing + header;
     actualizeFilterButtons();
+    hoverHint.yaccur = header;
     // заголовок пресетов
     fillRectRounded(new Vector2(saf.width, saf.pointer - saf.height), new Vector2(saf.xanchor+fbSpacing, saf.height - saf.scroll.get()), saf.selbox, 10);
     scaleFontObject(filterHeaderFont); ctx.textAlign = 'center';
     saf.height += sbTextHeader(txt('filterPresets'), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
     scaleFont(16, filterHeaderFont.font);
-    saf.height += sbTextFit(txt('filterAboutPresets'), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
+    saf.height += sbTextFit(txt('filterAboutPresets'), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get(), 16);
     saf.pointer = saf.height;
     // кнопки пресетов
     [saf.presetpos, saf.height] = positionsWidthBox(presetButtons, saf.width, fbSpacing, saf.height, saf.scroll.get());
@@ -7277,7 +7446,7 @@ function animeSStateFilter(header, fbSpacing, swidth, xanchor) {
     // применение пресета
     fillRectRounded(new Vector2(saf.width, saf.pointer2 - saf.height), new Vector2(saf.xanchor+fbSpacing, saf.height - saf.scroll.get()), saf.selbox, 10);
     scaleFont(20, filterHeaderFont.font);
-    saf.height += sbTextFit(presetbase[newPresetSelected].getInfo(), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
+    saf.height += sbTextFit(presetbase[newPresetSelected].getInfo(), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get(), 20);
     scaleFont(28, 'Segoe UI Light', 'bold');
     saf.height += sbCenteredButton(buttonSwitchPreset, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
     saf.pointer2 = saf.height;
@@ -7345,7 +7514,7 @@ function animeSStateFilter(header, fbSpacing, swidth, xanchor) {
     // предупреждение перед применением
     saf.height += fbSpacing;
     scaleFont(16, 'Segoe UI Light'); ctx.textAlign = 'center';
-    saf.height += sbTextFit(txt('filterWarn'), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get(), '#f44')
+    saf.height += sbTextFit(txt('filterWarn'), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get(), 16, '#f44')
     saf.height += fbSpacing;
 };
 //
@@ -7508,14 +7677,15 @@ function animeSStateBrowser(header, fbSpacing, swidth, xanchor) {
     // отрезаем
     clipCanvas(fullsize.minxy(0, header), new Vector2(cvsxoffset, header));
     saf.height = fbSpacing + header;
+    hoverHint.yaccur = header;
     // count n пагес
     scaleFont(18, 'Segoe UI');
     if(sDBs.string != '') {
         sDBs.all > 0
-        ? saf.height += sbTextFit(sDBs.all + txt('browserResultCount') + sDBs.string, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get())
+        ? saf.height += sbTextFit(sDBs.all + txt('browserResultCount') + sDBs.string, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get(), 18)
         : sDBs.state == 'start_mal' 
-            ? saf.height += sbTextFit(txt('browserMALWait'), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get())
-            : saf.height += sbTextFit(txt('browserNoResult') + sDBs.string, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
+            ? saf.height += sbTextFit(txt('browserMALWait'), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get(), 18)
+            : saf.height += sbTextFit(txt('browserNoResult') + sDBs.string, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get(), 18);
         saf.height += fbSpacing
     };
     if(sDBs.pages > 1) {
@@ -7541,7 +7711,7 @@ function animeSStateBrowser(header, fbSpacing, swidth, xanchor) {
 // @EAG ANIME - EDITOR
 //
 let edList = {
-    edited: {},
+    edited: new animeList(),
     images: {},
     anime: {},
     //
@@ -7653,6 +7823,10 @@ let edList = {
             }
         }
     },
+    //
+    sizeof: () => {
+        return fileManager.sizeofJSON(edList.edited.getAnime())
+    },
 };
 //
 let buttonEditorDelete = new ShapedHoldButton(shapeRectRounded, new Vector2(120,30), 
@@ -7730,6 +7904,7 @@ function animeSStateEditor(header, fbSpacing, swidth, xanchor) {
     // отрезаем
     clipCanvas(fullsize.minxy(0, header), new Vector2(cvsxoffset, header));
     saf.height = fbSpacing + header;
+    hoverHint.yaccur = header;
     // стейт списка
     if(!saf.viewmeta) {
         // json d+u
@@ -7753,9 +7928,2512 @@ function animeSStateEditor(header, fbSpacing, swidth, xanchor) {
 function animeSStateArrays(header, fbSpacing, swidth, xanchor) {
     var size = imageWIPSize.multxy(_scaleDynamic/2);
     drawImageSized(imageWorkInProgress, new Vector2(xanchor + fbSpacing*2, cvssize.y - size.y), size);
-    scaleFont(28, 'Consolas'); 
+    scaleFont(28, 'Consolas');
     ctx.fillStyle = '#fbb'; ctx.textAlign = 'end';
-    fillTextFast(new Vector2(xanchor + swidth - fbSpacing*2, cvssize.y - fbSpacing), 'Work In Progress!!!')
+    fillTextFast(new Vector2(xanchor + swidth - fbSpacing*2, cvssize.y - fbSpacing), 'Work In Progress!!!');
+    // отрезаем
+    clipCanvas(fullsize.minxy(0, header), new Vector2(cvsxoffset, header));
+    saf.height = fbSpacing + header;
+    hoverHint.yaccur = header;
+};
+//
+// @EAG MARATHON ITEMS & STUFF
+//
+let mrthStuff = {
+    items: {
+        // POSITIVE
+        'glasses': {
+            name: 'Крутые очки',
+            desc: 'Применяется перед генерацией аниме. Увеличивает кол-во очков за просмотр на 25%. Уничтожаются в паре с "Слабительное".',
+            specials: {conflict: 'poop'},
+        },
+        'bribery': { // need to add
+            name: 'Пачка денег',
+            desc: 'Может спасти Вас от негативных эффектов во время неудачных встреч. Уничтожаются в паре с "Черная метка".',
+            max: 2,
+            specials: {conflict: 'black'},
+        },
+        'radar': {
+            name: 'Радар',
+            desc: 'Расходуется само во время исследования клетки, делая исследование бесплатным.',
+            max: 8,
+        },
+        'chocolate': {
+            name: 'Шоколадка',
+            desc: 'Применяется перед генерацией аниме. Увеличивает минимально допустимую оценку аниме до 7.5, максимальную до 10. Уничтожаются в паре с "Прошлогодний салат".',
+            specials: {conflict: 'salad'},
+        },
+        'recycler': {
+            name: 'Утилизатор',
+            desc: 'Применяется на неиспользованной клетке с аниме. Уничтожает её взамен на очки исследования.',
+        },
+        'marathon_key': {
+            name: 'Ключ от марафона',
+            desc: 'Применяется само перед генерацией аниме. Даёт возможность настроить фильтр и сгенерировать свою рулетку.',
+        },
+        'universal_key': {
+            name: 'Универсальный ключ',
+            desc: 'Позволяет повторно посмотреть новое аниме на уже использованной клетке.',
+        },
+        // NEGATIVE
+        'poop': {
+            name: 'Слабительное',
+            desc: 'Применяется само перед генерацией аниме. Уменьшает кол-во очков за просмотр аниме на 25%.',
+        },
+        'black': {
+            name: 'Черная метка',
+            desc: 'Следующая генерация предмета или встреча с 50% шансом может оказаться для Вас неудачной. Расходуется, даже если эффект не сыграл.',
+        },
+        'tax': {
+            name: 'Сверхналог',
+            desc: 'Исследования станут дороже на 50% на следующие 10 клеток.',
+            max: 10,
+        },
+        'salad': {
+            name: 'Прошлогодний салат',
+            desc: 'Применяется само перед генерацией аниме. Уменьшает минимально допустимую оценку аниме до нуля, максимальную - до 7.5',
+        },
+        // 'order': {
+        //     name: 'Ордер на арест',
+        //     desc: 'Применяется само в случае реролла аниме. Утяжеляет наказание за реролл.',
+        //     specials: false,
+        // },
+        'azart': {
+            name: 'Штраф за азарт',
+            desc: 'Потеряйте 25% очков исследования.',
+        },
+    },
+};
+//
+let _itemsPositive = ['glasses', 'bribery', 'radar', 'chocolate', 'recycler', 'marathon_key', 'universal_key',];
+let _itemsNegative = ['poop', 'black', 'tax', 'salad', 'azart',];
+let _itemsAll = [].concat(_itemsPositive, _itemsNegative);
+//
+function mrthInventoryAddItem(tag='') {
+    // check negative OR positive
+    var posit = false;
+    for(var i in _itemsPositive) {if(_itemsPositive[i] == tag) {posit = true}};
+    if(posit) {
+        // check conflict
+        var conf = false;
+        if(mrthStuff.items[tag].specials !== undefined) {
+            if(mrthStuff.items[tag].specials.conflict !== undefined) {
+                var conf = mrthStuff.items[tag].specials.conflict;
+            }
+        };
+        // check negatives
+        if(conf !== false) {
+            if(mapMeta.effects['1'] !== false) {if(mapMeta.effects['1'].tag === conf) {mapMeta.effects['1'] = false; return ['delete_eff', tag, conf]}};
+            if(mapMeta.effects['2'] !== false) {if(mapMeta.effects['2'].tag === conf) {mapMeta.effects['2'] = false; return ['delete_eff', tag, conf]}};
+        };
+        // check slots
+        for(var s in mapMeta.inventory) {
+            if(mapMeta.inventory[s] === false) {mapMeta.inventory[s] = mrthCreateItem(tag); return ['add_item', tag]}
+        };
+        //
+        return ['item_none', tag]
+    } else {
+        // check conflict
+        for(var s in mapMeta.inventory) {
+            if(mapMeta.inventory[s].conflict !== undefined) {if(mapMeta.inventory[s].conflict == tag) {
+                // deleting item by negative
+                var posit = mapMeta.inventory[s].tag;
+                mapMeta.inventory[s] = false; 
+                return ['delete_eff', posit, tag]
+            }}
+        };
+        // check slots
+        if(mapMeta.effects['1'].tag == tag || mapMeta.effects['2'].tag == tag) {return ['eff_already', tag]};
+        if(mapMeta.effects['1'] === false) {mapMeta.effects['1'] = mrthCreateItem(tag); return ['add_eff', tag]};
+        if(mapMeta.effects['2'] === false) {mapMeta.effects['2'] = mrthCreateItem(tag); return ['add_eff', tag]};
+        // if no empty slots & not already have - replace random
+        var ind = Math.floor(Math.random() * 1.999) + 1;
+        var neg = mapMeta.effects[ind].tag;
+        mapMeta.effects[ind] = mrthCreateItem(tag);
+        return ['eff_replace', tag, neg]
+    }
+};
+//
+function mrthInventoryFreeSpace() {
+    for(var s in mapMeta.inventory) {
+        if(mapMeta.inventory[s] === false) {return true}
+    };
+    return false
+};
+function mrthInventoryHaveItems() {
+    for(var s in mapMeta.inventory) {
+        if(mapMeta.inventory[s] !== false) {return true}
+    };
+    return false
+};
+//
+function mrthCreateItem(tag) {
+    var obj = JSON.parse(JSON.stringify(mrthStuff.items[tag]));
+    var item = {tag: tag,};
+    //
+    if(obj.max !== undefined) {item.count = Number(obj.max)};
+    if(obj.specials !== undefined) {
+        for(var s in obj.specials) {item[s] = obj.specials[s]}
+    };
+    return item
+};
+function mrthGetItem(tag) {
+    for(var i in mapMeta.inventory) {
+        if(mapMeta.inventory[i] !== false) {if(mapMeta.inventory[i].tag == tag) {return mapMeta.inventory[i]}}
+    };
+    for(var i in mapMeta.effects) {
+        if(mapMeta.effects[i] !== false) {if(mapMeta.effects[i].tag == tag) {return mapMeta.effects[i]}}
+    };
+   return false
+};
+function mrthDeleteItem(tag) {
+    for(var i in mapMeta.inventory) {
+        if(mapMeta.inventory[i] !== false) {if(mapMeta.inventory[i].tag == tag) {mapMeta.inventory[i] = false; return true}}
+    };
+    for(var i in mapMeta.effects) {
+        if(mapMeta.effects[i] !== false) {if(mapMeta.effects[i].tag == tag) {mapMeta.effects[i] = false; return true}}
+    };
+   return false
+};
+function mrthDeleteRandomItem() {
+    var tags = [];
+    for(var i in mapMeta.inventory) {if(mapMeta.inventory[i] !== false) {tags.push(mapMeta.inventory[i].tag)}};
+    return tags.length == 0 ? false : mrthDeleteItem(tags[Math.floor(Math.random() * (tags.length - 0.001))])
+};
+function mrthReduceItem(item) {
+    if(item.count !== undefined) {
+        item.count -= 1;
+        if(item.count <= 0) {
+            mrthDeleteItem(item.tag)
+        }
+    } else {
+        mrthDeleteItem(item.tag)
+    }
+};
+// ITEM FUNCTIONS
+let itemFunc = {
+    recyclerPoints: (pos, preset) => { // calc recycle points
+        return Math.round(mrthGetExploreCost(pos) * 2 * presetbase[preset].mult) // center number is recycle multiplier
+    }
+};
+//
+// @EAG MARATHON MEETINGS
+//
+mrthStuff.meetings = {};
+//
+mrthStuff.meetings['hole'] = {
+    meta: {name: 'Дыра', values: {}},
+    start: {text: ['Спустя некоторое время блужданий в этом секторе мне открывается прекрасный вид на его внутренний мир. Казалось бы, я давно уже должен был оказаться в его центре, но всё никак не могу его достичь.',
+            'Мне стоило раньше обратить на это внимание - обернувшись, всё позади вдруг стало странно больше. А тот бескрайний лес, в котором я сейчас нахожусь, ещё минуту назад казался тремя соснами.',
+            'Надо же, в этом секторе умещается целый отдельным мир, возможно такой же, каков и внешний. Размышлял я, пока не наткнулся на странника. Внешне он был не опасен, скорее всего это такой же исследователь, как и я.',
+            'Он подошел ко мне. Только сейчас я заметил, что он уже очень стар. Он протягивает мне руку с каким то предметом, явно показывая, что хочет отдать...'
+        ],choice: [
+            {name: 'Взять', root: 'pick'},{name: 'Ничего не делать', root: 'not'},
+        ]}, pick: {text: ['Стоило мне попытаться взять предмет, который он давал мне, он тут же убрал руку под свой плащ. После он бросил на меня недовольный взгляд, развернулся и начал уходить...',
+            'Но вдруг заговорил. Говорил он о том, что одалела его жадность, когда он посетил данный сектор. Нет ему больше выхода отсюда, поскольку один шаг внутрь равняется тысяче шагов назад.',
+            'По моей спине пробежал холод. Пусть я и шел всего три минуты, зато возвращаться отсюда мне придётся двое суток. Дед после добавил, что пытался добраться до центра около полугода из-за желания поживиться добром. Как так получилось, что мы с ним встретились - непонятно.',
+            'После он окончательно ушёл, обратно в центр. Мне ничего не оставалось, как просто развернуться и начать этот очень долгий путь назад из сектора. Я потеряю на это очень много сил и времени...',
+        ],choice: [
+            {name: 'Начать путь', root: 'bads'},
+        ]},not: {text: ['Немая сцена длилась около половины минуты, пока дед не заулыбался и не нарушил тишину.',
+            'Он рассказал мне, как оказался здесь - как пытался достичь центра полгода и даже не подозревал, что один шаг внутрь приравнивается к тысяче шагов назад. Для меня эта информация оказалась крайне неприятной. Я отвернулся от деда, уставившись на внешний мир, и тут он меня окликнул...',
+            'В этот раз он сам взял меня за руку и дал мне два предмета, конвертик из очень старой потёртой бумаги и несколько зарядов радара. Он добавил, что конверт может вернуть назад, но воспользоваться им может только тот, кому его отдали, если же ты его забрал, то ничего не получится.',
+            'Я вдруг похвалил себя за изначальный выбор бездействовать. В голове так и крутились мысли, вдруг в этом правиле есть какой-то изьян, может, получиться вернуть деда. Я пытался найти информацию в конверте, бегло читая весь текст, который мог разобрать.',
+            'Воздух вокруг меня переменился, я отрываю голову от конверта - ни огромного внешнего мира, ни деда уже нет. Конверт тут же рассыпался в руках, я оказался совсем рядом с сектором. Понемногу приходя в себя я начал двигаться дальше...',
+        ],choice: [
+            {name: 'Проверить радары', root: 'item'},
+        ]},item: {
+            callback: (obj) => {if(mrthInventoryFreeSpace()) {obj.root = 'get'; return 'root'} else {obj.root = 'money'; return 'root'}
+        }},get: {
+            callback: (obj) => {mrthInventoryAddItem('radar'); obj.result = 'Вы получили 8 радаров.'},
+            text: ['Радары хоть и старые, но ещё вполне себе рабочие, думаю, я могу оставить их себе, пригодятся.', '...']
+    },money: {
+        callback: (obj) => {mapMeta.points += 30; obj.result = 'Вы получили 30 монет.'},
+        text: ['Радары уже слишком старые, да и места у меня не было, чтобы их оставить. Поэтому я решил продать их первому встречному скупщику за 30 монет.', '...']
+    },bads: {
+        callback: (obj) => {var bad = Math.round(mapMeta.points*0.2); mapMeta.points -= bad; obj.result = `Вы потеряли ${bad} монет.`},
+    },end: {}
+};
+//
+mrthStuff.meetings['tower'] = {
+    meta: {name: 'Мельница', values: {used: false}},
+    start: {text: ['На этом секторе мне повезло найти высокую мельницу, пусть и заброшенную. Располагалась она на небольшом возвышении, вокруг неё простирались уже окончательно заросшие пшеничные поля.',
+            'Подойдя к ней я принялся обходить её со всех сторон и пытаться проникнуть внутрь - нужно найти хотя бы небольшую щель или слабую деревянную перегородку. Обойдя её вокруг два раза я сделал для себя открытие - каждый раз, когда я отворачиваюсь от мельницы и снова смотрю на неё, все её гнилые дощечки, бревна, камни у фундамента и столбы странным образом меняют своё положение.',
+            'Пройдя ещё два круга мне повезло скажем так «сгенерировать» себе проход внутрь. Перед входом я подумал дважды, ведь внутри я не смогу видеть всей мельницы сразу. Да и вдруг я более не смогу выйти и стану там заложником? Эта мысль меня напугала, и я встал прямо у входа и посмотрел наверх, как раз на верхушку башни, чтобы подумать третий раз...',
+        ],choice: [
+            {name: 'Войти', root: 'enter'},{name: 'Ничего не делать', root: 'not'},
+        ]}, enter: {
+        callback: () => {return [mrthGetItem('radar') !== false, true]},
+        text: ['Я решил рискнуть и войти в башню. Внутри она оказалась недвижимой - она сохраняет тот облик, в котором я её видел снаружи последний раз. Видимо она меняет своё строение для меня только когда я снаружи. Это радует, осталось только найти способ подняться наверх.',
+            'В конце концов, мне сейчас очень не помешает запечатлеть местность с достаточно большой высоты. По мере того, как взбирался ввысь я начал замечать, что мельница всё же не перестала меняться. Точнее она просто без конца удлиняется вверх. Посмотрев вниз я понял, что за долгие попытки подняться на мельницу по хрупким конструкциям я преодолел полметра от силы.',
+            'Однако ощущение высоты мне говорило, что на самом деле я достаточно высоко. Я был рядом с дверцей, сквозь щели которой завывал такой ветер, какой бывает только на высоте птичьего полёта. Я уже хотел выйти и убедиться в том, что я очень высоко, но дверца была заперта. После недолгих попыток поднять щеколду на другой стороне я смог выйти и осмотреться.',
+        ],choice: [
+            {name: 'Использовать 1 радар', root: 'radar'},{name: 'Просто осмотреться', root: 'view'},
+        ]},radar: {
+        callback: (obj) => {mrthReduceItem(mrthGetItem('radar')); obj.values.used = 'radar'},
+        text: ['Использовав карманный радар я смог быстро запечатлеть всё то, что было видно ему с этой высоты, до мельчайших деталей. Осмотревшись ещё раз я спустился вниз мельницы и покинул её. Уходя я отметил на своей карте четыре интересных места, которые нужно посетить как можно скорее.', '...'],
+    },view: {
+        callback: (obj) => {obj.values.used = 'view'},
+        text: ['Зарядов радара у меня с собой не было, а он бы мог сейчас помочь мне запечатлеть побольше. Осмотревшись ещё раз я спустился вниз мельницы и покинул её. На карте я отметил себе пару интересных мест, которые смог увидеть, нужно будет их посетить в ближайшее время.', '...'],
+    },not: {text: ['Откажусь сегодня от удовольствия сойти с ума в замкнутом и постоянно меняющемся пространстве. Ещё раз вдоволь походив вокруг башни и посмотрев на неё, я не обнаружил больше никаких интересных странностей. Только кем-то потерянный планшет с двадцатью пятью серебряных.',
+            'Искать тут более нечего, мне нужно продолжать исследования, поэтому я отправился от мельницы прочь.', '...'
+        ],},end: {
+        callback: (obj) => {
+            if(obj.values.used !== false) {
+                if(obj.values.used == 'radar') {setTimeout(() => {mapGenerateSpoilers(4); obj.result = 'Вы нашли 4 полезных сектора.'}, 1500)}
+                else {setTimeout(() => {mapGenerateSpoilers(2); obj.result = 'Вы нашли 2 полезных сектора.'}, 1500)}
+            } else {mapMeta.points += 25; obj.result = 'Вы получили 25 монет.'}
+        }}
+};
+//
+mrthStuff.meetings['shop'] = {
+    meta: {name: 'Рынок', values: {}},
+    start: {
+        callback: () => {return [mrthInventoryFreeSpace(), mrthInventoryHaveItems(), true]},
+        text: ['Мне повезло обнаружить в этом секторе небольшой рынок. При необходимости здесь можно будет продать или купить что-нибудь нужное для исследований.',
+            'А не повезло с тем, что у меня очень мало времени. Я не успею толком поторговать, и мне очень повезёт если я успею сделать хотя бы одну сделку.',
+            'Что мне сейчас нужнее?',
+        ],choice: [
+            {name: 'Купить', root: 'buy'},{name: 'Продать', root: 'sell'},{name: 'Уйти', root: 'leave'},
+        ]},leave: {
+        callback: (obj) => {obj.result = 'Вы просто ушли.'},
+        text: ['Нет у меня времени на торговлю, как и лишних вещей. Подумал я и направился прочь из сектора.', '...']
+    },buy: {
+        callback: () => {return [mapMeta.points >= 50, mapMeta.points >= 50, true]},
+        text: ['Пробегая мимо всех торгашей я обратил внимание на прилавок "Всё по 50", тут были полезные предметы для особых секторов. Думаю, было бы неплохо прикупить что-то одно...'],
+        choice: [
+            {name: 'Крутые очки', root: 'glasses'},{name: 'Шоколадка', root: 'cake'},{name: 'Ничего не покупать', root: 'leave'},
+        ]},glasses: {
+        callback: (obj) => {obj.result = 'Вы купили "Крутые очки".'; mrthInventoryAddItem('glasses'); mapMeta.points -= 50},
+        text: ['Расчитавшись за очки я ринулся продолжать исследование, будучи более весёлым после успешной покупки.', '...']
+    },cake: {
+        callback: (obj) => {obj.result = 'Вы купили "Шоколадку".'; mrthInventoryAddItem('chocolate'); mapMeta.points -= 50},
+        text: ['Расчитавшись за "Шоколадку" я ринулся продолжать исследование, будучи более весёлым после успешной покупки.', '...']
+    },sell: {
+        callback: () => {return [mrthGetItem('marathon_key') !== false, mrthGetItem('universal_key') !== false, true]},
+        text: ['Пробегая мимо всех торгашей я обратил внимание на прилавок "Скупка ключей", тут можно будет продать лишний завалявшийся ключик. Дают тут за ключи по 50 за каждый, думаю, это стоит того...'],
+        choice: [
+            {name: 'Ключ от марафона', root: 'marathon_key'},{name: 'Универсальный ключ', root: 'universal_key'},{name: 'Ничего не продавать', root: 'leave'},
+        ]},marathon_key: {
+        callback: (obj) => {obj.result = 'Вы продали "Ключ от марафона".'; mrthDeleteItem('marathon_key'); mapMeta.points += 50},
+        text: ['Получив свои деньги за ключ я ринулся продолжать исследование, будучи более весёлым после успешной продажи.', '...']
+    },universal_key: {
+        callback: (obj) => {obj.result = 'Вы продали "Универсальный ключ".'; mrthDeleteItem('universal_key'); mapMeta.points += 50},
+        text: ['Получив свои деньги за ключ я ринулся продолжать исследование, будучи более весёлым после успешной продажи.', '...']
+    },
+    end: {},
+};
+//
+mrthStuff.meetings['tyan'] = {
+    meta: {name: 'Опасная девушка', values: {}},
+    start: {text: ['Этот сектор буквально ничего мне не дал, несмотря на то, что я потратил на него очень много времени. Уходя я то и дело оборачивался, потому что мои поиски хоть чего-то прервали чужие разборки, и чтобы не стать их участником мне пришлось под шумок уходить отсюда.',
+            'Я уже достаточно далеко ушёл, чтобы не беспокоиться, что что-то может пойти не так. Но ощущение того, что за мной наблюдают, всё никак не проходит. То и дело мне послышится шорох справа, или как кто-то вспарил прямо надо мной с крыши на крышу. Да, я покидаю заброшенный город, к сожалению, уже полностью разворованный.',
+            'Вновь слышу шаги, это тихие шаги сзади. Создаётся ощущение, что шаги постепенно приближаются ко мне. Я до этого всегда оборачивался на малейший шорох, однако сейчас боюсь этого делать, потому что точно уверен, что мне это не кажется.',
+        ],choice: [
+            {name: 'Убежать [30%]', root: 'r_run'},{name: 'Развернуться', root: 'check'},
+        ]},check: {
+        callback: () => {return [true, mrthGetItem('bribery') !== false]},
+        text: ['Только я начал разворачиваться как шаги ускорились - в меня устремился какой-то тёмный силуэт. Он сбил меня с ног, уселся на меня и начал угрожать ударом по лицу. На исследователя явно не похож, скорее всего разбойник. А если разбойник то скорее всего меня не оставят в живых.'
+        ],choice: [
+            {name: 'Попытаться ударить [40%]', root: 'r_hit'}, {name: 'Откупиться', root: 'bribery'},
+        ]},saved: {
+        callback: (obj) => {obj.result = 'Вы спаслись.'},
+        text: ['Верное решение, сделанное мною вовремя, помогло мне избежать плохих последствий. Я смог удрать от безумца и спокойно покинуть сектор. Мне стоит немного передохнуть, после я смогу продолжить исследования...', '...'
+        ]},run_bad: {
+        callback: () => {return [true, mrthGetItem('bribery') !== false]},
+        text: ['Стоило мне ускорить шаг как незнакомец сзади тоже ускорил его. Да и ещё как ускорил - мы и десяти секунд не пробежали, как я услышал рывок и ощутил идущий за рывком удар сзади. Во время рывка она крикнула, и да, это была она, судя по голосу.',
+            'Я упал на бок, нападавшая развернула меня на спину, уселась на меня и начала угрожать ударом по лицу. На исследователя явно не похожа, скорее всего разбойница. А если разбойница то, скорее всего, меня не оставят в живых.'
+        ],choice: [
+            {name: 'Ничего не делать', root: 'not'},{name: 'Откупиться', root: 'bribery'},
+        ]},not: {callback: (obj) => {mrthInventoryAddItem('black'); obj.result = 'Вы получили "Черную метку".'},
+        text: ['Спустя некоторое время бездействия разбойница поняла, что я не опасен, она покопалась в моей сумке, что-то сунула в неё и, угрожая уже ножом, слезла с меня и скрылась в ночи. Я не хотел бить её первым, меня смутило то, что это была девушка.',
+            'Проверив сумку, я к величайшему разочарованию обнаружил, что она подсунула мне чёрную метку. Это точно не к добру - подумал я и начал более активно покидать сектор.', '...'
+        ]},bribery: {
+        callback: (obj) => {mrthReduceItem(mrthGetItem('bribery')); obj.result = 'Вы откупились.'},
+        text: ['Точным и медленным движением руки я достаю заначку - пачку денег. Все разбойники падки на деньги, и возможно, у меня получится откупиться. Тут разбойник снимает капюшон и к моему большому удивлению я узнаю, что напавшим на меня разбойником была девушка.',
+            'Она фыркнула глядя на меня, взяла деньги из моих рук и спрятала их в своём плаще. После она помогла мне встать, и, осмотревшись хорошенько вокруг, удалилась. Я стал участником крайне странной сцены, которая, к счастью, для меня закончилась вполне благополучно. Я покинул данный сектор и продолжил исследования...', '...'
+        ]},hit_bad: {
+            callback: (obj) => {mrthInventoryAddItem('black'); obj.result = 'Вы получили "Черную метку".'},
+            text: ['Я попытался ударить разбойника локтем по голове, но тщетно - я лишь слегка задел по лбу, сняв капюшон. И вдруг на мне уже не грозный разбойник, а девушка, которая прямо сейчас замахивается на меня.',
+            'После я очнулся уже один. После удара я чувствовал, как она роется в моей сумке. Проверив сумку, я к величайшему разочарованию обнаружил, что она подсунула мне чёрную метку. Это точно не к добру - подумал я и начал более активно покидать сектор.', '...'
+        ]},
+    r_hit: {callback: (obj) => {obj.root = Math.random() <= 0.4 ? 'saved' : 'hit_bad'; return 'root'}},
+    r_run: {callback: (obj) => {obj.root = Math.random() <= 0.3 ? 'saved' : 'run_bad'; return 'root'}},
+    end: {},
+};
+//
+mrthStuff.meetings['labyr'] = {
+    meta: {name: 'Лабиринт', values: {}},
+    start: {text: ['В этом секторе мне «повезло» заблудиться в лабиринте. Каменный лабиринт с очень высокими стенами, нигде нет ни подсказок, ни способов вернуться назад. Подняться на стену тоже никак не получается - гладкие как лёд, да ещё и дождь недавно прошёл.',
+            'Навязчивые мысли, что я могу застрять здесь непросто надолго, а может быть и навсегда, постоянно лезли мне в голову. Вот что точно сейчас не нужно - паниковать. Подумал я и встал, чтобы перевести дух и выровнять дыхание. Я вышел, вроде бы, на знакомую развилку. Куда мне бы тут пойти...',
+        ],choice: [{name: 'Пойти налево [35%]', root: 'check'}, {name: 'Пойти направо [35%]', root: 'check'}]
+    },var1: {
+        text: ['В этот раз пойду сюда. Стены невыносимо давят на меня своей громоздкостью, из-за их высоты проходы кажутся слишком узкими, настолько, что когда задумываешься над этим, становится труднее дышать. Снова развилка, куда в этот раз?'
+        ],choice: [{name: 'Пойти налево [35%]', root: 'check'}, {name: 'Пойти направо [35%]', root: 'check'}]
+    },var2: {
+        text: ['Поверну сюда. Каждый мой шаг по мокрому бетону разносится долгим, затяжным эхом по всему лабиринту. Иногда я просто вставал и пытался прислушаться, может, удастся услышать хоть какие-то звуки, кроме тех, что издаю я.',
+            'Но все мною изданные ранее звуки унеслись эхом по тоннелям и превратились в гул, в котором тяжело хоть что-то услышать.'
+        ],choice: [{name: 'Пойти налево [35%]', root: 'check'}, {name: 'Пойти направо [35%]', root: 'check'}]
+    },var3: {
+        text: ['Это никогда не закончится - подумал я на очередной развилке, продолжив блуждания. В голове я то и дело пытался придумать способ как-то отмечать уже пройденные места. Размотать очень длинную верёвку, делать пометки на стенах или оставлять какие-нибудь предметы на развилках... ',
+            'Видимо, придётся моим идеям остаться в моей голове, никаким из этих способов я, пожалуй, так и не воспользуюсь.'
+        ],choice: [{name: 'Пойти налево [35%]', root: 'check'}, {name: 'Пойти направо [35%]', root: 'check'}]
+    },var4: {
+        text: ['В этот раз пойду сюда. Где-то я слышал, что чтобы гарантированно прочесать весь лабиринт, то нужно делать три поворота налево, а один направо. Или там нужно делать только два поворота? Я явно зря полез в этот лабиринт с таким-то скудным багажом знаний о лабиринтах...'
+        ],choice: [{name: 'Пойти налево [35%]', root: 'check'}, {name: 'Пойти направо [35%]', root: 'check'}]
+    },check: {
+        callback: (obj) => {if(Math.random() <= 0.35) {obj.root = 'exit'} else {obj.root = `var${Math.floor(1+Math.random() * 3.999)}`}; mapMeta.points -= Math.floor(mapMeta.points * 0.08); return 'root'}
+    },exit: {
+        callback: (obj) => {obj.result = 'Вы получили "Сверхналог".'; mrthInventoryAddItem('tax')},
+        text: ['За очередной развилкой показалось нечто - ворота в стене, из которых бьёт уже рассвет. Зашёл я в лабиринт, вроде бы в обед. Надо же, прошли почти сутки, я почти всё это время беспрестанно бродил. Радоваться спасению уже нет сил - нужно отдохнуть и возвращаться к работе.', '...']
+    },end: {}
+};
+//
+mrthStuff.meetings['ded'] = {
+    meta: {name: 'Дед', values: {}},
+    start: {callback: () => {return [mapMeta.points >= 40, mrthInventoryHaveItems(), true]},
+        text: ['Лесная тропа, сельская местность, где-то между секторов, очень снежная прохладная местность, равноудалённая от всей цивилизации. Интересное, красивое место, иногда попадаются особенно завораживающие дома, украшенные крайне сложной резьбой по дереву.',
+            'На перекрёстке, где горит один единственный, как мне казалось, фонарь на всё поселение, стоял дед и играл на маленькой гармошке. Он был сверху донизу укутан в тёплую одежду, на его голове уже скопилась небольшая кучка снега. Он что-то пытался играть, смотря при этом вниз, на шапку, которая лежала перед ним на снегу.',
+            'Проходя мимо я заметил, что ничего, кроме снега, в его шапке нет. Это мало удивительно, ведь место на настолько людное, чтобы вот так зарабатывать себе на жизнь. Но мне почему-то стало его жаль, и мне вдруг захотелось хоть как-то улучшить его день, дать ему что-нибудь...'
+        ],choice: [
+            {name: '30 монет', root: 'money'},{name: 'Случайный предмет', root: 'item'},{name: 'Ничего', root: 'not'},
+        ]},not: {callback: (obj) => {obj.result = `Вы ничего не сделали.`},
+            text: ['Проходя мимо него я сделал вид, что бурно ищу что-то у себя в карманах, но, к сожалению, ничего подходящего не нашлось. Он на миг взглянул на меня, мой жест привлёк его внимание, его наидобрейшие глаза были полны надежды на то, что хотя бы я смогу ему хоть что-то дать. Но увы, этому не суждено быть.',
+            'Уходя я чувствовал себя плохим человеком, хотя ничего не сделал. Наверное в этом, как раз, и проблема - я ничего не сделал...', '...'
+        ]},money: {callback: (obj) => {mapMeta.points -= 40; obj.root = 'donat'; return 'root'}},
+    item: {callback: (obj) => {mrthDeleteRandomItem(); obj.root = 'donat'; return 'root'}},
+    donat: {callback: (obj) => {
+            if(mapMeta.effects[1] !== false) {obj.result = `Вы избавились от "${mrthStuff.items[mapMeta.effects[1].tag].name}".`; mrthDeleteItem(mapMeta.effects[1].tag); return};
+            if(mapMeta.effects[2] !== false) {obj.result = `Вы избавились от "${mrthStuff.items[mapMeta.effects[2].tag].name}".`; mrthDeleteItem(mapMeta.effects[2].tag); return};
+            obj.result = 'Вы сделали что-то хорошее.';
+        },text: ['Я поднял его шапку, отряхнул её от снега и вручил владельцу вместе с тем, что было не жалко. Он ничего не сказал мне, лишь бросил на меня полный радости взгляд, который вмиг заставил меня забыть о том, что я что-то отдал ради этого. Это того стоило - дед отправился домой согреваться, а я уже более радостный после хорошего поступка продолжил путь.',
+            'Дед не выглядел как какой-нибудь священник, однако после этой короткой встречи с ним я как будто избавился от тяжёлой ноши на душе.', '...'
+        ]},end: {}
+};
+// list of all scenarios
+let mrthMeetingsHard = ['tyan', 'labyr'];
+let mrthMeetingsEasy = ['shop', 'tower', 'hole', 'ded'];
+let mrthMeetingsAll = [].concat(mrthMeetingsHard, mrthMeetingsEasy);
+//
+// @EAG MARATHON RECT MISC
+//
+let buttonRollAnime = new TextButtonShaped(shapeRectRounded, `Крутить рулетку`, new Vector2(), 
+    colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+    colorMapMatrix(`rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`));
+buttonRollAnime.needshadow = false; buttonRollAnime.waitanim = false; buttonRollAnime.height = 0;
+let buttonApplyWatch = new ShapedHoldButton(shapeRectRounded, new Vector2(),
+    colorMapMatrix(`rgba(32,128,32,1)#rgba(48,180,48,1)#rgba(64,255,64,1)#rgba(200,200,47,0.1)`));
+buttonApplyWatch.needshadow = false; buttonApplyWatch.waitanim = false; buttonApplyWatch.height = 0;
+let buttonRerollAnime = new ShapedHoldButton(shapeRectRounded, new Vector2(),
+    colorMapMatrix(`rgba(128,32,32,1)#rgba(180,48,48,1)#rgba(255,64,64,1)#rgba(200,200,47,0.1)`));
+buttonRerollAnime.needshadow = false; buttonRerollAnime.waitanim = false; buttonRerollAnime.height = 0;
+//
+let animeReviewScore = new ShapedSelectBar(new Vector2(), new Color(64, 64, 255, 200), new Color(32, 32, 96, 255));
+animeReviewScore.radius = 4;
+animeReviewScore.permanent = false;
+// animeReviewScore.visAlias = true;
+animeReviewScore.onset = (value) => {
+    mapGetRect(mapMeta.pos).object.score = Math.round(value);
+    animeReviewScore.update(Math.round(value), 10)
+};
+let animeReviewWatched = new ShapedSelectBar(new Vector2(), new Color(64, 64, 255, 200), new Color(32, 32, 96, 255));
+animeReviewWatched.radius = 4;
+animeReviewWatched.permanent = false;
+// animeReviewWatched.visAlias = true;
+animeReviewWatched.onset = (value) => {
+    mapGetRect(mapMeta.pos).object.watched = Math.round(value);
+    animeReviewWatched.update(Math.round(value), mapGetRect(mapMeta.pos).object.animedata.episodes)
+};
+//
+function getButtonApplyItem(tag) {
+    var b = new TextButtonShaped(shapeRectRounded, `Применить "${mrthStuff.items[tag].name}"`, new Vector2(), 
+        colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+        colorMapMatrix(`rgba(128,32,128,1)#rgba(180,48,180,1)#rgba(255,64,255,1)#rgba(200,47,200,0.1)`));
+    b.onhover = () => {hoverHint.invoke(mrthStuff.items[tag].desc)};
+    b.needshadow = false; b.waitanim = false; b.height = 0;
+    return b
+};
+let buttonApplyItemGlasses = getButtonApplyItem('glasses');
+buttonApplyItemGlasses.onclick = () => {
+    buttonApplyItemChocolate.insp.items.push('glasses');
+    buttonApplyItemChocolate.insp.multiplier = 1.25;
+    mrthReduceItem(mrthGetItem('glasses'))
+};
+let buttonApplyItemChocolate = getButtonApplyItem('chocolate');
+buttonApplyItemChocolate.onclick = () => {
+    buttonApplyItemChocolate.insp.items.push('chocolate');
+    buttonApplyItemChocolate.insp.filters.scoreAllow = true;
+    buttonApplyItemChocolate.insp.filters.scoreMin = 7.5;
+    buttonApplyItemChocolate.insp.filters.scoreMax = 10;
+    mrthReduceItem(mrthGetItem('chocolate'))
+};
+let buttonApplyItemRecycler = getButtonApplyItem('recycler');
+buttonApplyItemRecycler.onclick = () => {};
+let buttonApplyItemList = {
+    'glasses': buttonApplyItemGlasses,
+    'chocolate': buttonApplyItemChocolate,
+    'recycler': buttonApplyItemRecycler,
+};
+//
+function recycleAnimeRect(pos) {
+    var index = 0;
+    for(var i in mapMeta.map) {
+        if(mapMeta.map[i].pos.condAND(pos)) {index = i; break}
+    };
+    mapMeta.map[index] = new mrthRect(pos, 'empty');
+    mapMeta.map[index].open();
+    mapMeta.selected = mapMeta.map[index];
+};
+//
+let imageExternalLink = invokeNewImage(`images/extlink.png`);
+let buttonExternalDB = new ImageButtonShaped(shapeRectRounded, imageExternalLink, new Vector2(4),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.4)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
+let buttonExternalMAL = new ImageButtonShaped(shapeRectRounded, siteLogos[1], new Vector2(4),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.4)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
+let buttonExternalShiki = new ImageButtonShaped(shapeRectRounded, siteLogos[0], new Vector2(4),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.4)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
+buttonExternalDB.needshadow = false; buttonExternalMAL.needshadow = false; buttonExternalShiki.needshadow = false;
+buttonExternalDB.height = 0; buttonExternalMAL.height = 0; buttonExternalShiki.height = 0;
+buttonExternalDB.exturl = ''; buttonExternalMAL.exturl = ''; buttonExternalShiki.exturl = '';
+buttonExternalDB.onclick = () => {window.open(buttonExternalDB.exturl)};
+buttonExternalMAL.onclick = () => {window.open(buttonExternalMAL.exturl)};
+buttonExternalShiki.onclick = () => {window.open(buttonExternalShiki.exturl)};
+//
+let buttonMeetContinue = new TextButtonShaped(shapeRectRounded, `Продолжить`, new Vector2(), 
+    colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(48,180,180,0.5)#rgba(64,255,255,0.5)#rgba(200,200,47,0.1)`));
+buttonMeetContinue.needshadow = false; buttonMeetContinue.height = 0;
+buttonMeetContinue.onclick = () => {mapGetRect(mapMeta.pos).object.readstate = 'gettext'};
+//
+let buttonMeetRoot1 = new TextButtonShaped(shapeRectRounded, `root1text`, new Vector2(), 
+    colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(48,48,180,0.5)#rgba(64,64,255,0.5)#rgba(64,64,64,0.3)`));
+buttonMeetRoot1.needshadow = false; buttonMeetRoot1.height = 0;
+let buttonMeetRoot2 = new TextButtonShaped(shapeRectRounded, `root2text`, new Vector2(), 
+    colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(48,48,180,0.5)#rgba(64,64,255,0.5)#rgba(64,64,64,0.3)`));
+buttonMeetRoot2.needshadow = false; buttonMeetRoot2.height = 0;
+let buttonMeetRoot3 = new TextButtonShaped(shapeRectRounded, `root3text`, new Vector2(), 
+    colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(48,48,180,0.5)#rgba(64,64,255,0.5)#rgba(64,64,64,0.3)`));
+buttonMeetRoot3.needshadow = false; buttonMeetRoot3.height = 0;
+//
+let buttonsQuestionAnswer = [
+    new TextButtonShaped(shapeRectRounded, `answer1text`, new Vector2(), 
+    colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(48,48,180,0.5)#rgba(64,64,255,0.7)#rgba(64,64,64,0.3)`)),
+    new TextButtonShaped(shapeRectRounded, `answer2text`, new Vector2(), 
+    colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(48,48,180,0.5)#rgba(64,64,255,0.7)#rgba(64,64,64,0.3)`)),
+    new TextButtonShaped(shapeRectRounded, `answer3text`, new Vector2(), 
+    colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(48,48,180,0.5)#rgba(64,64,255,0.7)#rgba(64,64,64,0.3)`)),
+    new TextButtonShaped(shapeRectRounded, `answer4text`, new Vector2(), 
+    colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(48,48,180,0.5)#rgba(64,64,255,0.7)#rgba(64,64,64,0.3)`))
+];
+buttonsQuestionAnswer[0].onclick = () => {buttonsQuestionAnswer[0].insp.answer = 0}; buttonsQuestionAnswer[0].height = 0; buttonsQuestionAnswer[0].needshadow = false;
+buttonsQuestionAnswer[1].onclick = () => {buttonsQuestionAnswer[0].insp.answer = 1}; buttonsQuestionAnswer[1].height = 0; buttonsQuestionAnswer[1].needshadow = false;
+buttonsQuestionAnswer[2].onclick = () => {buttonsQuestionAnswer[0].insp.answer = 2}; buttonsQuestionAnswer[2].height = 0; buttonsQuestionAnswer[2].needshadow = false;
+buttonsQuestionAnswer[3].onclick = () => {buttonsQuestionAnswer[0].insp.answer = 3}; buttonsQuestionAnswer[3].height = 0; buttonsQuestionAnswer[3].needshadow = false;
+//
+let buttonTeleportPlayer = new TextButtonShaped(shapeRectRounded, `Переместиться сюда`, new Vector2(), 
+colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
+colorMapMatrix(`rgba(48,48,180,0.3)#rgba(48,48,180,0.7)#rgba(64,64,255,0.9)#rgba(64,64,64,0.3)`));
+buttonTeleportPlayer.needshadow = false; buttonTeleportPlayer.height = 0; buttonTeleportPlayer.waitanim = false;
+//
+function debugSizeLine(pos, size) {
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+    ctx.lineTo(pos.x + size.x, pos.y + size.y);
+    ctx.closePath();
+    ctx.strokeStyle = '#ff0000';
+    ctx.stroke();
+};
+//
+function getWatchPointCount(episodes=1, rating=7, watched=1, multiplier=1, type='tv') {
+    var typemult = type == 'MOVIE' ? 4 : type != 'TV' ? 1.2 : 1;
+    var mult = watched >= episodes ? 1.25 : watched >= episodes/2 ? 1.1 : watched > 0 ? 1 : 0;
+    return Math.round(watched * mult * (1 + (10 - rating)/20) * multiplier * typemult * mapMeta.permSeries)
+};
+// MARKUP
+//
+function inspDefHeader(pos, width, spacing, text) {
+    ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+    scaleFont(24, 'Segoe UI', 'bold');
+    fillTextFast(pos.sumxy(width/2, spacing), text)
+};
+function inspTextInput(statpos, width, spacing, container='', fsize) {
+    var [str, sizes] = textWidthFit(container, width-spacing*3, 10);
+    var len = str.length > 3 ? str.length : 3;
+    var size = new Vector2(sizes.x, spacing + (sizes.y + fsize*0.5*_scaleDynamic) * len);
+    var edit = String(container);
+    ctx.fillStyle = '#00000077';
+    fillRectFast(new Vector2(width, size.y), statpos);
+    ctx.fillStyle = '#ffffff';
+    fillTextArray(statpos.sumxy(spacing,  fsize*0.5*_scaleDynamic), [str,sizes], fsize*0.5*_scaleDynamic);
+    //
+    ctx.fillStyle = '#cccccc'; ctx.textAlign = 'start';
+    scaleFont(12, 'Consolas');
+    if(mouse.pos.overAND(statpos) && mouse.pos.lessAND(statpos.sumxy(width, size.y))) {
+        readKeyboardInput = true;
+        edit = editTextInput(edit);
+        fillTextFast(statpos.sumxy(spacing, size.y+spacing), '[Delete] убрать слово, [Escape] удалить всё')
+    } else {
+        fillTextFast(statpos.sumxy(spacing, size.y+spacing), '*наведите мышкой и вводите текст*')
+    };
+    //
+    return [edit, statpos.sumxy(0, size.y + spacing*2)]
+};
+function inspTextBlock(statpos, width, spacing, text, smax, fsize) {
+    var [str, vec] = textWidthFit(text, width - spacing, smax);
+    fillTextArray(statpos.sumxy(0, spacing/2), [str, vec], fsize*0.5*_scaleDynamic);
+    // debugSizeLine(statpos, new Vector2(width, spacing/2 + (fsize*0.5*_scaleDynamic + vec.y) * str.length));      // debug
+    return statpos.sumxy(0, spacing + (fsize*0.5*_scaleDynamic + vec.y) * str.length);
+};
+function inspSingleString(statpos, width, spacing, text, fsize) {
+    var xoff = ctx.textAlign == 'start' ? 0 : ctx.textAlign == 'center' ? width/2 : width;
+    fillTextFast(statpos.sumxy(xoff, fsize*_scaleDynamic), textStringLimit(text, width-spacing));
+    // debugSizeLine(statpos, new Vector2(width, spacing + fsize*_scaleDynamic));       // debug
+    return statpos.sumxy(0, spacing + fsize*_scaleDynamic)
+};
+function inspSelectBar(statpos, width, spacing, bar, maxvalue) {
+    bar.pos = statpos; bar.size.setxy(width, spacing*2); bar.maxvalue = maxvalue;
+    var oldstyle = ctx.fillStyle; // bar.draw() can change fillstyle, need to save before draw and load after 
+    bar.draw();
+    ctx.fillStyle = oldstyle;
+    return statpos.sumxy(0, spacing*3)
+};
+function inspWideButton(statpos, width, spacing, button) {
+    button.pos.setv(statpos);
+    button.size.setxy(width, 30*_scaleDynamic);
+    button.draw();
+    return statpos.sumxy(0, spacing + 30*_scaleDynamic)
+};
+function inspInventorySlot(statpos, width, spacing, item) {
+    if(item === false) {
+        ctx.fillStyle = '#cccccc'; scaleFont(14, 'Segoe UI');
+        return inspSingleString(statpos, width, spacing, `[пусто]`, 14);
+    } else {
+        // get name & count info
+        var str = mrthStuff.items[item.tag].name;
+        if(item.count !== undefined) {str += ` x${item.count}`};
+        // draw
+        ctx.fillStyle = '#ffffff'; scaleFont(18, 'Segoe UI', 'bold');
+        var st = inspSingleString(statpos, width, spacing, str, 16).minxy(0, spacing);
+        ctx.fillStyle = '#cccccc'; scaleFont(14, 'Segoe UI');
+        st = inspTextBlock(st, width, spacing, mrthStuff.items[item.tag].desc, 3, 14);
+        return st
+    }
+};
+function inspAnimePositiveItem(statpos, width, spacing, itemtag, insp) {
+    var item = mrthGetItem(itemtag); buttonApplyItemList[itemtag].insp = insp;
+    // if player have item
+    if(item !== false) {
+        // draw if item not already used
+        var used = false;
+        for(var i in insp.items) {if(insp.items[i] == item.tag) {used = true} };
+        if(!used) {return inspWideButton(statpos, width, spacing, buttonApplyItemList[itemtag])} 
+        else {return statpos}
+    }
+    else {return statpos}
+};
+//
+// @EAG MARATHON RECT CLASSES
+//
+let mrthDiclaimer = `Этот режим находится в разработке, на данный момент он добавлен исключительно ради тестирования. Всё, что тут есть, может быть изменено, перемещено или вовсе удалено. Прогресс сохраняется автоматически, но из-за некоторых сложностей что-то да может пойти не так. Если Вы решили попробовать, не забывайте регулярно делать бекапы сохранения, сделать это можно здесь во вкладке настроек.`;
+let mrthIntro1 = `Добро пожаловать в "AYAYA Marathon"! Чтобы проходить марафон - нужно смотреть аниме и получать за это очки. За очки можно исследовать области карты или тратить их в различных событиях. В ходе исследований можно найти новые клетки с аниме, а так же клетки с разными событиями. В клетках событий можно получить больше очков или некоторые предметы. Предметы могут как помочь в исследованиях, так и "подсолить". Карту можно осматривать, зажимая мышкой и двигая, информацию о клетках можно узнать, кликнув по ним, передвигаться нужно стрелками на клавиатуре.`;
+//
+class inspEmpty {
+    constructor(pos) {
+        this.pos = pos;
+        this.color = '#5555bb88';
+        this.completed = false;
+        //
+        this.intro = false;
+    }
+    collect(content='medium') {}
+    update() {}
+    inspector(pos, width, spacing) {
+        if(this.intro) {
+            inspDefHeader(pos, width, spacing, 'AYAYA Marathon');
+            var statpos = pos.sumxy(0, spacing*3);
+            //
+            scaleFont(12, 'Segoe UI');
+            ctx.textAlign = 'start'; ctx.fillStyle = '#ff9999';
+            statpos = inspTextBlock(statpos, width, spacing, mrthDiclaimer, 20, 12).sumxy(0, spacing*2);
+            //
+            scaleFont(14, 'Segoe UI'); ctx.fillStyle = '#ffffff';
+            statpos = inspTextBlock(statpos, width, spacing, mrthIntro1, 20, 14);
+            return statpos.y
+        } else {
+            inspDefHeader(pos, width, spacing, 'Пустая клетка');
+            var statpos = pos.sumxy(0, spacing*3);
+            // teleport button
+            if(!mapMeta.pos.condAND(this.pos) && !mapMeta.watching && !mapMeta.cutscene) {
+                buttonTeleportPlayer.onclick = () => {if(!mapMeta.watching && !mapMeta.cutscene) {mapMeta.pos = this.pos}};
+                scaleFont(14, 'Segoe UI');
+                statpos = inspWideButton(statpos, width, spacing, buttonTeleportPlayer)
+            }
+            return statpos
+        }
+    }
+};
+//
+class inspAnime {
+    constructor(pos) {
+        this.pos = pos;
+        this.color = '#bb555588';
+        this.completed = false;
+        //
+        this.preset = '';
+        this.presetinfo = '';
+        this.state = 'roll';
+        this.animedata = null;
+        this.watched = 0;
+        this.review = '';
+        this.score = 5;
+        this.points = 0;
+        this.history = [];
+        // jikan
+        this.timeout = 0;
+        this.rating = 10;
+        this.list = [];
+        this.malid = false;
+        this.pic = new Image();
+        // items
+        this.items = [];
+        this.multiplier = 1;
+        this.filters = {};
+    }
+    collect(content='medium') {
+        if(content == 'easy') {this.preset = _mrthpresetsEasy[Math.floor(Math.random() * (_mrthpresetsEasy.length - 0.001))]}
+        else {this.preset = _mrthpresets[Math.floor(Math.random() * (_mrthpresets.length - 0.001))]};
+        // this.preset = presetbase[_presetnames[index]];
+        // this.presetinfo = this.preset.getInfo(); 
+        this.presetinfo = presetbase[this.preset].getInfo();
+    }
+    update() {}
+    inspector(pos, width, spacing) {
+        // ui
+        inspDefHeader(pos, width, spacing, 'Просмотр аниме');
+        // preset info
+        ctx.fillStyle = '#ffffff'; ctx.textAlign = 'start';
+        scaleFont(14, 'Segoe UI');
+        var statpos = inspTextBlock(pos.sumxy(0, spacing*2), width, spacing, this.presetinfo, 3, 14);
+        // line && states
+        fillRect(new Vector2(width, 3*_scaleDynamic), statpos, '#ffffff');
+        statpos = statpos.sumxy(0, spacing/2 + 3*_scaleDynamic);
+        //
+        if(this.state == 'roll') {
+            ctx.fillStyle = `#cccccc`;
+            var sub = `[!] Чтобы начать прохождение клетки, прокрутите рулетку и узнайте тайтл, который нужно будет посмотреть. После получения тайтла вы не сможете перемещаться, пока не посмотрите аниме.`;
+            statpos = inspTextBlock(statpos, width, spacing, sub, 3, 14);
+            // button
+            if(mapMeta.pos.condAND(this.pos)) {
+                ctx.textAlign = 'center';
+                buttonRollAnime.onclick = this.buttonRoll;
+                buttonRollAnime.insp = this;
+                buttonRollAnime.text = 'Крутить рулетку';
+                statpos = inspWideButton(statpos, width, spacing, buttonRollAnime).sumxy(0, spacing);
+                // positive items
+                statpos = inspAnimePositiveItem(statpos, width, spacing, 'glasses', this);
+                statpos = inspAnimePositiveItem(statpos, width, spacing, 'chocolate', this);
+                if(this.list.length == 0) { // recycler (aval if no watched anime)
+                    var item = mrthGetItem('recycler');
+                    if(item !== false) {
+                        // calc recycle points & show
+                        var recyclepoints = itemFunc.recyclerPoints(this.pos, this.preset);
+                        statpos = inspTextBlock(statpos, width, spacing, `Очки за утилизацию клетки: ${recyclepoints}. ВАЖНО: после утилизации клетка полностью удалится и ей больше нельзя будет воспользоваться.`, 3, 14);
+                        // setup button
+                        buttonApplyItemRecycler.insp = this;
+                        buttonApplyItemRecycler.onclick = () => {
+                            // reset this rect, update map
+                            recycleAnimeRect(this.pos);
+                            // add points & delete item
+                            mapMeta.points += recyclepoints;
+                            mrthReduceItem(mrthGetItem('recycler'));
+                            marathonSave()
+                        };
+                        statpos = inspAnimePositiveItem(statpos, width, spacing, 'recycler', this);    
+                    }
+                };
+                // info about marathon_key
+                var mkey = mrthGetItem('marathon_key');
+                if(mkey !== false) {
+                    statpos = inspTextBlock(statpos, width, spacing, 'У Вас есть предмет "Ключ от марафона" - перейдя к рулетке предмет израсходуется сам! Перед прокрутом рулетки кнопка экрана фильтрации не будет заблокирована, т.е. можно будет настроить фильтр и сгенерировать рулетку из такого аниме, из какого хотите.', 5, 14);  
+                };
+                // info about items
+                if(this.items.length > 0) {
+                    statpos = inspSingleString(statpos, width, spacing, 'Применённые предметы', 14);
+                    ctx.fillStyle = '#afa';
+                };
+                for(var i in this.items) {
+                    statpos = inspSingleString(statpos, width, spacing, mrthStuff.items[this.items[i]].name, 14)
+                };
+                // negative effects
+                var poop = mrthGetItem('poop'); var salad = mrthGetItem('salad');
+                if(poop !== false || salad !== false) {
+                    ctx.fillStyle = '#fff';
+                    statpos = inspSingleString(statpos, width, spacing, 'Негативные эффекты', 14);
+                    ctx.fillStyle = '#faa';
+                    poop === false ? false : statpos = inspSingleString(statpos, width, spacing, mrthStuff.items['poop'].name, 14);
+                    salad === false ? false : statpos = inspSingleString(statpos, width, spacing, mrthStuff.items['salad'].name, 14);
+                };
+            } else {
+                sub = `Встаньте на клетку, чтобы можно было взаимодействовать!`;
+                statpos = inspTextBlock(statpos, width, spacing, sub, 3, 14);
+            }
+        //
+        } else if(this.state == 'jikan_wait') {
+            ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+            scaleFont(24, 'Segoe UI', 'bold');
+            // anime title
+            statpos = inspTextBlock(statpos, width, spacing, this.animedata.title, 2, 24);
+            // waiting
+            scaleFont(14, 'Segoe UI');
+            statpos = inspSingleString(statpos, width, spacing, `Загружаем данные об аниме...`);
+            this.pic.src = String(this.animedata.picture);
+            this.pic.size = new Vector2();
+            this.timeout += deltaTime/1000;
+            //
+            if(jikan._result != `wait`) {
+                this.rating = Number(jikan._result.data.score);
+                this.malid = Number(jikan._result.data.mal_id);
+                this.state = 'anime';
+                marathonSave() // save AFTER try to load data from jikan
+            } else if(this.timeout > 8) { // wait for result 8 seconds
+                this.state = 'anime';
+                marathonSave();
+                console.warn('Error with load data from jikan for marathon anime inspector!')
+            };
+        //
+        } else if(this.state == 'anime') {
+            // anime title
+            ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+            scaleFont(24, 'Segoe UI', 'bold');
+            statpos = inspTextBlock(statpos, width, spacing, this.animedata.title, 2, 24);
+            // anime info
+            scaleFont(14, 'Segoe UI');
+            var str = `${this.animedata.episodes} эп. | ${this.rating} | ${txt(typesDataMap[this.animedata.type])} | ${this.animedata.status} | ${this.animedata.animeSeason.year} | ${txt(seasonsDataMap[this.animedata.animeSeason.season][1])}`;
+            statpos = inspSingleString(statpos, width, spacing, str, 14);
+            // external links
+            buttonExternalShiki.sizedZoom(new Vector2(40*_scaleDynamic));
+            buttonExternalShiki.pos.setv(statpos.sumxy(width/2 - (spacing/2 + 40*_scaleDynamic), 0));
+            if(this.malid !== false) {
+                buttonExternalShiki.exturl = `https://shikimori.one/animes/` + this.malid;
+                buttonExternalMAL.sizedZoom(new Vector2(40*_scaleDynamic));
+                buttonExternalMAL.pos.setv(statpos.sumxy((width + spacing)/2, 0));
+                buttonExternalMAL.exturl = `https://myanimelist.net/anime/` + this.malid;
+                buttonExternalMAL.draw();
+            } else {
+                buttonExternalShiki.exturl = `https://shikimori.one/animes?search=` + this.animedata.title;
+                buttonExternalDB.sizedZoom(new Vector2(40*_scaleDynamic));
+                buttonExternalDB.exturl = this.animedata.sources[0];
+                buttonExternalDB.pos.setv(statpos.sumxy((width + spacing)/2, 0));
+                buttonExternalDB.draw();
+                //`https://shikimori.one/animes?search=${title.title}`
+            };
+            buttonExternalShiki.draw();
+            statpos = statpos.sumxy(0, 40*_scaleDynamic);
+            // dialog
+            ctx.fillStyle = '#cccccc'; ctx.textAlign = 'start';
+            sub = `Можете приступать к просмотру! Потом вернитесь, поставьте оценку, напишите отзыв, отметьте кол-во просмотренных серий и сохраните результат. После Вы сможете продолжить исследование.`;
+            statpos = inspTextBlock(statpos, width, spacing, sub, 4, 14);
+            // watched
+            ctx.fillStyle = '#ffffff';
+            statpos = inspSingleString(statpos, width, spacing, `Просмотрено серий: ${Math.round(animeReviewWatched.point())} из ${this.animedata.episodes}`, 14);
+            statpos = inspSelectBar(statpos, width, spacing, animeReviewWatched, this.animedata.episodes);
+            // score
+            statpos = inspSingleString(statpos, width, spacing, 'Оценка: ' + Math.round(animeReviewScore.point()), 14);
+            statpos = inspSelectBar(statpos, width, spacing, animeReviewScore, 10);
+            // review
+            statpos = inspSingleString(statpos, width, spacing, 'Отзыв (макс. 10 строк): ', 14);
+            scaleFont(12, 'Segoe UI');
+            [this.review, statpos] = inspTextInput(statpos, width, spacing, this.review, 12);
+            // points
+            scaleFont(14, 'Segoe UI', 'bold'); ctx.fillStyle = `#ffb92e`;
+            this.points = getWatchPointCount(this.animedata.episodes, this.rating, this.watched, presetbase[this.preset].mult * this.multiplier, this.animedata.type);
+            var pstr = this.watched > 0
+            ? `Кол-во очков за просмотр: ${this.points} (~${floatNumber(this.points / this.watched+1, 1)} за серию)`
+            : `Кол-во очков за просмотр: ${this.points}`;
+            statpos = inspSingleString(statpos, width, spacing, pstr, 14);
+            // apply button
+            ctx.textAlign = 'center';
+            buttonApplyWatch.insp = this; 
+            buttonApplyWatch.onact = this.buttonApply;
+            if(this.watched > 0) {
+                inspWideButton(statpos, width, spacing, buttonApplyWatch);
+                ctx.fillStyle = `#ffffff`;
+                statpos = inspSingleString(statpos.sumxy(0, spacing/2), width, spacing, 'Закончить просмотр', 14);
+            } else {
+                ctx.fillStyle = `#ff8888`;
+                statpos = inspSingleString(statpos.sumxy(0, spacing/2), width, spacing, 'Вы ещё ничего не посмотрели.', 14);
+            };
+            // info about items
+            scaleFont(14, 'Segoe UI');
+            if(this.items.length > 0) {
+                statpos = inspSingleString(statpos.sumxy(0, spacing/2), width, spacing, 'Применённые предметы', 14);
+                ctx.fillStyle = '#afa';
+            };
+            for(var i in this.items) {statpos = inspSingleString(statpos, width, spacing, mrthStuff.items[this.items[i]].name, 14)};
+            // info about negative items
+            var poop = mrthGetItem('poop'); var salad = mrthGetItem('salad');
+            if(poop !== false || salad !== false) {
+                ctx.fillStyle = '#faa';
+                statpos = inspSingleString(statpos.sumxy(0, spacing/2), width, spacing, 'Действуют негативные эффекты', 14);
+                if(poop !== false) {statpos = inspSingleString(statpos, width, spacing, mrthStuff.items['poop'].name, 14)};
+                if(salad !== false) {statpos = inspSingleString(statpos, width, spacing, mrthStuff.items['salad'].name, 14)};
+            };
+            // reroll button
+            ctx.textAlign = 'start'; ctx.fillStyle = '#cccccc';
+            scaleFont(12, 'Segoe UI');
+            sub = `Если данное аниме сильно Вас отторгает, не удовлетворяет условиям пресета или Вы не можете найти способ нормально его посмотреть, то его можно реролльнуть, чтобы выбить другое аниме. Не увлекайтесь этой функцией - она только для крайних случаев (по задумке за реролл должен быть штраф, но него пока что нет). Применённые предметы после реролла не восстановятся - Вы их потеряете! Чтобы сделать реролл - зажмите красную кнопку снизу.`;
+            statpos = inspTextBlock(statpos, width, spacing, sub, 6, 12);
+            scaleFont(16, 'Segoe UI'); ctx.textAlign = 'center'; ctx.fillStyle = '#ffffff';
+            buttonRerollAnime.insp = this;
+            buttonRerollAnime.onact = this.buttonRoll;
+            statpos = inspWideButton(statpos, width, spacing, buttonRerollAnime);
+            // add some free space in bottom for easy-to-read
+            statpos.y += 200 / _scaleDynamic;
+        //
+        } else if(this.state == 'watched') {
+            for(var i in this.history) {
+                ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+                scaleFont(24, 'Segoe UI', 'bold');
+                // anime title, info, stats & review
+                statpos = inspTextBlock(statpos, width, spacing, this.history[i].n, 2, 20);
+                scaleFont(14, 'Segoe UI');
+                statpos = inspSingleString(statpos, width, spacing, this.history[i].p, 14);
+                statpos = inspSingleString(statpos, width, spacing, this.history[i].y, 14);
+                ctx.textAlign = 'start';
+                statpos = inspSingleString(statpos, width, spacing, `Отзыв:`, 14).minxy(0, spacing);
+                scaleFont(12, 'Segoe UI');
+                statpos = inspTextBlock(statpos, width, spacing, this.history[i].r, 11, 12);
+                // end
+                fillRect(new Vector2(width, 3*_scaleDynamic), statpos, '#ffffff');
+                statpos = statpos.sumxy(0, spacing/2 + 3*_scaleDynamic);
+            };
+            // universal_key
+            var item = mrthGetItem('universal_key');
+            if(mapMeta.pos.condAND(this.pos) && item !== false) {
+                ctx.textAlign = 'center'; scaleFont(14, 'Segoe UI');
+                buttonRollAnime.text = 'Использовать универсальный ключ';
+                buttonRollAnime.insp = this;
+                buttonRollAnime.onclick = () => {
+                    mrthDeleteItem('universal_key');
+                    buttonRollAnime.insp.state = 'roll';
+                    buttonRollAnime.insp.completed = false;
+                    mrthMeta.scroll.set(0);
+                    marathonSave()
+                };
+                statpos = inspWideButton(statpos, width, spacing, buttonRollAnime).sumxy(0, spacing);
+                ctx.textAlign = 'center'; ctx.fillStyle = '#cccccc';
+                statpos = inspTextBlock(statpos, width, spacing, mrthStuff.items['universal_key'].desc, 4, 14)
+            };
+            // add some free space in bottom for easy-to-read
+            statpos.y += 250 / _scaleDynamic;
+        }
+        return statpos.y
+    }
+    buttonRoll() {
+        if(this.insp.state == 'anime') {
+            mapMeta.rerolls++;
+            this.insp.state = 'roll';
+            mrthMeta.scroll.set(0);
+        };
+        this.insp.completed = false;
+        // reset inspector objects
+        animeReviewScore.update(0, 10);
+        animeReviewWatched.update(0, 1);
+        buttonRerollAnime.progress = 0; buttonRerollAnime.operate = false;
+        buttonApplyWatch.progress = 0; buttonApplyWatch.operate = false;
+        this.insp.points = this.insp.episodes = 0; this.insp.review = '';
+        // block movement while screen animation
+        mapMeta.cutscene = true;
+        // reset roulette winner
+        if(roulette.winnerPos !== -1) {
+            roulette.pics[roulette.winnerPos].bgColor = new Color(0,0,0,1);
+            roulette.pics[roulette.winnerPos].winner = false;
+            roulette.winnerPos = -1;
+        };
+        // data for title info block
+        tInfo.meta.usePreset = true;
+        presetSelected = this.insp.preset;
+        tInfo.meta.object = presetbase[presetSelected];
+        tInfo.meta.changes = 0;
+        // generate anime from preset modified by item filter addons
+        filterPreset(presetbase[presetSelected]);
+        for(var f in this.insp.filters) {filterDefault[f] = this.insp.filters[f]}; // modify filter by items
+        // modify filter by negative items
+        if(mrthGetItem('poop') !== false) {this.insp.multiplier = 0.75};
+        if(mrthGetItem('salad') !== false) {filterDefault.scoreAllow = true; filterDefault.scoreMax = 7.5; filterDefault.scoreMin = 0};
+        filterDefault.skipSpecial = true; // скип для всего односерийного, кроме фильмов
+        // this function automated for jump to load screen
+        roulette.marathon = true;
+        animeArrayApply(getListFiltered(filterDefault));
+    }
+    buttonApply() {
+        // save anime to history
+        buttonApplyWatch.insp.history.push({
+            n: ''+buttonApplyWatch.insp.animedata.title,
+            p: `${buttonApplyWatch.insp.animedata.episodes} эп. | ${buttonApplyWatch.insp.rating} | ${txt(typesDataMap[buttonApplyWatch.insp.animedata.type])} | ${buttonApplyWatch.insp.animedata.status} | ${buttonApplyWatch.insp.animedata.animeSeason.year} | ${txt(seasonsDataMap[buttonApplyWatch.insp.animedata.animeSeason.season][1])}`,
+            y: `Просмотрено серий: ${buttonApplyWatch.insp.watched} | Оценка: ${buttonApplyWatch.insp.score} | Получено очков: ${buttonApplyWatch.insp.points}`,
+            r: ''+buttonApplyWatch.insp.review,
+        });
+        buttonApplyWatch.insp.review = ''; // delete already saved review into history.r
+        // set meta
+        buttonApplyWatch.insp.state = 'watched';
+        buttonApplyWatch.insp.completed = true;
+        mapMeta.watching = false;
+        // updating stats
+        mapMeta.points += buttonApplyWatch.insp.points;
+        mapMeta.total += buttonApplyWatch.insp.points;
+        mapMeta.episodes += buttonApplyWatch.insp.watched;
+        mapMeta.animes++;
+        // deleting positive items from this rect
+        buttonApplyWatch.insp.items = [];
+        // deleting negative items
+        if(mrthGetItem('poop') !== false) {mrthDeleteItem('poop')};
+        if(mrthGetItem('salad') !== false) {mrthDeleteItem('salad')};
+        // checking map, if map do not have any anime rect - generating opened anime rect on random empty rect
+        mapCheckAvalaibleAnimes();
+        // rect spoiler cutscene
+        var spoiler = 0;
+        if(buttonApplyWatch.insp.watched >= 20) {spoiler = 3}
+        else if(buttonApplyWatch.insp.watched >= 11) {spoiler = 2}
+        else if(buttonApplyWatch.insp.watched >= 6 || (buttonApplyWatch.insp.watched >= 1 && buttonApplyWatch.insp.animedata.type == 'MOVIE')) {spoiler = 1}
+        if(spoiler > 0) {setTimeout(() => {mapMeta.cutscene = true; mapGenerateSpoilers(spoiler)}, 1500)};
+        // save all
+        marathonSave()
+    }
+};
+// 2 серии = 1 клетка | 6 серий или фильм = 2 | 12 серий = 3 | 20 серий = 4
+// 1 - хорошая встреча
+// 2 - хороший предмет
+// 3 - хорошая встреча
+// 4 - аниме с топовым пресетом
+//
+class inspQuestion {
+    constructor(pos) {
+        this.pos = pos;
+        this.color = '#55bbbb88';
+        this.completed = false;
+        //
+        this.state = 'start';
+        this.animes = [];
+        this.title = 0;
+        this.characters = [];
+        this.type = 'none';
+        this.picture = new Image();
+        this.content = {
+            quest: '', object: '',
+            answers: [],
+            type: 'pic',
+            correct: 0,
+        };
+        this.reward = {type: '', content: '', default: 0};
+        this.result = false;
+        this.answer = false;
+        // идеи
+        // из какого аниме персонаж
+    }
+    collect(content='medium') {
+        // set reward type
+        this.reward.type = ['point', 'item', 'spoiler'][Math.floor(Math.random() * 2.999)]; // @dev мб надо отбалансить пожоще)
+        // set default points reward, if inventory not have free space
+        this.reward.default = Math.floor(mrthGetExploreCost(this.pos) * (1 + Math.random()*2));
+        // set other reward content
+        if(this.reward.type == 'spoiler') {
+            var spoil = Math.random();
+            if(spoil > 0.5) {this.reward.content = 2} else {this.reward.content = 1}
+        };
+        if(this.reward.type == 'item') {this.reward.content = _itemsPositive[Math.floor(Math.random() * (_itemsPositive.length - 0.001))]};
+    }
+    update() {}
+    inspector(pos, width, spacing) {
+        // ui
+        inspDefHeader(pos, width, spacing, 'Вопрос на удачу');
+        // quest info
+        ctx.fillStyle = '#cccccc'; ctx.textAlign = 'start';
+        scaleFont(14, 'Segoe UI');
+        var about = `Попытайте свою удачу в случайных вопросах и получите шанс получить что-то ценное в случае правильного ответа. Да-да, полагаться тут на свои знания в аниме не стоит - вопросы генерируются по разной информации о тысячах аниме и персонажей.`;
+        var statpos = inspTextBlock(pos.sumxy(0, spacing*2), width, spacing, about, 3, 14);
+        // line && states
+        fillRect(new Vector2(width, 3*_scaleDynamic), statpos, '#ffffff');
+        statpos = statpos.sumxy(0, spacing/2 + 3*_scaleDynamic);
+        // start button
+        if(this.state == 'start') {
+            if(mapMeta.pos.condAND(this.pos)) {
+                ctx.textAlign = 'center';
+                buttonRollAnime.insp = this;
+                buttonRollAnime.text = 'Сгенерировать вопрос';
+                buttonRollAnime.onclick = () => {
+                    // start jikan state, requesting question data & enable cutscene
+                    buttonRollAnime.insp.state = 'jikan_top';
+                    jikan.custom(`https://api.jikan.moe/v4/top/anime?page=${Math.floor(Math.random()*40)}&sfw=true`);
+                    mapMeta.cutscene = true; 
+                };
+                statpos = inspWideButton(statpos, width, spacing, buttonRollAnime).sumxy(0, spacing);
+            } else {
+                statpos = inspTextBlock(statpos, width, spacing, `Встаньте на клетку, чтобы можно было взаимодействовать!`, 3, 14);
+            };
+            // draw reward info
+            ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+            statpos = inspSingleString(statpos, width, spacing, `Награда за правильный ответ`, 14);
+            scaleFont(20, 'Segoe UI', 'bold');
+            if(this.reward.type == 'point') {statpos = inspSingleString(statpos, width, spacing, `Монеты х${this.reward.default}`, 20)};
+            if(this.reward.type == 'spoiler'){statpos = inspSingleString(statpos, width, spacing, `Исследование клеток х${this.reward.content}`, 20)};
+            if(this.reward.type == 'item'){
+                statpos = inspSingleString(statpos, width, spacing, mrthStuff.items[this.reward.content].name, 20);
+                if(!mrthInventoryFreeSpace()) {ctx.fillStyle = '#ff5555'; scaleFont(14, 'Segoe UI');
+                    statpos = inspTextBlock(statpos, width, spacing, `В Вашем инвентаре нет места для нового предмета! Вместо предмета вы получите ${this.reward.default} монет.`, 4, 14);
+                }
+            };
+        //
+        // request needed data about anime and characters
+        } else if(this.state == 'jikan_top') {
+            // top anime from 1000 (25 * 40 pages)
+            if(jikan._result != 'wait') {
+                if(jikan._result == 'failed' || jikan._result == 'error') {this.state = 'start'};
+                // parse animes, get random one and send request for chars
+                this.animes = JSON.parse(JSON.stringify(jikan._result));
+                this.title = Math.floor(Math.random() * (this.animes.data.length - 0.001));
+                jikan.custom(`https://api.jikan.moe/v4/anime/${this.animes.data[this.title].mal_id}/characters`);
+                this.state = 'jikan_chars'
+            };
+        } else if(this.state == 'jikan_chars') {
+            if(jikan._result != 'wait') {
+                if(jikan._result == 'failed' || jikan._result == 'error') {this.state = 'start'};
+                this.characters = JSON.parse(JSON.stringify(jikan._result));
+                this.state = 'forming'
+            }
+        } else if(this.state == 'forming') {
+            // get question type
+            if(this.type == 'none') {
+                var types = ['pic', 'synop', 'charname', 'charanime'];
+                this.type = types[Math.floor(Math.random() * (types.length - 0.001))];
+                // get correct answer title
+                this.content.correct = Math.floor(Math.random() * 3.999);
+            };
+            // generate question
+            //
+            if(this.type == 'pic') {
+                this.content.quest = 'Какому аниме принадлежит этот постер?';
+                this.content.type = 'pic';
+                this.picture = new Image(); this.picture.timeo = 0;
+                this.picture.src = this.animes.data[this.title].images.webp.image_url;
+                this.content.answers = [];
+                while (this.content.answers.length < 4) {
+                    var ind = Math.floor(Math.random() * 24.999);
+                    if(ind == this.title) {continue};
+                    if(this.animes.data[ind].title == 'used') {continue}
+                    else {
+                        this.content.answers.push(this.animes.data[ind].title);
+                        this.animes.data[ind].title = 'used'
+                    }
+                };
+                this.content.answers[this.content.correct] = this.animes.data[this.title].title;
+                this.state = 'waitpic'
+            //
+            } else if(this.type == 'synop') {
+                this.content.quest = 'Какому аниме принадлежит это описание?';
+                this.content.type = 'text';
+                this.content.object = this.animes.data[this.title].synopsis;
+                this.content.answers = [];
+                while (this.content.answers.length < 4) {
+                    var ind = Math.floor(Math.random() * 24.999);
+                    if(ind == this.title) {continue};
+                    if(this.animes.data[ind].title == 'used') {continue}
+                    else {
+                        this.content.answers.push(this.animes.data[ind].title);
+                        this.animes.data[ind].title = 'used'
+                    }
+                };
+                this.content.answers[this.content.correct] = this.animes.data[this.title].title;
+                this.state = 'quest'
+            } else if(this.type == 'charname') {
+                // if characters less than 5, (4random + 1correct) new request
+                if(this.characters.data.length < 5) {
+                    this.title = Math.floor(Math.random() * (this.animes.data.length - 0.001));
+                    jikan.custom(`https://api.jikan.moe/v4/anime/${this.animes.data[this.title].mal_id}/characters`);
+                    this.state = 'jikan_chars'
+                } else {
+                    this.title = Math.floor(Math.random() * (this.characters.data.length - 0.001));
+                    this.content.quest = 'Как зовут этого персонажа?';
+                    this.content.type = 'pic';
+                    this.picture = new Image(); this.picture.timeo = 0;
+                    this.picture.src = this.characters.data[this.title].character.images.webp.image_url;
+                    this.content.answers = [];
+                    while (this.content.answers.length < 4) {
+                        var ind = Math.floor(Math.random() * (this.characters.data.length - 0.001));
+                        if(ind == this.title) {continue};
+                        if(this.characters.data[ind].character.name == 'used') {continue}
+                        else {
+                            this.content.answers.push(this.characters.data[ind].character.name);
+                            this.characters.data[ind].character.name = 'used'
+                        }
+                    };
+                    this.content.answers[this.content.correct] = this.characters.data[this.title].character.name;
+                    this.state = 'waitpic'
+                }
+            } else if(this.type == 'charanime') {
+                // if characters less than 1, new request
+                if(this.characters.data.length < 1) {
+                    this.title = Math.floor(Math.random() * (this.animes.data.length - 0.001));
+                    jikan.custom(`https://api.jikan.moe/v4/anime/${this.animes.data[this.title].mal_id}/characters`);
+                    this.state = 'jikan_chars'
+                } else {
+                    var char = Math.floor(Math.random() * (this.characters.data.length - 0.001));
+                    this.content.quest = 'Из какого аниме этот персонаж?';
+                    this.content.type = 'pic';
+                    this.picture = new Image(); this.picture.timeo = 0;
+                    this.picture.src = this.characters.data[char].character.images.webp.image_url;
+                    this.content.answers = [];
+                    while (this.content.answers.length < 4) {
+                        var ind = Math.floor(Math.random() * 24.999);
+                        if(ind == this.title) {continue};
+                        if(this.animes.data[ind].title == 'used') {continue}
+                        else {
+                            this.content.answers.push(this.animes.data[ind].title);
+                            this.animes.data[ind].title = 'used'
+                        }
+                    };
+                    this.content.answers[this.content.correct] = this.animes.data[this.title].title;
+                    this.state = 'waitpic'
+                }
+            }
+        } else if(this.state == 'waitpic') {
+            this.picture.timeo += deltaTime;
+            if(this.picture.complete) {this.state = 'quest'};
+            if(this.picture.timeo > 10000) {this.state = 'start'} // timeout 10 sec & new request
+        };
+        // drawing waiting
+        if(this.state != 'quest' && this.state != 'start' && this.state != 'end') {
+            ctx.fillStyle = '#fff';
+            statpos = inspSingleString(statpos, width, spacing, 'Загружаем информацию и генерируем вопрос...', 14)
+        };
+        //
+        // draw question
+        if(this.state == 'quest') {
+            // quest
+            scaleFont(18, 'Segoe UI', 'bold'); ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+            statpos = inspSingleString(statpos, width, spacing, this.content.quest, 18);
+            // q content
+            scaleFont(14, 'Segoe UI');
+            if(this.content.type == 'pic') {
+                var picsize = this.picture.naturalHeight > this.picture.naturalWidth
+                ? new Vector2((this.picture.naturalWidth / this.picture.naturalHeight) * 200, 200)
+                : new Vector2(200, (this.picture.naturalHeight / this.picture.naturalWidth) * 200);
+                drawImageSized(this.picture, statpos.sumxy(width/2 - picsize.x/2, 0), picsize);
+                statpos = statpos.sumxy(0, picsize.y + spacing)
+            } else if(this.content.type == 'text') {
+                ctx.textAlign = 'start';
+                statpos = inspTextBlock(statpos, width, spacing, this.content.object, 12, 14);
+                ctx.textAlign = 'center';
+            };
+            // answers
+            buttonsQuestionAnswer[0].insp = this;
+            for(var a in this.content.answers) {
+                buttonsQuestionAnswer[a].text = this.content.answers[a];
+                statpos = inspWideButton(statpos, width, spacing, buttonsQuestionAnswer[a])
+            };
+            // get answer
+            if(this.answer !== false) {
+                // get result & clear temporary question data
+                this.result = this.answer == this.content.correct;
+                this.animes = []; this.characters = [];
+                this.picture = '';
+                // ending quest, disable cutscene
+                this.completed = true;
+                this.state = 'end';
+                mapMeta.cutscene = false;
+                // give reward, if result is true
+                if(this.result) {
+                    if(this.reward.type == 'point') {mapMeta.points += this.reward.default};
+                    if(this.reward.type == 'spoiler') {setTimeout(() => {mapGenerateSpoilers(this.reward.content)}, 500);};
+                    if(this.reward.type == 'item') {
+                        if(mrthInventoryFreeSpace()) {mrthInventoryAddItem(this.reward.content)}
+                        else {this.reward.type = 'point'; mapMeta.points += this.reward.default}
+                    }
+                };
+                marathonSave()
+            }
+        } else if(this.state == 'end') {
+            scaleFont(14, 'Segoe UI'); ctx.textAlign = 'center';
+            statpos.sumxy(0, spacing);
+            if(this.result) {
+                ctx.fillStyle = '#4f4';
+                statpos = inspSingleString(statpos, width, spacing, 'Правильный ответ!', 14);
+                scaleFont(18, 'Segoe UI', 'bold');
+                statpos = inspTextBlock(statpos, width, spacing, this.content.answers[this.content.correct], 2, 18);
+                // draw reward info
+                ctx.fillStyle = '#ffffff'; scaleFont(14, 'Segoe UI');
+                statpos = inspSingleString(statpos, width, spacing, `Вы получаете:`, 14);
+                scaleFont(18, 'Segoe UI', 'bold');
+                if(this.reward.type == 'point') {statpos = inspSingleString(statpos, width, spacing, `Монеты х${this.reward.default}`, 18)};
+                if(this.reward.type == 'spoiler'){statpos = inspSingleString(statpos, width, spacing, `Исследование клеток х${this.reward.content}`, 18)};
+                if(this.reward.type == 'item'){statpos = inspSingleString(statpos, width, spacing, mrthStuff.items[this.reward.content].name, 18)};
+            } else {
+                ctx.fillStyle = '#f44';
+                statpos = inspSingleString(statpos, width, spacing, 'Неверно.', 14);
+                statpos = inspTextBlock(statpos, width, spacing, 'Правильным ответом было: ' + this.content.answers[this.content.correct], 2, 14)
+            }
+        }
+        //
+        return statpos.y
+    }
+};
+//
+class inspMeeting {
+    constructor(pos) {
+        this.pos = pos;
+        this.color = '#55bb5588';
+        this.completed = false;
+        //
+        this.state = 'start';
+        this.scenario = '';
+        this.story = [];
+        this.values = {};
+        this.content = 'medium';
+        // root reader
+        this.readstate = 'callback';
+        this.root = 'start';
+        this.textprog = 0;
+        this.result = '';
+        // string revealer
+        this.string = '';
+        this.strprog = 0;
+        this.stringspeed = 70;
+    }
+    collect(content='medium') {
+        this.content = content;
+    }
+    update() {}
+    inspector(pos, width, spacing) {
+        // ui
+        inspDefHeader(pos, width, spacing, this.content == 'easy' ? 'Хорошая встреча' : 'Случайная встреча');
+        // quest info
+        ctx.fillStyle = '#cccccc'; ctx.textAlign = 'start';
+        scaleFont(14, 'Segoe UI');
+        var about = this.content != 'easy' 
+        ? `Здесь можно поучавствовать во встречах со случайными странниками или исследовать интересные места. На каждом таком секторе есть что-то для Вас, остаётся только исследовать его и выяснить, это что-то хорошее или что-то плохое...`
+        : `Здесь можно поучавствовать во встречах на гарантированно хороших секторах. На каждом таком секторе есть что-то хорошее для Вас, остаётся только исследовать его и выяснить, что же это...`;
+        var statpos = inspTextBlock(pos.sumxy(0, spacing*2), width, spacing, about, 3, 14);
+        // line && states
+        fillRect(new Vector2(width, 3*_scaleDynamic), statpos, '#ffffff');
+        statpos = statpos.sumxy(0, spacing/2 + 3*_scaleDynamic);
+        //
+        if(this.state == 'start') {
+            // start button
+            if(mapMeta.pos.condAND(this.pos)) {
+                ctx.textAlign = 'center';
+                buttonRollAnime.insp = this;
+                buttonRollAnime.text = 'Начать встречу';
+                buttonRollAnime.onclick = () => {
+                    buttonRollAnime.insp.state = 'init';
+                    // collect by content type
+                    if(this.content == 'easy') {this.scenario = mrthMeetingsEasy[Math.floor(Math.random() * (mrthMeetingsEasy.length - 0.001))]}
+                    else if(this.content == 'hard') {this.scenario = mrthMeetingsHard[Math.floor(Math.random() * (mrthMeetingsHard.length - 0.001))]}
+                    else {this.scenario = mrthMeetingsAll[Math.floor(Math.random() * (mrthMeetingsAll.length - 0.001))]}
+                    // applying "black" to collected content
+                    if(mrthGetItem('black') !== false) {
+                        // 50% chance of rewrite to bad meeting
+                        if(Math.random() >= 0.5) {this.scenario = mrthMeetingsHard[Math.floor(Math.random() * (mrthMeetingsHard.length - 0.001))]};
+                        mrthDeleteItem('black'); // delete in any case
+                    }
+                };
+                statpos = inspWideButton(statpos, width, spacing, buttonRollAnime).sumxy(0, spacing);
+                // info about black metka
+                ctx.fillStyle = '#ff5555';
+                if(mrthGetItem('black') !== false) {statpos = inspTextBlock(statpos, width, spacing, `Активен негативный эффект "Черная метка". Во время генерации встречи есть шанс 50% что вместо записанной заранее встречи будет плохая.`, 3, 14)}
+            } else {
+                statpos = inspTextBlock(statpos, width, spacing, `Встаньте на клетку, чтобы можно было взаимодействовать!`, 3, 14);
+            }
+        } else if(this.state == 'init') {
+            // load values from scenario
+            for(let i in mrthStuff.meetings[this.scenario].meta.values) {
+                this.values[i] = mrthStuff.meetings[this.scenario].meta.values[i];
+            };
+            // start cutscene for prevent player moving & start meet
+            mapMeta.cutscene = true;
+            this.state = 'meet'
+        } else if(this.state == 'meet') {
+            var sc = mrthStuff.meetings[this.scenario];
+            // readstate model
+            if(this.readstate == 'closed') {
+                // closing readstate by if in head
+            } else if(this.readstate == 'callback') {
+                // root selection buttons reset avalaibility
+                buttonMeetRoot1.state = `idle`; buttonMeetRoot2.state = `idle`; buttonMeetRoot3.state = `idle`;
+                // check callback, get result & check result, maybe switch root
+                var result = undefined;
+                if(sc[this.root].callback !== undefined) {result = sc[this.root].callback(this)};
+                if(result !== undefined) {
+                    if(result == 'root') {
+                        // switching the root by condition in callback
+                        this.readstate = 'newroot'
+                    } else {
+                        // root selection buttons avalaibility
+                        buttonMeetRoot1.state = result[0] !== undefined ? result[0] ? `idle` : `unaval` : `idle`;
+                        buttonMeetRoot2.state = result[1] !== undefined ? result[1] ? `idle` : `unaval` : `idle`;
+                        buttonMeetRoot3.state = result[2] !== undefined ? result[2] ? `idle` : `unaval` : `idle`;
+                    }
+                };
+                // checking end root & new root
+                if(this.root == 'end') {this.readstate = 'end'}
+                else if(this.readstate == 'newroot') {this.readstate = 'callback'} 
+                else {this.readstate = 'gettext'; this.textprog = 0}
+            //
+            } else if(this.readstate == 'gettext') {
+                // check text
+                if(sc[this.root].text !== undefined) {
+                    if(sc[this.root].text.length > this.textprog) {
+                        // have unreaded text, reading
+                        this.string = sc[this.root].text[this.textprog];
+                        this.strprog = 0;
+                        this.story[this.story.length] = ['s', ''];
+                        this.readstate = 'reveal';
+                    } else {
+                        // do not have unreaded text, go to buttons
+                        this.readstate = 'buttons';
+                    }
+                } else {
+                    // do not have any text, end root
+                    this.root = 'end';
+                    this.readstate = 'callback';
+                }
+            //
+            } else if(this.readstate == 'reveal') {
+                // revealing text & can skip by mouse
+                if(this.strprog < this.string.length && !mouse.click) {
+                    this.strprog += this.stringspeed * (deltaTime/1000);
+                    this.story[this.story.length-1][1] = this.string.substring(0, Math.floor(this.strprog));
+                } else {
+                    mouse.click = false;
+                    // text fully revealed, checking continue
+                    this.story[this.story.length-1][1] = String(this.string);
+                    this.textprog++;
+                    if(sc[this.root].text.length > this.textprog) {
+                        this.readstate = 'continue'; // if has more text, wait for continue button
+                    } else {
+                        this.readstate = 'buttons'; // if has no more text - buttons
+                    }
+                }
+            //
+            // } else if(this.readstate == 'continue') { --- drawing continue button, onclick is: this.readstate = 'gettext'
+            } else if(this.readstate == 'buttons') {
+                // if no choices - end meet
+                if(sc[this.root].choice === undefined) {this.root = 'end'; this.readstate = 'callback'} 
+                else { // setup root select buttons
+                    if(sc[this.root].choice[0] !== undefined) {
+                        buttonMeetRoot1.text = String(sc[this.root].choice[0].name);
+                        buttonMeetRoot1.onclick = () => {
+                            mapGetRect(mapMeta.pos).object.readstate = 'callback';
+                            mapGetRect(mapMeta.pos).object.story.push(['h', String(sc[this.root].choice[0].name)]);
+                            mapGetRect(mapMeta.pos).object.root = String(sc[this.root].choice[0].root)
+                        }
+                    };
+                    if(sc[this.root].choice[1] !== undefined) {
+                        buttonMeetRoot2.text = String(sc[this.root].choice[1].name);
+                        buttonMeetRoot2.onclick = () => {
+                            mapGetRect(mapMeta.pos).object.readstate = 'callback';
+                            mapGetRect(mapMeta.pos).object.story.push(['h', String(sc[this.root].choice[1].name)]);
+                            mapGetRect(mapMeta.pos).object.root = String(sc[this.root].choice[1].root)
+                        }
+                    };
+                    if(sc[this.root].choice[2] !== undefined) {
+                        buttonMeetRoot3.text = String(sc[this.root].choice[2].name);
+                        buttonMeetRoot3.onclick = () => {
+                            mapGetRect(mapMeta.pos).object.readstate = 'callback';
+                            mapGetRect(mapMeta.pos).object.story.push(['h', String(sc[this.root].choice[2].name)]);
+                            mapGetRect(mapMeta.pos).object.root = String(sc[this.root].choice[2].root)
+                        }
+                    };
+                    // wait for root select
+                    this.readstate = 'root'
+                }
+            } else if(this.readstate == 'end') {
+                // add end string and close meeting, free player moving
+                this.story.push(['h', 'Встреча закончена.']);
+                mapMeta.cutscene = false;
+                this.readstate = 'closed';
+                setTimeout(() => {
+                    mrthMeta.scroll.set(0);
+                    this.completed = true;
+                    this.state = 'ended';
+                    this.story = [];
+                    marathonSave()
+                }, 2000);
+            };
+            // drawing all meeting story
+            for(let i in this.story) {
+                if(this.story[i][0] == 'h') { // draw headers
+                    scaleFont(18, 'Segoe UI', 'bold'); ctx.fillStyle = `#ffffff`; ctx.textAlign = 'center';
+                    statpos = inspSingleString(statpos, width, spacing, this.story[i][1], 18);
+                };
+                if(this.story[i][0] == 's') { // text blocks
+                    scaleFont(14, 'Segoe UI'); ctx.fillStyle = `#dddddd`; ctx.textAlign = 'start';
+                    statpos = inspTextBlock(statpos, width, spacing, this.story[i][1], 30, 14);
+                }
+            }
+            // drawing continue button OR root buttons
+            ctx.textAlign = 'center'; ctx.fillStyle = `#ffffff`; scaleFont(18, 'Segoe UI');
+            if(this.readstate == 'continue') {
+                statpos = inspWideButton(statpos, width, spacing, buttonMeetContinue)
+            } else if(this.readstate == 'root') {
+                sc[this.root].choice[0] !== undefined ? statpos = inspWideButton(statpos, width, spacing, buttonMeetRoot1) : false;
+                sc[this.root].choice[1] !== undefined ? statpos = inspWideButton(statpos, width, spacing, buttonMeetRoot2) : false;
+                sc[this.root].choice[2] !== undefined ? statpos = inspWideButton(statpos, width, spacing, buttonMeetRoot3) : false;
+            };
+            // add some free space in bottom for easy-to-read
+            statpos.y += 250 / _scaleDynamic;
+        } else if(this.state == 'ended') {
+            scaleFont(14, 'Segoe UI'); ctx.fillStyle = `#ffffff`; ctx.textAlign = 'center';
+            statpos = inspSingleString(statpos, width, spacing, `Встреча окончена`, 14);
+            scaleFont(20, 'Segoe UI', 'bold');
+            statpos = inspSingleString(statpos, width, spacing, this.result, 20);
+        }
+        return statpos.y
+    }
+};
+//
+class inspTreasure {
+    constructor(pos) {
+        this.pos = pos;
+        this.color = '#fcce2688';
+        this.completed = false;
+        //
+        this.state = 'idle';
+        this.content = 'medium';
+        this.array = [];
+        this.progress = 0;
+        this.speed = new Vector1(2);
+        this.offset = 6;
+        this.winner = '';
+    }
+    collect(content='medium') {
+        this.content = content;
+        // get array
+        var items = content == 'easy' ? _itemsPositive : _itemsAll;
+        for(let i = 0; i<25; i++) {
+            this.array[i] = items[Math.floor(Math.random() * (items.length - 0.001))]
+        };
+    }
+    update() {}
+    inspector(pos, width, spacing) {
+        inspDefHeader(pos, width, spacing, this.content == 'easy' ? 'Хорошее сокровище' : 'Случайное сокровище');
+        // quest info
+        ctx.fillStyle = '#cccccc'; ctx.textAlign = 'start';
+        scaleFont(14, 'Segoe UI');
+        var about = this.content == 'easy' ? `Получите случайный предмет из списка хороших.` : `Получите случайный предмет из общего списка.` ;
+        var statpos = inspSingleString(pos.sumxy(0, spacing*2), width, spacing, about, 14);
+        // collect speed vector from save
+        if(!(this.speed instanceof Vector1)) {this.speed = new Vector1(2)};
+        // line && states
+        fillRect(new Vector2(width, 3*_scaleDynamic), statpos, '#ffffff');
+        statpos = statpos.sumxy(0, spacing*1.5 + 3*_scaleDynamic);
+        // update roulette
+        this.speed.update();
+        if(this.progress > this.array.length-1) {this.progress -= this.array.length};
+        this.progress += this.speed.get() * (deltaTime/1000);
+        if(this.state != 'winner') {
+            // draw roulette
+            scaleFont(20, 'Segoe UI'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffffff';
+            for(let i = -this.offset; i<this.array.length+this.offset-1; i++) {
+                if(i < this.progress - this.offset) {continue};
+                if(i > this.progress + this.offset) {break};
+                //
+                ctx.globalAlpha = 1 - easeInCubic(Math.abs(this.progress - i) / this.offset);
+                var xpos = this.offset + (i - this.progress);
+                var name = this.array[i < 0 ? i + this.array.length : i > this.array.length-1 ? i - this.array.length : i];
+                fillTextFast(statpos.sumxy(width/2, xpos * (20 * _scaleDynamic)), mrthStuff.items[name].name);
+                ctx.globalAlpha = 1;
+            };
+            // centered line
+            fillRect(new Vector2(width, 20*_scaleDynamic), statpos.sumxy(0, (this.offset-0.5) * (20 * _scaleDynamic)), '#00ff0055');
+            //
+            statpos = statpos.sumxy(0, (this.offset*2 + 1)*(20 * _scaleDynamic));
+            ctx.textBaseline = 'alphabetic';
+        }
+        //
+        if(this.state == 'idle') {
+            // start button
+            ctx.fillStyle = '#ffffff'; scaleFont(14, 'Segoe UI');
+            if(mapMeta.pos.condAND(this.pos)) {
+                var black = mrthGetItem('black'); // get black metka ebana rotto
+                if(mrthInventoryFreeSpace()) {
+                    ctx.textAlign = 'center';
+                    buttonRollAnime.insp = this;
+                    buttonRollAnime.text = 'Крутить список';
+                    buttonRollAnime.onclick = () => {
+                        buttonRollAnime.insp.state = 'speed';
+                        mapMeta.cutscene = true;
+                        // apply black metka
+                        if(mrthGetItem('black') !== false) {
+                            // 50% chance of rewrite 50% of items to bad items
+                            if(Math.random() > 0.5) {
+                                for(let i = 0; i<25; i+=2) {
+                                    this.array[i] = _itemsNegative[Math.floor(Math.random() * (_itemsNegative.length - 0.001))]
+                                }
+                            }; mrthDeleteItem('black') // delete in any case
+                        }
+                    };
+                    statpos = inspWideButton(statpos, width, spacing, buttonRollAnime).sumxy(0, spacing);
+                    // info about metka
+                    ctx.fillStyle = '#ff5555';
+                    if(mrthGetItem('black') !== false) {statpos = inspTextBlock(statpos, width, spacing, `Активен негативный эффект "Черная метка". В начале прокрута есть шанс 50% что половина записанных заранее предметов в рулетке будет переписана на плохие.`, 3, 14)}    
+                } else {
+                    statpos = inspTextBlock(statpos, width, spacing, `В Вашем инвентаре нет свободного места!`, 3, 14);
+                }
+            } else {
+                statpos = inspTextBlock(statpos, width, spacing, `Встаньте на клетку, чтобы можно было взаимодействовать!`, 3, 14);
+            }
+        //
+        } else if(this.state == 'speed') {
+            this.speed.move(100 + Math.random()*20, 5, easeInCirc);
+            setTimeout(() => {this.speed.move(0, 25, easeOutCirc); this.state = 'wait'}, 5000);
+            this.state = 'none'
+        //
+        } else if(this.state == 'wait') {
+            if(!this.speed.isMoving()) {
+                this.state = 'winner';
+                this.winner = this.array[Math.round(this.progress)];
+                this.array = [];
+                //
+                this.completed = true;
+                mapMeta.cutscene = false;
+                mrthInventoryAddItem(this.winner);
+                // check permanent items (azart)
+                var item = mrthGetItem('azart');
+                if(item !== false) {mapMeta.points -= Math.round(mapMeta.points * 0.25); mrthDeleteItem('azart')};
+                // save
+                marathonSave()
+            }
+        //
+        } else if(this.state == 'winner') {
+            ctx.fillStyle = '#ffffff'; scaleFont(14, 'Segoe UI'); ctx.textAlign = 'center';
+            statpos = inspSingleString(statpos, width, spacing, `Получен предмет:`, 14);
+            scaleFont(20, 'Segoe UI', 'bold');
+            statpos = inspSingleString(statpos, width, spacing, mrthStuff.items[this.winner].name, 20);
+            // desc
+            ctx.fillStyle = '#cccccc'; scaleFont(14, 'Segoe UI'); ctx.textAlign = 'start';
+            statpos = inspTextBlock(statpos, width, spacing, mrthStuff.items[this.winner].desc, 5, 14)
+        }
+        return statpos.y
+    }
+};
+//
+// @EAG MARATHON RECT TYPES
+//
+let mrthMeta = {
+    rectSize: 160,
+    rectSpacing: 16,
+    spacing: 10,
+    line: 3,
+    //
+    typesWeight: 0,
+    //
+    scroll: new Vector1(0),
+    sensivity: 100,
+    height: 0,
+};
+//
+let mapMeta = {
+    started: false,
+    pos: new Vector2(0), // player pos
+    scroll: new Vector2(), // map scroll
+    selected: null, // selected by mouse
+    //
+    zoom: new Vector1(1), // map scale
+    zoomStep: 0.05,
+    zoomRange: [0.2, 2],
+    //
+    player: new Vector2(), // animated player pos
+    playerSize: new Vector2(mrthMeta.rectSize*0.55), // player sprite size
+    //
+    overlaySizing: new Vector2(600, 50),
+    overlayOffset: new Vector1(-600),
+    overlay: false,
+    overlayState: 'main', // main, inv, pref
+    //
+    steps: 0,
+    cutscene: false,
+    watching: false,
+    //
+    cutstate: 'none',
+    spoilers: [],
+    //
+    points: 50,
+    total: 0,
+    animes: 0,
+    episodes: 0,
+    rerolls: 0,
+    // спермачи
+    permPoints: 1, // монеты и очки
+    permExplore: 3,   // исследования, будет уменьшаться
+    permSeries: 10,  // очки и монеты за каждую серию
+    permQuota: 0, // выплата долгов ?????
+    //
+    map: {},
+    neighbors: {},
+    //
+    inventory: {"1": false, "2": false, "3": false, "4": false,},
+    effects: {'1': false, '2': false,},
+    missions: {'1': false, '2': false,},
+};
+//
+let mrthRectTypes = {
+    // all
+    'empty': {
+        weight: 90, // default 90
+        class: inspEmpty
+    },
+    'anime': {
+        weight: 3, // default 3
+        class: inspAnime
+    },
+    'quest': {
+        weight: 7, // default 7
+        class: inspQuestion
+    },
+    'meeting': {
+        weight: 6, // default 6
+        class: inspMeeting
+    },
+    'treasure': {
+        weight: 2, // default 2
+        class: inspTreasure
+    },
+};
+//
+let mrthBadgeCoins = invokeNewImage('images/coins.png');
+let mrthBadgeWatched = invokeNewImage('images/watched.png');
+let mrthRectQuestion = invokeNewImage('images/questions.png');
+let mrthRectMeeting = invokeNewImage('images/meeting.png');
+let mrthRectTreasure = invokeNewImage('images/treasure.png');
+//
+let mrthTypedLogos = {
+    'anime': mrthBadgeWatched,
+    'quest': mrthRectQuestion,
+    'meeting': mrthRectMeeting,
+    'treasure': mrthRectTreasure,
+};
+// rebalance
+let mrthRectRebalance = {};
+let mrthRectDefaultBalance = JSON.stringify(mrthRectTypes);
+//
+function mrthRectsBalance() {
+    var lw = 0;
+    for(var r in mrthRectTypes) {
+        var w = +mrthRectTypes[r].weight;
+        mrthRectTypes[r].weight = [lw+1, lw + w];
+        lw += w
+    };
+    mrthMeta.typesWeight = lw
+};
+mrthRectsBalance();
+//
+function mrthGetExploreCost(pos) {
+    return Math.round(Math.sqrt(pos.x*pos.x + pos.y*pos.y) * mapMeta.permExplore);
+};
+//
+// @EAG MARATHON MAPPER
+//
+class mrthRect {
+    constructor(pos, type=mrthRectTypeRandom()) {
+        this.pos = pos;
+        this.type = type;
+        this.opened = false;
+        this.object = {};
+    }
+    draw(scroll, size, spacing) {
+        var pos = scroll.sumv(this.pos.multv(spacing));
+        if(!this.opened) {
+            // hided state
+            ctx.fillStyle = '#555555aa';
+            fillRectFast(size.multxy(0.9), pos.sumv(size.multxy(0.05)));
+            if(this.type != 'empty') {
+                ctx.globalAlpha = 0.4;
+                drawImageSized(mrthTypedLogos[this.type], pos.sumv(size.multxy(0.25)), size.multxy(0.5));
+                ctx.globalAlpha = 1;
+            };
+            // ment
+            if(playerIsNeighbor(this.pos, true)) {
+                // get TAX item
+                var tax = mrthGetItem('tax');
+                var cost = tax === false ? this.object.explore : Math.round(this.object.explore * 1.5);
+                ctx.fillStyle = mapMeta.points >= cost ? '#55ff55aa' : '#ff5555aa'; 
+                ctx.textAlign = 'center';
+                ctx.font = `bold ${size.y*0.3}px Segoe UI`;
+                fillTextFast(pos.sumv(size.multxy(0.5, 0.9)), cost);
+            }
+        } else {
+            ctx.fillStyle = this.object.color;
+            fillRectFast(size, pos);
+            //
+            if(this.type != 'empty') {
+                this.object.completed ? ctx.globalAlpha = 0.4 : false;
+                drawImageSized(mrthTypedLogos[this.type], pos.sumv(size.multxy(0.25)), size.multxy(0.5));
+                ctx.globalAlpha = 1;
+            };
+        };
+    };
+    open(content='medium') {
+        this.object = new mrthRectTypes[this.type].class(this.pos);
+        this.object.collect(content);
+        this.opened = true
+    }
+    color() {
+        return this.opened ? this.object.color : '#555555aa'
+    }
+};
+//
+function mrthNewRect(pos, type=mrthRectTypeRandom()) {
+    var r = new mrthRect(pos, type);
+    r.object.explore = mrthGetExploreCost(pos);
+    return r
+};
+//
+function mrthRectTypeRandom() {
+    var rand = Math.ceil(Math.random() * (+mrthMeta.typesWeight-0.001));
+    for(var r in mrthRectTypes) {
+        if(rand > mrthRectTypes[r].weight[1]) {continue} else {
+            if(rand < mrthRectTypes[r].weight[0]) {continue} else {
+                return r
+            }
+        }
+    };
+    //
+    // console.warn('error with marathon map rect randomizer!!!!!!');
+    return 'empty'
+};
+//
+function mapPosStringify(pos) {return `${pos.x},${pos.y}`};
+function mapPosParse(str) {var values = str.split(','); return new Vector2(values[0], values[1])};
+//
+function mapGetRect(pos) {
+    var spos = mapPosStringify(pos);
+    return spos in mapMeta.map ? mapMeta.map[spos] : null
+};
+function playerIsNeighbor(pos, diag=false) {
+    // if too far - false
+    if(Math.abs(mapMeta.pos.x - pos.x) > 1 || Math.abs(mapMeta.pos.y - pos.y) > 1) {return false};
+    //
+    if(mapMeta.pos.sumxy(0,-1).condAND(pos)) {return true};
+    if(mapMeta.pos.sumxy(0,1).condAND(pos)) {return true};
+    if(mapMeta.pos.sumxy(-1,0).condAND(pos)) {return true};
+    if(mapMeta.pos.sumxy(1,0).condAND(pos)) {return true};
+    if(diag) {
+        if(mapMeta.pos.sumxy(1,-1).condAND(pos)) {return true};
+        if(mapMeta.pos.sumxy(-1,-1).condAND(pos)) {return true};
+        if(mapMeta.pos.sumxy(-1,1).condAND(pos)) {return true};
+        if(mapMeta.pos.sumxy(1,1).condAND(pos)) {return true};
+    }
+};
+function mapGetNeighbors(pos, diag=false) {
+    var n = {};
+    var count = 0;
+    if(mapPosStringify(pos.minxy(1,0)) in mapMeta.map) {n['-1,0'] = mapMeta.map[mapPosStringify(pos.minxy(1,0))]; count++};
+    if(mapPosStringify(pos.minxy(0,1)) in mapMeta.map) {n['0,-1'] = mapMeta.map[mapPosStringify(pos.minxy(0,1))]; count++};
+    if(mapPosStringify(pos.minxy(-1,0)) in mapMeta.map) {n['1,0'] = mapMeta.map[mapPosStringify(pos.minxy(-1,0))]; count++};
+    if(mapPosStringify(pos.minxy(0,-1)) in mapMeta.map) {n['0,1'] = mapMeta.map[mapPosStringify(pos.minxy(0,-1))]; count++};
+    // diagonal
+    if(diag) {
+        if(mapPosStringify(pos.minxy(-1, -1)) in mapMeta.map) {n['-1,-1'] = mapMeta.map[mapPosStringify(pos.minxy(-1, -1))]; count++};
+        if(mapPosStringify(pos.minxy(1, -1)) in mapMeta.map) {n['1,-1'] = mapMeta.map[mapPosStringify(pos.minxy(1, -1))]; count++};
+        if(mapPosStringify(pos.minxy(1, 1)) in mapMeta.map) {n['1,1'] = mapMeta.map[mapPosStringify(pos.minxy(1, 1))]; count++};
+        if(mapPosStringify(pos.minxy(-1, 1)) in mapMeta.map) {n['-1,1'] = mapMeta.map[mapPosStringify(pos.minxy(-1, 1))]; count++};
+        //
+        if(count >= 8) {return n}
+    } else {
+        if(count >= 4) {return n}
+    };
+    // fill empty slots
+    if(n['-1,0'] === undefined) {n['-1,0'] = null};
+    if(n['0,-1'] === undefined) {n['0,-1'] = null};
+    if(n['1,0'] === undefined) {n['1,0'] = null};
+    if(n['0,1'] === undefined) {n['0,1'] = null};
+    if(diag) {
+        if(n['-1,-1'] === undefined) {n['-1,-1'] = null};
+        if(n['1,-1'] === undefined) {n['1,-1'] = null};
+        if(n['1,1'] === undefined) {n['1,1'] = null};
+        if(n['-1,1'] === undefined) {n['-1,1'] = null};
+    };
+    return n
+};
+//
+function mapGenerateEmptyRects(pos, n, diag=false) {
+    if(n['-1,0'] !== undefined)     {if(n['-1,0'] == null)  {mapMeta.map[mapPosStringify(pos.sumxy(-1, 0))] = mrthNewRect(pos.sumxy(-1, 0))}};
+    if(n['0,-1'] !== undefined)     {if(n['0,-1'] == null)  {mapMeta.map[mapPosStringify(pos.sumxy(0, -1))] = mrthNewRect(pos.sumxy(0, -1))}};
+    if(n['1,0'] !== undefined)      {if(n['1,0'] == null)   {mapMeta.map[mapPosStringify(pos.sumxy(1, 0))] = mrthNewRect(pos.sumxy(1, 0))}};
+    if(n['0,1'] !== undefined)      {if(n['0,1'] == null)   {mapMeta.map[mapPosStringify(pos.sumxy(0, 1))] = mrthNewRect(pos.sumxy(0, 1))}};
+    if(diag) {
+        if(n['-1,-1'] !== undefined)    {if(n['-1,-1'] == null) {mapMeta.map[mapPosStringify(pos.sumxy(-1, -1))] = mrthNewRect(pos.sumxy(-1, -1))}};
+        if(n['1,-1'] !== undefined)     {if(n['1,-1'] == null)  {mapMeta.map[mapPosStringify(pos.sumxy(1, -1))] = mrthNewRect(pos.sumxy(1, -1))}};
+        if(n['1,1'] !== undefined)      {if(n['1,1'] == null)   {mapMeta.map[mapPosStringify(pos.sumxy(1, 1))] = mrthNewRect(pos.sumxy(1, 1))}};
+        if(n['-1,1'] !== undefined)     {if(n['-1,1'] == null)  {mapMeta.map[mapPosStringify(pos.sumxy(-1, 1))] = mrthNewRect(pos.sumxy(-1, 1))}}
+    }
+};
+function mapHaveEmptyRects(n, diag=false) {
+    if(n['-1,0'] !== undefined)     {if(n['-1,0'] == null)  {return true}}
+    if(n['0,-1'] !== undefined)     {if(n['0,-1'] == null)  {return true}}
+    if(n['1,0'] !== undefined)      {if(n['1,0'] == null)   {return true}}
+    if(n['0,1'] !== undefined)      {if(n['0,1'] == null)   {return true}}
+    if(diag) {
+        if(n['-1,-1'] !== undefined)    {if(n['-1,-1'] == null) {return true}}
+        if(n['1,-1'] !== undefined)     {if(n['1,-1'] == null)  {return true}}
+        if(n['1,1'] !== undefined)      {if(n['1,1'] == null)   {return true}}
+        if(n['-1,1'] !== undefined)     {if(n['-1,1'] == null)  {return true}}
+    };
+    //
+    return false
+};
+//
+function mapMovePlayer(movement) {
+    if(!mapMeta.cutscene && !mapMeta.watching) {
+        var opens = false, news = false;
+        // check exploration & pay
+        var rect = mapGetRect(mapMeta.pos.sumv(movement));
+        if(!rect.opened) {
+            mapMeta.overlayState = 'main';
+            // using radar for exploration
+            var radar = mrthGetItem('radar');
+            if(radar !== false) {mrthReduceItem(radar)}
+            else {
+                // get tax item
+                var tax = mrthGetItem('tax');
+                var cost = tax === false ? rect.object.explore : Math.round(rect.object.explore * 1.5);
+                if(cost > mapMeta.points) {return}
+                else {mapMeta.points -= cost; mrthReduceItem(tax)}
+            }
+        };
+        // move to new pos with ease
+        mapMeta.pos = mapMeta.pos.sumv(movement);
+        mapEaseScroll();
+        // open closed rect & select
+        if(!rect.opened) {
+            rect.open();
+            opens = true;
+            mapMeta.selected = rect;
+            mapOverlayMover(true)
+        };
+        // update neighbors & selected
+        mapMeta.neighbors = mapGetNeighbors(mapMeta.pos);
+        // generate null map rects
+        if(mapHaveEmptyRects(mapMeta.neighbors)) {
+            mapGenerateEmptyRects(mapMeta.pos, mapMeta.neighbors);
+            mapMeta.neighbors = mapGetNeighbors(mapMeta.pos);
+            news = true
+        };
+        // save the map if map been changed
+        if(opens | news) {marathonSave()}
+    }
+};
+//
+function mapGetRadiusAval(radius) {
+    var aval = [];
+    for(let x = 0; x<=radius*2; x++) {
+        // walls
+        if(x == 0 || x == radius*2) {
+            for(let y = 0; y<=radius*2; y++) {
+                if(mapGetRect(mapMeta.pos.sumxy(x - radius, y - radius)) === null) {aval.push(mapMeta.pos.sumxy(x - radius, y - radius))}
+            }
+        } else {
+            // floor & ceil
+            if(mapGetRect(mapMeta.pos.sumxy(x - radius, -radius)) === null) {aval.push(mapMeta.pos.sumxy(x - radius, -radius))};
+            if(mapGetRect(mapMeta.pos.sumxy(x - radius, radius)) === null) {aval.push(mapMeta.pos.sumxy(x - radius, radius))};
+        }
+    };
+    return aval
+};
+function mapGetSpoilerRects(count) {
+    var radius = 1; // start radius is 2 (+1 in while)
+    var aval = [];
+    while (aval.length < count) {
+        radius++;
+        aval = mapGetRadiusAval(radius);
+    };
+    // upgrade radius
+    radius+=1; // dva kak budto slishkom dohuya Taante nihuya sebe
+    // aval = mapGetRadiusAval(radius); nahuya eto voobshe))))
+    // get random rects from list
+    var rects = [];
+    for(let i=0; i<count; i++) {
+        var index = Math.floor(Math.random() * (aval.length-0.001));
+        rects.push(aval[index]);
+        aval.splice(index, 1);
+    };
+    return rects
+};
+//
+function mapCutsceneUpdater() {
+    if(mapMeta.cutscene) {
+        if(mapMeta.cutstate == 'get') {
+            // get next spoiler rect
+            if(mapMeta.spoilers.length > 0) {
+                mapMeta.cutstate = 'move';
+            } else { // if no spoilers, end cutscene
+                mapMeta.cutstate = 'end';
+            }
+        //
+        } else if(mapMeta.cutstate == 'move') {
+            mapEaseScroll(0.5, mapMeta.spoilers[0], true);
+            mapMeta.cutstate = 'wait';
+            setTimeout(() => {mapMeta.cutstate = 'reveal'}, 500);
+        //
+        } else if(mapMeta.cutstate == 'reveal') {
+            var rect = mrthNewRect(mapMeta.spoilers[0], mapMeta.spoilers[0].type);
+            rect.open(mapMeta.spoilers[0].content);
+            mapMeta.map[mapPosStringify(mapMeta.spoilers[0])] = rect;
+            //
+            mapMeta.spoilers.splice(0, 1);
+            mapMeta.cutstate = 'wait';
+            setTimeout(() => {mapMeta.cutstate = 'get'}, 500);
+        //
+        } else if(mapMeta.cutstate == 'end') {
+            mapEaseScroll(0.5, mapMeta.pos, true);
+            mapMeta.cutstate = 'none';
+            setTimeout(() => {mapMeta.cutscene = false; marathonSave()}, 500);
+        }
+    }
+};
+//
+function mapGenerateSpoilers(count) {
+    var c = count > 4 ? 4 : count; c = c < 1 ? 1 : c; //minmax [1;4]
+    // hide overlay & enable cutscene
+    mapOverlayMover(false);
+    mapMeta.cutscene = true;
+    // setup spoilers
+    mapMeta.spoilers = mapGetSpoilerRects(c);
+    // mapMeta.spoilers[0].type = 'anime'; // first - anime. if count > 3 = good preset
+    // c >= 3 ? mapMeta.spoilers[0].content = 'easy' : mapMeta.spoilers[0].content = 'medium';
+    // if(mapMeta.spoilers[1] !== undefined) {mapMeta.spoilers[1].type = 'quest'; mapMeta.spoilers[1].content = 'easy'};
+    // if(mapMeta.spoilers[2] !== undefined) {mapMeta.spoilers[2].type = 'meeting'; mapMeta.spoilers[2].content = 'easy'};
+    // if(mapMeta.spoilers[3] !== undefined) {mapMeta.spoilers[3].type = 'treasure'; mapMeta.spoilers[3].content = 'easy'};
+    for(var s in mapMeta.spoilers) {
+        var rand = Math.random();
+        if(rand <= 0.2) {mapMeta.spoilers[s].type = 'anime'; mapMeta.spoilers[s].content = 'easy'}
+        else if(rand >= 0.2 && rand < 0.5) {mapMeta.spoilers[s].type = 'quest'; mapMeta.spoilers[s].content = 'easy'}
+        else if(rand >= 0.5 && rand < 0.8) {mapMeta.spoilers[s].type = 'meeting'; mapMeta.spoilers[s].content = 'easy'}
+        else {mapMeta.spoilers[s].type = 'treasure'; mapMeta.spoilers[s].content = 'easy'};
+    };
+    // start cutscene
+    setTimeout(() => {mapMeta.cutstate = 'get'}, 500);
+};
+//
+function mapHaveUnusedRect(type) {
+    for(var i in mapMeta.map) {
+        if(i == '0,0') {continue};
+        if(mapMeta.map[i].type == type && mapMeta.map[i].opened) {
+            if(!mapMeta.map[i].object.completed) {return true}
+        }
+    };
+    return false
+};
+function mapGenerateAvalaibleRect(type, open=true, content='medium') {
+    for(var i in mapMeta.map) {
+        if(i == '0,0') {continue};
+        if(mapMeta.map[i].type == 'empty') {
+            mapMeta.map[i] = mrthNewRect(mapMeta.map[i].pos, type);
+            open ? mapMeta.map[i].open(content) : false;
+            marathonSave(); // save, because map been changed
+            return mapMeta.map[i].pos;
+        }
+    };
+    console.error(`cannot generate avalaible "${type}" type rect - not found at least one generated empty rect`);
+    return false
+};
+function mapCheckAvalaibleAnimes() {
+    if(!mapHaveUnusedRect('anime')) {
+        var pos = mapGenerateAvalaibleRect('anime', true);
+        if(pos !== false) {mapEaseScroll(0.5, pos)}
+    }
+};
+//
+// @EAG MARATHON MISC
+//
+// @ TEST-NEED
+//      кнопки с внешними источниками могут ссылаться не на то аниме
+// @TODO
+//      звуки (блять)
+//      штрафы за реролл
+//      кнопка для удаления всего прогресса и кнопка для ручного сохранения
+//      сделать экспортер всей истории просмотров
+//      вкладка с историей - всеми действиями на карте
+//      перманентные множители для очков, серий и исследований
+// @TEST
+//      просмотр аниме должен удалять использованные предметы !!! (уже пофикшено???)
+//      дальше хардкор, чисто на радарах топаешь
+// @ИДЕИ
+//      благие вести - положительный эффект после просмотра аниме. В клетке встреч даёт выбор встречи, например выбрать встречу где можно купить/продать итем
+//      клетка с интерактивом
+//      клетка с аниме списками
+//      а нужно ли давать возможность удалять предметы из инвентаря ????
+//      перечень активных предметов и эффектов снизу в области карты, с подсказками
+//      клетки-стены, которые нельзя пересечь без некоторых предметов
+//      предметы взаимодействия с картой, по типу "телепортации", "исследования 24 соседних клеток",
+//      размещаемые предметы/объекты на пустых клетках
+//      клеточные структуры
+//
+let mapCurrentLocationLogo = invokeNewImage('images/location.png');
+//
+mapMeta.map = { // set default starter map
+    '0,0': mrthNewRect(new Vector2(0, 0), 'empty'),
+    '0,1': mrthNewRect(new Vector2(0, 1), 'anime'),
+    '0,-1': mrthNewRect(new Vector2(0, -1), 'treasure'),
+};
+// open start rect, open easy anime rect, add intro flag & save all as default
+mapMeta.map['0,0'].open(); mapMeta.map['0,1'].open('easy');
+mapMeta.map['0,0'].object.intro = true;
+let mapMetaDefault = marathonSave(true);
+// save & load functions
+function marathonSave(copied=false) {
+    var copy = mapMeta;
+    // compress map objects
+    for(var r in copy.map) {
+        copy.map[r].object._datatype_ = copy.map[r].object.constructor.name;
+    };
+    // compress meta objects
+    for(var key in copy) {
+        if(typeof copy[key] != `object`) {continue};
+        if(copy[key] instanceof Vector2) {copy[key]._datatype_ = copy[key].constructor.name};
+        if(copy[key] instanceof Vector1) {copy[key]._datatype_ = copy[key].constructor.name};
+    };
+    //
+    if(copied) {return copy} 
+    else {lsSaveObject('marathonMap', copy)}
+};
+function marathonLoad(from=false) {
+    var copy = from === false ? lsLoadObject('marathonMap', false) : from;
+    if(copy !== false) {
+        // decompress map
+        for(var r in copy.map) {
+            var values = copy.map[r];
+            copy.map[r] = new mrthRect(new Vector2(values.pos.x, values.pos.y), values.type);
+            copy.map[r].opened = values.opened;
+            //
+            if(values.object._datatype_ !== undefined) {copy.map[r].opened = values.opened} // eto kal ebanyy, po susi udalenie objecta
+            else {continue};
+            //
+            if(values.object._datatype_ != `Object`) {
+                var clas = eval(values.object._datatype_);
+                // console.log(clas);
+                var obj = new clas(new Vector2());
+                for(var key in values.object) {
+                    obj[key] = values.object[key]
+                };
+                obj.pos = new Vector2(values.object.pos.x, values.object.pos.y);
+                delete obj._datatype_;
+                copy.map[r].object = obj;
+            } else {
+                // if object is not classed
+                var obj = {};
+                for(var key in values.object) {
+                    obj[key] = values.object[key]
+                };
+                copy.map[r].object = obj;
+            }
+        };
+        // decomress meta
+        for(var r in copy) {
+            // special load for only objects + skip null's, undefined's & already collected map
+            if(typeof copy[r] != `object`) {continue};
+            if(copy[r] === null || copy[r] === undefined || r == 'map') {continue};
+            if(copy[r]._datatype_ == `Vector1`) {copy[r] = new Vector1(copy[r].value)};
+            if(copy[r]._datatype_ == `Vector2`) {copy[r] = new Vector2(copy[r].x, copy[r].y)};
+        };
+        // resets the overlay && selected with random rect object class !!!
+        copy.selected = null;
+        copy.overlay = false;
+        copy.overlayOffset = new Vector1(-600);
+        // disable the cutscene & load
+        copy.cutscene = false;
+        mapMeta = copy
+    };
+};
+// try to load saved map meta
+marathonLoad();
+//
+function marathonEnd() {
+    if(activeScreen == screenMarathonMap) {
+        fileManager.downloadJSON('ayaya_marathon', marathonSave(true));
+        requestScreen(screenRoulette);
+        setTimeout(() => {
+            marathonLoad(mapMetaDefault);
+            // mapMeta = JSON.parse(mapMetaDefault);
+            marathonSave();
+        }, tss.fulltime * 1000);
+    }
+};
+function marathonDeleteForce() {
+    // mapMeta = JSON.parse(mapMetaDefault);
+    marathonLoad(mapMetaDefault);
+    marathonSave();
+};
+//
+function mapEaseScroll(time=0.25, rectpos=mapMeta.pos, cuts=false) {
+    mapMeta.cutscene = true;
+    //
+    var zoom = mapMeta.zoom.get();
+    var pos = rectpos.multxy(-(mrthMeta.rectSpacing + mrthMeta.rectSize) * zoom); // player pos on map
+    pos = pos.minxy((mrthMeta.rectSize/2) * zoom).sumv(fullsize.dividexy(2)); // pos on screen
+    // invoke animation
+    mapMeta.scroll.movev(pos, time, easeOutCirc);
+    //
+    if(!cuts) {setTimeout(() => {mapMeta.cutscene = false}, time*1100)}
+};
+//
+function showScreenMarathon() {
+    // request screen cutscene & skip animation if cutscene
+    requestScreen(screenMarathonMap, true);
+    if(mapMeta.cutscene) {return};
+    // check map, fill empty neighbor rects, select player rect
+    mapMeta.neighbors = mapGetNeighbors(mapMeta.pos);
+    if(mapHaveEmptyRects(mapMeta.neighbors)) {mapGenerateEmptyRects(mapMeta.pos, mapMeta.neighbors)};
+    // show animation
+    var pos = mapMeta.pos.multxy(-(mrthMeta.rectSpacing + mrthMeta.rectSize)); // player pos on map
+    pos = pos.minxy((mrthMeta.rectSize/2)).sumv(fullsize.dividexy(2)); // pos on screen
+    setTimeout(() => {
+        // invoke animation after screen switch
+        mapMeta.scroll.reset();
+        mapMeta.scroll.setv(pos.sumv(fullsize));
+        mapEaseScroll(1);
+        // invoke rect select, if watching anime
+        if(mapMeta.watching) {
+            mapMeta.cutscene = true;
+            setTimeout(() => {mapSelectRect(mapGetRect(mapMeta.pos)); mapMeta.cutscene = false}, 1100);
+        }
+    }, (tss.fulltime/2) * 950)
+};
+//
+let _mapOverlayHider = -1;
+function mapOverlayMover(true_for_show) {
+    clearTimeout(_mapOverlayHider);
+    if(true_for_show) {
+        if(mapMeta.overlayOffset.getFixed() < 0) {
+            mapMeta.overlay = true;
+            mapMeta.overlayOffset.move(0, 0.5, easeOutCirc)
+        }
+    } else {
+        if(mapMeta.overlayOffset.getFixed() >= 0) {
+            mapMeta.overlayOffset.move(-mapMeta.overlaySizing.x, 0.5, easeOutCirc);
+            setTimeout(() => {
+                mapMeta.overlayState = 'main';
+                mapMeta.selected = null;
+                mapMeta.overlay = false
+            }, 500);
+        }
+    }
+};
+function mapSelectRect(rect) {
+    if(mapMeta.selected != rect) {
+        // enable main state
+        mapMeta.overlayState = 'main';
+        // move
+        var zoom = mapMeta.zoom.get();
+        var p = rect.pos.multxy(-(mrthMeta.rectSpacing + mrthMeta.rectSize) * zoom); // player pos on map
+        p = p.minxy((mrthMeta.rectSize/2) * zoom).sumv(fullsize.dividexy(2)); // pos on screen
+        mapMeta.scroll.movev(p, 0.25, easeOutCirc);
+        // set selected
+        mapMeta.selected = rect;
+        mapOverlayMover(true)
+    }
+};
+//
+function drawStatsBadge(pos, unit, badge, value, back, fore) {
+    // font work
+    scaleFont((unit/_scaleDynamic)/2, 'Segoe UI', 'bold');
+    var textwidth = getTextMetrics(value).x;
+    var bsize = new Vector2(textwidth > unit/2 ? textwidth + unit*1.5 : unit*1.75, unit * 0.75);
+    // bg
+    fillRectRounded(bsize.minxy(unit/2, 0), pos.minxy(bsize.x, -unit*0.125), back, unit * 0.35);
+    // text
+    ctx.fillStyle = fore; ctx.textAlign = 'start';
+    fillTextFast(pos.sumxy(-bsize.x+unit*0.3, unit*0.7), value);
+    // badge
+    drawImageSized(badge, pos.minxy(unit, 0), new Vector2(unit));
+    return bsize.x + unit/4;
+};
+function drawMarathonHeader() {
+    var h = mapMeta.overlaySizing.y *  _scaleDynamic;
+    var unit = h * 0.8;
+    // badges
+    var pointer = new Vector2(fullsize.x - h*0.1, h*0.1);
+    pointer.x -= drawStatsBadge(pointer, unit, imageMarathonLogo, mapMeta.total, '#4444ff66', '#ccccff');
+    pointer.x -= drawStatsBadge(pointer, unit, mrthBadgeWatched, mapMeta.episodes, '#44ff4466', '#ccffcc');
+    pointer.x -= drawStatsBadge(pointer, unit, mrthBadgeCoins, mapMeta.points, '#ffff4466', '#ffffcc');
+    // buttons
+    pointer.setxy((fullsize.x - musicLite.size.x)/4 - (2*unit + h*0.15), h*0.1); // draw to center of free space of header from left to musicLite
+    buttonInspectorBack.pos.setv(pointer); pointer.x += unit + h*0.1;
+    buttonInspectorMain.pos.setv(pointer); pointer.x += unit + h*0.1;
+    buttonInspectorInventory.pos.setv(pointer); pointer.x += unit + h*0.1;
+    buttonInspectorPref.pos.setv(pointer);
+    var bsize = new Vector2(unit);
+    buttonInspectorBack.sizedZoom(bsize); buttonInspectorBack.draw();
+    buttonInspectorMain.sizedZoom(bsize); buttonInspectorMain.draw();
+    buttonInspectorInventory.sizedZoom(bsize); buttonInspectorInventory.draw();
+    buttonInspectorPref.sizedZoom(bsize); buttonInspectorPref.draw();
+};
+// inpector head buttons
+let marathonInventoryLogo = invokeNewImage(`images/inventory.png`);
+//
+let buttonInspectorBack = new ImageButtonShaped(shapeRectRounded, filterImageBackward, new Vector2(4),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.3)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
+let buttonInspectorMain = new ImageButtonShaped(shapeRectRounded, filterImageArrays, new Vector2(4),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.3)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
+let buttonInspectorInventory = new ImageButtonShaped(shapeRectRounded, marathonInventoryLogo, new Vector2(4),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.3)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
+let buttonInspectorPref = new ImageButtonShaped(shapeRectRounded, imagePrefMenu, new Vector2(4),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.3)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
+buttonInspectorBack.waitanim = false;       buttonInspectorBack.height = 0;
+buttonInspectorMain.waitanim = false;       buttonInspectorMain.height = 0;
+buttonInspectorInventory.waitanim = false;  buttonInspectorInventory.height = 0;
+buttonInspectorPref.waitanim = false;       buttonInspectorPref.height = 0;
+//
+buttonInspectorBack.onclick = () => {requestScreen(screenRoulette)};
+buttonInspectorMain.onclick = () => {
+    if(!mapMeta.cutscene) {
+        mrthMeta.scroll.set(0);
+        if(mapMeta.selected == null) {mapSelectRect(mapGetRect(mapMeta.pos))} 
+        else {mapSelectRect(mapMeta.selected)};
+        mapMeta.overlayState = 'main'
+    }
+};
+buttonInspectorInventory.onclick = () => {
+    if(!mapMeta.cutscene) {
+        mrthMeta.scroll.set(0);
+        if(mapMeta.overlayState != 'inv') {
+            if(!mapMeta.overlay) {mapOverlayMover(true)};
+            mapMeta.overlayState = 'inv'
+        }
+    }
+};
+buttonInspectorPref.onclick = () => {
+    if(!mapMeta.cutscene) {
+        mrthMeta.scroll.set(0);
+        if(mapMeta.overlayState != 'pref') {
+            if(!mapMeta.overlay) {mapOverlayMover(true)};
+            mapMeta.overlayState = 'pref'
+        }
+    }
+};
+// pref buttons
+let buttonMrthDownloadBackup = new TextButtonShaped(shapeRectRounded, `Скачать сохранение [JSON]`, new Vector2(),
+    colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+    colorMapMatrix(`rgba(128,128,32,1)#rgba(180,180,48,1)#rgba(255,255,64,1)#rgba(200,200,47,0.1)`));
+let buttonMrthUploadBackup = new TextButtonShaped(shapeRectRounded, `Загрузить сохранение [JSON]`, new Vector2(),
+    colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+    colorMapMatrix(`rgba(128,128,32,1)#rgba(180,180,48,1)#rgba(255,255,64,1)#rgba(200,200,47,0.1)`));
+buttonMrthDownloadBackup.waitanim = false; buttonMrthUploadBackup.waitanim = false;
+buttonMrthDownloadBackup.height = 0; buttonMrthUploadBackup.height = 0;
+//
+buttonMrthDownloadBackup.onclick = () => {
+    fileManager.downloadJSON('marathon_backup', marathonSave(true))
+};
+buttonMrthUploadBackup.onclick = () => {
+    fileManager.uploadJSON();
+    fileManager.onupload = () => {
+        var file = JSON.parse(JSON.stringify(fileManager.result));
+        // check some values
+        if(file.map === undefined) {return};
+        if(file.map['0,0'] === undefined) {return};
+        // load from file
+        requestScreen(screenRoulette);
+        buttonOpenMarathon.state = 'unaval';
+        setTimeout(() => {
+            marathonLoad(file);
+            buttonOpenMarathon.state = 'idle';
+        }, tss.fulltime * 2000);
+    }
+};
+//
+function getAllWatchedAnime() {
+    var all = [];
+    for(var a in mapMeta.map) {
+        if(mapMeta.map[a].type == 'anime') {
+            var h = mapMeta.map[a].object.history;
+            if(h.length > 0) {
+                for(var a in h) {
+                     console.log(`%c${h[a].n}`, "color: #aaf; font-style: bold; background-color: black; padding: 2px",);
+                    console.log(h[a].p);
+                    console.log(h[a].y);
+                    console.log(`Отзыв: ${h[a].r}`);
+                }
+                all = all.concat(h)
+            }
+        }
+    };
+    return all
+}
+//
+// @EAG SCREEN MARATHON
+//
+let _drawedRects = 0;
+function screenMarathonMap() {
+    // update & bg
+    mapMeta.scroll.update();
+    mapMeta.zoom.update();
+    ctx.fillStyle = `rgba(0,0,15,${pref.bgalpha})`;
+    fillRectFast(fullsize, new Vector2());
+    // scaling
+    var zoom = mapMeta.zoom.get();
+    var rectSpacing = new Vector2((mrthMeta.rectSpacing + mrthMeta.rectSize) * zoom);
+    var rectSize = new Vector2(mrthMeta.rectSize * zoom);
+    var spacing = mrthMeta.spacing * _scaleDynamic;
+    var player = mapMeta.playerSize.multxy(_scaleDynamic * zoom);
+    // overlay style values
+    mapMeta.overlayOffset.update();
+    mrthMeta.scroll.update();
+    var anchor = mapMeta.overlaySizing.sumxy(mapMeta.overlayOffset.get(), 0).multxy(_scaleDynamic);
+    var offset = mapMeta.overlayOffset.get() * _scaleDynamic;
+    // cutscene worker & blocker
+    mapCutsceneUpdater();
+    var zoomed = false;
+    if(!mapMeta.cutscene &&  mouse.pos.overAND(anchor)) {
+        // scroll by touch (напрямую захуячил шобы другие анимации не прерывать Taalk)
+        if(mouse.press) {
+            mapMeta.scroll.x += mouse.delta.x;
+            mapMeta.scroll.y += mouse.delta.y;
+        }
+        // zoom by wheel
+        if(mapMeta.zoom.getFixed() >  mapMeta.zoomRange[0] && wheelState == 'btm') {
+            mapMeta.zoom.move(mapMeta.zoom.getFixed() - mapMeta.zoomStep, 0.25, easeOutCirc);
+            zoomed = true
+        };
+        if(mapMeta.zoom.getFixed() <  mapMeta.zoomRange[1] && wheelState == 'top') {
+            mapMeta.zoom.move(mapMeta.zoom.getFixed() + mapMeta.zoomStep, 0.25, easeOutCirc);
+            zoomed = true
+        }
+    };
+    // post zoom align
+    if(zoomed) {
+        zoomed = false;
+        var zf = mapMeta.zoom.getFixed();
+        var pos = mapMeta.selected == null ? mapMeta.pos : mapMeta.selected.pos; // selected or player position
+        pos = pos.multxy(-(mrthMeta.rectSpacing + mrthMeta.rectSize) * zf); // pos on map
+        pos = pos.minxy((mrthMeta.rectSize/2) * zf).sumv(fullsize.dividexy(2)); // pos on screen
+        // invoke animation
+        mapMeta.scroll.movev(pos, 0.25, easeOutCirc);
+    };
+    var scroll = mapMeta.scroll.get().sumv(anchor.multxy(0.5, 1));
+    // draw all map
+    _drawedRects = 0;
+    for(var i in mapMeta.map) {
+        // relative
+        var pos = mapMeta.map[i].pos.multv(rectSpacing).sumv(scroll); // pos on screen
+        var selected = mapMeta.selected == null ? false : mapMeta.map[i].pos.condAND(mapMeta.selected.pos); // false if no select OR if not selected
+        // if player standing
+        if(mapMeta.map[i].pos.condAND(mapMeta.pos)) {
+            mapMeta.player = pos.sumxy(rectSize.x/2 - player.x/2, rectSize.y/2 - player.y);
+            mapMeta.player.x = mapMeta.player.x > fullsize.x - player.x ? fullsize.x - player.x : mapMeta.player.x < anchor.x ? anchor.x : mapMeta.player.x;
+            mapMeta.player.y = mapMeta.player.y > fullsize.y - player.y ? fullsize.y - player.y : mapMeta.player.y < anchor.y ? anchor.y : mapMeta.player.y;
+        };
+        // if rect in window
+        if(pos.overAND(rectSize.multxy(-1)) && pos.lessAND(fullsize)) {
+            _drawedRects++;
+            // if mouse on map
+            if(mouse.pos.overAND(anchor) && !mapMeta.cutscene) {
+                // if hovered
+                if(mouse.pos.overAND(pos) && mouse.pos.lessAND(pos.sumv(rectSize))) {
+                    if(mapMeta.map[i].opened) {
+                        if(!selected) {
+                            ctx.fillStyle = `#ffffff33`;
+                            fillRectFast(rectSpacing, pos.minxy(mrthMeta.rectSpacing * zoom / 2));
+                        };
+                        // if click
+                        if(mouse.click) {
+                            mouse.click = false;
+                            mapSelectRect(mapMeta.map[i])
+                        }
+                    }
+                };
+            };
+            // if selected
+            if(selected) {
+                ctx.fillStyle = mapMeta.map[i].color();
+                fillRectFast(rectSpacing, pos.minxy(mrthMeta.rectSpacing * zoom / 2));
+            };
+            // draw rect
+            mapMeta.map[i].draw(scroll, rectSize, rectSpacing);
+            // draw spawn
+            if(mapMeta.map[i].pos.condAND(new Vector2())) {
+                drawImageSized(imagesPrefTabs.about, pos.sumv(rectSize.dividexy(4)), rectSize.dividexy(2))
+            };
+        }
+    };
+    // player
+    mapMeta.player.update();
+    drawImageSized(mapCurrentLocationLogo, mapMeta.player, player);
+    // overlay background
+    ctx.fillStyle = `#000016aa`;
+    fillRectFast(new Vector2(fullsize.x, anchor.y), new Vector2()); // overlay header
+    // inspector draw
+    if(mapMeta.overlay) {
+        clipCanvas(new Vector2(anchor.x, fullsize.x-anchor.y), new Vector2(0, anchor.y));
+        // inspector bg
+        fillRectFast(new Vector2(anchor.x, fullsize.x-anchor.y), new Vector2(0, anchor.y));
+        var width = mapMeta.overlaySizing.x * _scaleDynamic - spacing*2;
+        // if mouse in inspector
+        if(mouse.pos.y > anchor.y && mouse.pos.x < anchor.x) {
+            mrthMeta.height = Math.ceil(mrthMeta.height);
+            var sensivity = mrthMeta.sensivity * _scaleDynamic;
+            // scrolling
+            if(fullsize.y - anchor.y >= mrthMeta.height) {mrthMeta.scroll.set(0)}
+            else {
+                if(mrthMeta.scroll.getFixed() < mrthMeta.height - (fullsize.y - anchor.y) && wheelState === 'btm') {
+                    mrthMeta.scroll.move(Math.floor(mrthMeta.scroll.getFixed())+sensivity, 0.5, easeOutExpo)}
+                else if(mrthMeta.scroll.getFixed() > 0 && wheelState === 'top') {
+                    mrthMeta.scroll.move(Math.floor(mrthMeta.scroll.getFixed())-sensivity, 0.5, easeOutExpo)};
+                if(mrthMeta.scroll.get() < 0) {mrthMeta.scroll.set(0)};
+                if(mrthMeta.scroll.get() > mrthMeta.height - (fullsize.y - anchor.y)) {mrthMeta.scroll.set(mrthMeta.height - (fullsize.y - anchor.y))}
+            }
+        };
+        // inspector positioning with scroll
+        var inspPos = new Vector2(spacing + offset, anchor.y + spacing*2 - mrthMeta.scroll.get());
+        mrthMeta.height = mrthMeta.scroll.get();
+        if(mapMeta.overlayState == 'main') {
+            // inspector main
+            mapMeta.selected.object.update();
+            mrthMeta.height += mapMeta.selected.object.inspector(inspPos, width, spacing)
+        //
+        } else if(mapMeta.overlayState == 'inv') {
+            inspDefHeader(inspPos, width, spacing, 'Предметы');
+            var statpos = inspPos.sumxy(0, spacing*3);
+            // draw positive
+            scaleFont(16, 'Segoe UI'); 
+            for(var i in mapMeta.inventory) {
+                statpos = inspInventorySlot(statpos, width, spacing, mapMeta.inventory[i])
+            };
+            // negative header
+            ctx.fillStyle = '#ffffff';
+            inspDefHeader(statpos.sumxy(0, spacing*2), width, spacing, 'Негативные эффекты');
+            statpos = statpos.sumxy(0, spacing*5);
+            // negatives
+            scaleFont(16, 'Segoe UI'); 
+            for(var i in mapMeta.effects) {
+                statpos = inspInventorySlot(statpos, width, spacing, mapMeta.effects[i])
+            };
+            mrthMeta.height += statpos.y;
+        //
+        } else if(mapMeta.overlayState == 'pref') {
+            inspDefHeader(inspPos, width, spacing, 'Настройки');
+            var statpos = inspPos.sumxy(0, spacing*3);
+            // json backups
+            scaleFont(16, 'Segoe UI'); 
+            ctx.textAlign = 'center'; ctx.fillStyle = '#ffffff';
+            statpos = inspSingleString(statpos, width, spacing, 'Резервное сохранение (JSON-файлом)', 16);
+            statpos = inspWideButton(statpos, width, spacing, buttonMrthDownloadBackup);
+            statpos = inspWideButton(statpos, width, spacing, buttonMrthUploadBackup);
+            //
+            mrthMeta.height += statpos.y;
+        }; 
+        clipRestore()
+    };
+    // badges && controls
+    drawMarathonHeader();
+    // music
+    musicLite.draw();
 };
 //
 // @EAG STUFF PREFERENCES
@@ -8219,8 +10897,8 @@ function screenPreferences() {
         spref.height += sbTitleObject(_preftitles.license, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
         spref.height += spacing*2;
         ctx.textAlign = 'center';
-        spref.height += sbTextFit(txt('eagAbout'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-        spref.height += sbTextFit(txt('eagBased'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        spref.height += sbTextFit(txt('eagAbout'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get(), 18);
+        spref.height += sbTextFit(txt('eagBased'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get(), 18);
         // о датабазе
         spref.height += spacing*2;
         scaleFont(32, 'Segoe UI', 'bold');
@@ -8333,8 +11011,10 @@ function transitionScreen() {
 };
 //
 function requestScreen(screen, open=true) {
-    tss.screen = screen;
-    open ? tss.state = 'openhide' : tss.state = 'closehide'
+    if(tss.state == 'end') {
+        tss.screen = screen;
+        open ? tss.state = 'openhide' : tss.state = 'closehide'
+    }
 };
 //
 // @EAG WINNER ANIMATION
@@ -8519,10 +11199,6 @@ function novyigodSnowflakes() {
             // side portals
             if(sfp.x < -sfs) {snowflake.array[sf].pos.x += fullsize.x+sfs}
             else if(sfp.x > fullsize.x) {snowflake.array[sf].pos.x -= fullsize.x+sfs};
-            // mouse (тип чтоб они мышкой толкались, но на деле это кал)
-            // if(mouse.pos.overSAND(snowflake.array[sf].pos) && mouse.pos.lessSAND(snowflake.array[sf].pos.sumv(snowflake.array[sf].size))) {
-            //     snowflake.array[sf].pos = snowflake.array[sf].pos.sumv(mouse.delta.multxy(0.8))
-            // }
         }
     }
 };
@@ -8560,16 +11236,16 @@ let visual = {
 //
 let wallpaper = new Image();
 const wallpaperbase = [
-    'kyxbor3aw5hud3ek7xpik/1.jpg?rlkey=1s9dvj533143jago8lt5hymlh',    // пять невест
-    'q34euwi9ktfz0mnl4a2oe/2.jpg?rlkey=u79lsps7ty61xmkzzfgtp3boa',    // повар боец сома
-    'r0uom6cjam85700csbi7d/3.jpg?rlkey=cf65zhme2wtc78f4dp5u5bs1k',    // дракон горничная
-    'v95fp9b4bn5zfxhiuz1bk/4.jpg?rlkey=thuhga2sdxfhqekn661c57jcv',    // школа дхд
-    'c7d3bptxl0tvgost4kdwy/5.jpg?rlkey=khrz91dgwbxdttavz19tfre05',    // сакурасо
-    'iwk9izyskxwpqa2tr1eg3/7.jpg?rlkey=mi7o08qfcl1nyza2rnf3hohz3',    // кейон
-    'dfhht3gs1nho3p5c43sgi/9.jpg?rlkey=ntb79u0pkw7e2pls6gcq84tle',    // спай фемили
-    '02oqjqer6yzujhdhn7iyd/10.jpg?rlkey=zcvohf7oltsc170vjfop3x8p6',    // вайолетт
-    '0m6ff16ci2r2vob9pj4op/8.webp?rlkey=ulyyqggsib2iwiwqi0pco6ccd',    // речка самолётик
-    '9dhc9s3cb161fz51supz6/9.webp?rlkey=8jgvodzg0jrjo4aq66ed6kl6y',    // babazaki
+    'kyxbor3aw5hud3ek7xpik/1.jpg?rlkey=1s9dvj533143jago8lt5hymlh',      // пять невест
+    'q34euwi9ktfz0mnl4a2oe/2.jpg?rlkey=u79lsps7ty61xmkzzfgtp3boa',      // повар боец сома
+    'r0uom6cjam85700csbi7d/3.jpg?rlkey=cf65zhme2wtc78f4dp5u5bs1k',      // дракон горничная
+    'v95fp9b4bn5zfxhiuz1bk/4.jpg?rlkey=thuhga2sdxfhqekn661c57jcv',      // школа дхд
+    'c7d3bptxl0tvgost4kdwy/5.jpg?rlkey=khrz91dgwbxdttavz19tfre05',      // сакурасо
+    'iwk9izyskxwpqa2tr1eg3/7.jpg?rlkey=mi7o08qfcl1nyza2rnf3hohz3',      // кейон
+    'dfhht3gs1nho3p5c43sgi/9.jpg?rlkey=ntb79u0pkw7e2pls6gcq84tle',      // спай фемили
+    '02oqjqer6yzujhdhn7iyd/10.jpg?rlkey=zcvohf7oltsc170vjfop3x8p6',     // вайолетт
+    '0m6ff16ci2r2vob9pj4op/8.webp?rlkey=ulyyqggsib2iwiwqi0pco6ccd',     // речка самолётик
+    '9dhc9s3cb161fz51supz6/9.webp?rlkey=8jgvodzg0jrjo4aq66ed6kl6y',     // babazaki
     '0pmwgme0p7ailyrv5du44/10.webp?rlkey=365qa0yvpp068gjr7ba62w1yy',    // тянки в лесу
     'htuffcrbcxyd6e9oytxuh/11.webp?rlkey=vmbfr24u3by3mb6u0cs6cxaj4',    // кил ми беби
     '9ij1hhutwpzkqoqk4povs/12.webp?rlkey=v9rppcc9x3ol6a0lsusbnmv5g',    // 14.1 (бл)
@@ -8702,24 +11378,31 @@ let activeScreen = screenLoading;
 //
 let eagrendering;
 function lockFpsSwitch(framerate = -1, force=true) {
-    if(force) {
-        if(framerate > 0) {prefSetValue('framerate', framerate); prefSetValue('lockfps', true)} else {prefSetValue('lockfps', false)};
-        eagrendering !== null ? clearInterval(eagrendering) : false;
-        if(pref.lockfps) {
-            eagrendering = setInterval(render, 1000/pref.framerate)
+    if(!pref.vsync) {
+        if(force) {
+            if(framerate > 0) {prefSetValue('framerate', framerate); prefSetValue('lockfps', true)} else {prefSetValue('lockfps', false)};
+            eagrendering !== null ? clearInterval(eagrendering) : false;
+            if(pref.lockfps) {
+                eagrendering = setInterval(render, 1000/pref.framerate)
+            } else {
+                eagrendering = setInterval(render)
+            }
         } else {
-            eagrendering = setInterval(render)
-        }
-    } else {
-        eagrendering !== null ? clearInterval(eagrendering) : false;
-        if(framerate > 0) {
-            eagrendering = setInterval(render, 1000/framerate)
-        } else {
-            eagrendering = setInterval(render, 1000/pref.framerate)
+            eagrendering !== null ? clearInterval(eagrendering) : false;
+            if(framerate > 0) {
+                eagrendering = setInterval(render, 1000/framerate)
+            } else {
+                eagrendering = setInterval(render, 1000/pref.framerate)
+            }
         }
     }
 };
-pref.lockfps ? lockFpsSwitch(pref.framerate) : lockFpsSwitch();
+function enabledVsyncRAF(vsync=true) {
+    prefSetValue('vsync', vsync);
+    eagrendering !== null ? clearInterval(eagrendering) : false;
+    pref.vsync ? render() 
+    : pref.lockfps ? lockFpsSwitch(pref.framerate) : lockFpsSwitch();
+};
 //
 let devinfoValues = {
     width: 300,
@@ -8732,6 +11415,7 @@ let devinfoValues = {
     texty: (x) => {return devinfoValues.offset + devinfoValues.margin + devinfoValues.spacing * x}
 };
 //
+let _mem_limit = bytesStringify(performance.memory.jsHeapSizeLimit);
 function developInfo() {
     if(pref.showDebugInfo) {
         //
@@ -8740,13 +11424,14 @@ function developInfo() {
         : devinfoValues.xanchor = fullsize.x - (devinfoValues.width + devinfoValues.offset);
         devinfoValues.text = devinfoValues.xanchor + devinfoValues.margin;
         //
-        var limit = bytesStringify(performance.memory.jsHeapSizeLimit);
         var total = bytesStringify(performance.memory.totalJSHeapSize);
         var usage = bytesStringify(performance.memory.usedJSHeapSize);
+        var ftnorm = Math.norma(_ft / 16.6);
         // @RELEASE (убрать, если чет добавлял для себя)
         fillRectRounded(new Vector2(devinfoValues.width, devinfoValues.height), new Vector2(devinfoValues.xanchor, devinfoValues.offset), '#0029', devinfoValues.margin);
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(1)), 'FPS: '+FPS, '#fff', 'bold 16px Consolas');
-        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(2)), 'memLimit: '+limit, '#fcc', 'bold 12px Consolas');
+        fillText(new Vector2(devinfoValues.text + devinfoValues.width*0.4, devinfoValues.texty(1)), 'frame: '+_ft+' ms', `rgba(${255*ftnorm}, ${255-255*ftnorm}, 0, 0.8)`, 'bold 12px Consolas');
+        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(2)), 'memLimit: '+_mem_limit, '#fcc', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(3)), 'memUsage/Total: ' + usage + ' / ' + total, '#fcc', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(4)), 'roulette: '+Math.floor(roulette.progress.get()*10)/10+'/'+(roulette.picsCount-1), '#ffc', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(5)), 'full: '+Math.floor(fullsize.x)+'x'+Math.floor(fullsize.y) + ', cvs: '+Math.floor(cvssize.x)+'x'+Math.floor(cvssize.y), '#ccf', 'bold 12px Consolas');
@@ -8780,14 +11465,22 @@ function developInfo() {
         fillRect(new Vector2(10*_scaleDynamic), mouse.pos.minxy(5*_scaleDynamic), '#0006');
         fillRect(new Vector2(8*_scaleDynamic), mouse.pos.minxy(4*_scaleDynamic), '#0f0');
     } else if(pref.showFPS) {
-        fillText(new Vector2(14, 30), 'FPS: '+FPS, '#fff', 'bold 16px Consolas');
+        fillText(new Vector2(14, 30), FPS, '#fff', 'bold 16px Consolas');
+        var ftnorm = Math.norma(_ft / 16.6);
+        fillText(new Vector2(14, 40), _ft, `rgba(${255*ftnorm}, ${255-255*ftnorm}, 0, 0.8)`, 'bold 12px Consolas');
     }
 };
+// raf vsync OR interval startup
+if(pref.vsync) {
+    render()
+} else {
+    pref.lockfps ? lockFpsSwitch(pref.framerate) : lockFpsSwitch();
+}
 //
 function render() {
     // input & update
-    canvasActualSize();
     workWithFPS();
+    canvasActualSize();
     inputListener();
     updatePreferences();
     updateMusic();
@@ -8805,4 +11498,7 @@ function render() {
     ctx.fillText($appInfo.comment, 2, fullsize.y-4);
     ctx.textAlign = 'end';
     ctx.fillText('aodb-' + adb_information.lastUpdate, fullsize.x-4, fullsize.y-4);
+    //
+    calcDrawTime();
+    if(pref.vsync) {requestAnimationFrame(render)};
 };
