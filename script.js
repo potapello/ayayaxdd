@@ -14,24 +14,10 @@
 /*===============================================================================================*/
 
 /*============================================ TODO ===============================================
-    SFX (нет звука или он хуйня)
-    элементы
-        селектбары (такое себе)
-        холд кнопки (нет)
-    марафон
-        перемещение по карте
-        исследования
-        события (бафф, дебафф, выдача монет)
-        рулетка предметов
 ============================================= CHANGES =============================================
-for version - 1.3.1
+for version - 1.3.x
     === NEW FILES ===
-JS          translations.js
-JS          meetings.js
     === CHANGES ===
-JS          script.js
-TXT         changelog.txt
-HTML        index.html
 =================================================================================================*/
 var cvs = document.getElementById("ayayaxdd");
 var ctx = cvs.getContext("2d");
@@ -67,7 +53,7 @@ function databaseShorter() {
 //
 let $appInfo = {
     // main @rel
-    version: '1.3.1 beta',
+    version: '1.3.1a beta',
     date: '28-05-2025',
     name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
     fullname: 'AYAYA - Anime Roulette',
@@ -76,7 +62,7 @@ let $appInfo = {
     licenseURL: 'https://github.com/potapello/ayayaxdd/blob/main/LICENSE',
     // other
     codename: 'ayayaxdd', // EAG? в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
-    comment: 'ayayaxdd 1.3.1 beta',
+    comment: 'ayayaxdd 1.3.1a beta',
 };
 console.log(`\n${$appInfo.fullname}\n${$appInfo.comment} (${$appInfo.date})\nby ${$appInfo.author}\n `);
 //
@@ -4860,7 +4846,7 @@ let tDesc = {
         scaleFont(descrFontSize, 'Segoe UI');
         descrWatchTrailer.size.setxy(tInfo.box/3, tDesc.fsize);
         descrWatchTrailer.pos = tDesc.pos.sumxy(tInfo.box).minv(descrWatchTrailer.size).minxy(tInfo.spacing, tInfo.spacing*2);
-        // descrWatchTrailer.draw();        // нет норм апи для перевода, клаудфл блокнут(((
+        descrWatchTrailer.draw();      
         // начала и хвосты
         ctx.globalAlpha = ctx.globalAlpha * tDesc.alpha.get();
         var start = Math.floor(tDesc.scroll.get() / tDesc.height.y) - 1;
@@ -4881,7 +4867,7 @@ let tDesc = {
             ctx.textAlign = 'center';
             decsrTranslate.size.setxy(tInfo.box/3, tDesc.fsize);
             decsrTranslate.pos = tDesc.pos.sumxy(tInfo.box/2, tInfo.box).minxy(tInfo.spacing+decsrTranslate.size.x/2, tInfo.spacing*2+decsrTranslate.size.y);
-            decsrTranslate.draw();
+            // decsrTranslate.draw(); // нет норм апи для перевода, клаудфл блокнут(((
             // перевод текста
             if(!tDesc.original && !tDesc.translate && !tDesc.terror) {
                 if(tDesc.tstate === 'work') {
