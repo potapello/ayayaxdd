@@ -9,9 +9,30 @@
 /*===============================================================================================*/
 //  This program based on -> anime-offline-database (by manami-project)
 //  GitHub Repository -> https://github.com/manami-project/anime-offline-database
-//  License -> GNU Affero General Public License v3.0
+//  License -> ODC Open Database License 1.0
 //  License URL -> https://github.com/manami-project/anime-offline-database/blob/master/LICENSE 
 /*===============================================================================================*/
+
+/*============================================ TODO ===============================================
+    SFX (нет звука или он хуйня)
+    элементы
+        селектбары (такое себе)
+        холд кнопки (нет)
+    марафон
+        перемещение по карте
+        исследования
+        события (бафф, дебафф, выдача монет)
+        рулетка предметов
+============================================= CHANGES =============================================
+for version - 1.3.1
+    === NEW FILES ===
+JS          translations.js
+JS          meetings.js
+    === CHANGES ===
+JS          script.js
+TXT         changelog.txt
+HTML        index.html
+=================================================================================================*/
 var cvs = document.getElementById("ayayaxdd");
 var ctx = cvs.getContext("2d");
 // focus stopper
@@ -25,15 +46,20 @@ window.onfocus = window.onpageshow = () => {
 window.onpagehide = window.onblur = () => {
     windowVisibility = false; fpsFocusSwitch = true
 };
-/** Работает с `adb` : добавляет `fake_dbid` каждому элементу и удаляет все неиспользуемые данные. */
+/** Работает с `adb` : добавляет `score` и `fake_dbid` каждому элементу и удаляет все неиспользуемые данные. */
 function databaseShorter() {
+    adb_information.scored = 0;
     for(var a in adb) {
         // counter
         adb[a].fake_dbid = Number(a);
         // shorter
+        // delete adb[a].synonyms; (already used for searching)
         delete adb[a].relations;
         delete adb[a].relatedAnime;
-        delete adb[a].thumbnail
+        delete adb[a].thumbnail;
+        // shorted score info
+        if(adb[a].score !== undefined) {adb_information.scored += 1; adb[a].score = floatNumber(adb[a].score.arithmeticMean, 2)}
+        else {adb[a].score = null} // arithmeticMean - там значения ближе к реальности, ещё есть arithmeticGeometricMean и median
     }
 };
 //
@@ -41,8 +67,8 @@ function databaseShorter() {
 //
 let $appInfo = {
     // main @rel
-    version: '1.2.2 beta',
-    date: '29-02-2024',
+    version: '1.3.1 beta',
+    date: '28-05-2025',
     name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
     fullname: 'AYAYA - Anime Roulette',
     author: 'potapello',
@@ -50,7 +76,20 @@ let $appInfo = {
     licenseURL: 'https://github.com/potapello/ayayaxdd/blob/main/LICENSE',
     // other
     codename: 'ayayaxdd', // EAG? в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
-    comment: 'ayayaxdd 1.2.2 beta',
+    comment: 'ayayaxdd 1.3.1 beta',
+};
+console.log(`\n${$appInfo.fullname}\n${$appInfo.comment} (${$appInfo.date})\nby ${$appInfo.author}\n `);
+//
+// get info about startup & FSA api avalaibility
+let windowLocalFile = window.location.protocol === 'file:';
+let windowFileAvailable = false;
+if(!windowLocalFile) {
+    if ('showDirectoryPicker' in window && 'FileSystemFileHandle' in window) {
+      windowFileAvailable = true;
+    //   console.info('File System Access API - available.')
+    } else {
+      console.warn('File System Access API is not supported by your browser!');
+    }
 };
 //
 // @EAG FPS
@@ -66,17 +105,17 @@ let fpsFocusSwitch = false;
 function workWithFPS() {
     // for drawtime calc
     if(pref.showDebugInfo || pref.showFPS) {_ft_start = performance.now()};
-    // // limit fps, if no focus @RELEASE
-    // if(fpsFocusSwitch) {
-    //     fpsFocusSwitch = false;
-    //     if(windowVisibility) {
-    //         lockFpsSwitch(0, false)
-    //     } else {
-    //         fpsFocusLast = Number(pref.framerate);
-    //         lockFpsSwitch(fpsFocusLimiter, false)
-    //     }
-    // };
-    //
+    // limit fps, if no focus @RELEASE
+    if(fpsFocusSwitch) {
+        fpsFocusSwitch = false;
+        if(windowVisibility) {
+            lockFpsSwitch(0, false)
+        } else {
+            fpsFocusLast = Number(pref.framerate);
+            lockFpsSwitch(fpsFocusLimiter, false)
+        }
+    };
+    
     deltaTime = performance.now() - oldTime;
     oldTime = performance.now();
     //
@@ -564,7 +603,7 @@ function inputListener() {
         if(keyPressed('Plus') || keyPressed('Equal')) {_scaleFixed < 3.9 ? cvsscale.move(_scaleFixed+0.1, 0.25, easeOutCirc) : false; globalRescale()};
         if(keyPressed('Minus')) {_scaleFixed >= 0.6 ? cvsscale.move(_scaleFixed-0.1, 0.25, easeOutCirc) : false; globalRescale()};
         // return to roulette screen
-        if(activeScreen !== screenRoulette && activeScreen !== screenLoading && activeScreen != screenMarathonMap) {
+        if(activeScreen === screenAnimeFilter || activeScreen === screenPreferences) {
             if(keyPressed('Escape')) {
                 requestScreen(screenRoulette, false)
             }
@@ -1089,11 +1128,19 @@ const sound = {
     'taginc': new Audio('sounds/taginc.ogg'),
     'tagexc': new Audio('sounds/tagexc.ogg'),
     'loaded': new Audio('sounds/loaded.mp3'),
-    'screen': new Audio('sounds/screen.ogg'),
+    'screen': new Audio('sounds/screen.wav'),
     'winner': new Audio('sounds/winner.ogg'),
     'roll': new Audio('sounds/roll.ogg'),
-    'prompt': new Audio('sounds/prompt.ogg'),
-    'player': new Audio('sounds/player.ogg'),
+    'prompt': new Audio('sounds/prompt.wav'),
+    'player': new Audio('sounds/player.wav'),
+    // new in 1.3.1 (for marathon)
+    'teleport': new Audio('sounds/teleport.wav'),
+    'warn': new Audio('sounds/warn.wav'),
+    'coins': new Audio('sounds/coins.wav'),
+    'opener': new Audio('sounds/opener.mp3'),
+    'steps': new Audio('sounds/steps.wav'),
+    'success': new Audio('sounds/success.wav'),
+    'insp': new Audio('sounds/insp.wav'),
 };
 //
 const music = [
@@ -1217,9 +1264,13 @@ let musicNormalLoop = false;
 let musicNormalComplete = false;
 let musicBGVOld = -1;
 //                                                                          METHODS
-function playSound(sound = new Audio()) {
+function playSound(sound = new Audio(), rate=false) {
     sound.currentTime = 0;
     sound.volume = pref.sound / 100;
+    if(rate !== false) {
+        sound.preservesPitch = false;
+        sound.playbackRate = rate
+    } else {sound.playbackRate = 1};
     sound.play()
 };
 //
@@ -1766,29 +1817,36 @@ let lidb = {
     request: false,
     lists: [],
 };
-lidb.openreq = indexedDB.open("db", lidb.version);
-lidb.openreq.onerror = () => {
-    lidb.error = lidb.openreq.error;
-    console.error("ILDB error", lidb.openreq.error)
-};
-lidb.openreq.onsuccess = () => {
-    lidb.db = lidb.openreq.result;
-    console.log('Connected to ILDB');
-};
-lidb.openreq.onupgradeneeded = function(event) {
-    lidb.db = lidb.openreq.result;
-    switch(event.oldVersion) {
-        case 0:
-            if(!lidb.db.objectStoreNames.contains('lists')) {
-                console.log('Init ILDB "lists" store...');
-                lidb.db.createObjectStore('lists', {keyPath: 'name'})
-            };
-        case 1:
-            console.log('Connected to ILDB')
-        case 2:
-            // update
+// startup func
+function setupLIDB() {
+    lidb.openreq = indexedDB.open("db", lidb.version);
+    lidb.openreq.onerror = () => {
+        lidb.error = lidb.openreq.error;
+        console.error("ILDB error", lidb.openreq.error)
+    };
+    lidb.openreq.onsuccess = () => {
+        lidb.db = lidb.openreq.result;
+        console.log('Connected to ILDB');
+    };
+    lidb.openreq.onupgradeneeded = function(event) {
+        lidb.db = lidb.openreq.result;
+        switch(event.oldVersion) {
+            case 0:
+                if(!lidb.db.objectStoreNames.contains('lists')) {
+                    console.log('Init ILDB "lists" store...');
+                    lidb.db.createObjectStore('lists', {keyPath: 'name'})
+                };
+                if(!lidb.db.objectStoreNames.contains('lists-info')) {
+                    console.log('Init ILDB "lists-info" store...');
+                    lidb.db.createObjectStore('lists-info', {keyPath: 'index'})
+                }
+            case 1:
+                console.log('ILDB (v1.0)');
+            case 2:
+                // update
+        }
     }
-};
+}; setupLIDB();
 // lidb upload, download, delete
 function lidbUploadObject(obj, store) {
     var t = lidb.db.transaction(store, "readwrite");
@@ -1820,6 +1878,10 @@ function lidbDeleteObject(name, store) {
       console.warn(`Error with deleting ${name} from "${store}"\n`, req.error)
     };
 };
+function fullResetLIDB() { // delete exists lidb and create new empty
+    indexedDB.deleteDatabase('db');
+    setupLIDB();
+};
 // lidb get all lists
 function lidbGetKeys(store) {
     lidb.request = true;
@@ -1835,568 +1897,11 @@ function lidbGetKeys(store) {
 //
 // @EAG TRANSLATED TEXT
 //
-const _TextTranslations = {
-    'ru': {
-        // global
-        eagName: 'Аниме Рулетка',
-        eagFilter: 'Фильтруем Аниме',
-        eagEmpty: 'Рулетка пуста!',
-        eagBased: 'Проект основан на оффлайн базе данных аниме (\"Offline Anime Database\") от manami-project.',
-        eagThanks: 'Спасибо за использование :)',
-        eagAbout: 'Приложение для генерации рандомного аниме из списков, случайно сгенерированных или собранных вручную.',
-        // lang
-        langWarn: 'Требуется перезагрузка!',
-        // tagnames
-        tagnames: {
-            'action':           'Экшн',
-            'adventure':        'Приключения',
-            'comedy':           'Комедия',
-            'drama':            'Драма',
-            'ecchi':            'Этти',
-            'fantasy':          'Фэнтези',
-            'game':             'Игра',
-            'harem':            'Гарем',
-            'historical':       'Историческое',
-            'horror':           'Хоррор',
-            'isekai':           'Исекай',
-            'magic':            'Магия',
-            'mecha':            'Меха',
-            'military':         'Военное',
-            'music':            'Музыка',
-            'mystery':          'Мистика',
-            'parody':           'Пародия',
-            'psychological':    'Психологическое',
-            'romance':          'Романтика',
-            'school':           'Школа',
-            'sci-fi':           'Научное',
-            'seinen':           'Сэйнэн',
-            'shoujo':           'Сёдзё',
-            'shounen':          'Сёнэн',
-            'slice of life':    'Повседневное',
-            'sports':           'Спорт',
-            'supernatural':     'Суперсилы',
-            'yaoi':             'Яой',
-            'yuri':             'Юри',
-            'work':             'Работа',
-            'tsundere':         'Цундере',
-            'yandere':          'Яндере',
-            'kuudere':          'Куудере',
-            'detective':        'Детектив',
-            'space':            'Космос',
-            'future':           'Футуризм',
-            'crime':            'Преступления',
-            'cooking':          'Еда',
-            'present':          'Современное',
-            'kids':             'Дети',
-            'manga':            'По манге',
-            'original':         'Оригинал',
-            'male':             'ГГ - Мальчик',
-            'female':           'ГГ - Девочка',
-            'family':           'Семья',
-            'altworld':         'Другой мир',
-            'shorts':           'Короткое',
-            'secret':           'Секретно!',
-            'allnsfw':          'NSFW',
-        },
-        // presetnames
-        presetnames: {
-            'Дефолтный': 'Дефолтный',
-            'Cтарая романтика': 'Cтарая романтика',
-            'Перерождение в 2007-й': 'Перерождение в 2007-й',
-            'Современный кал': 'Современный кал',
-            'Хорошая ностальгия': 'Хорошая ностальгия',
-            'Мужская магия': 'Мужская магия',
-            'Сверхъестественная школа': 'Сверхъестественная школа',
-            'Девочки колдуют': 'Девочки колдуют',
-            'Женский исекай': 'Женский исекай',
-            'Можно короче?': 'Можно короче?',
-            'Лучшая эротика': 'Лучшая эротика',
-            'Бывалые гаремы': 'Бывалые гаремы',
-            'Девочки в танках': 'Девочки в танках',
-            'Новая психология': 'Новая психология',
-            'Повседневность нулевых': 'Повседневность нулевых',
-            '"Сполт это фыфнь".': '"Сполт это фыфнь".',
-            'Игры десятых': 'Игры десятых',
-            'Пережитая история': 'Пережитая история',
-            'Лучшие приключения': 'Лучшие приключения',
-            'Когда плакать?': 'Когда плакать?',
-            'Пожилые слёзы': 'Пожилые слёзы',
-            'Что это было?': 'Что это было?',
-            'Новое приключение': 'Новое приключение',
-            'Фентезийная любовь': 'Фентезийная любовь',
-            'Плюс уши': 'Плюс уши',
-            'Плохие шутки': 'Плохие шутки',
-            'Новаторский юмор': 'Новаторский юмор',
-            'Грустно, но вкусно': 'Грустно, но вкусно',
-            'Бесится, но любит': 'Бесится, но любит',
-            'Влюбиться насмерть': 'Влюбиться насмерть',
-            'Бесконечное "это"': 'Бесконечное "это"',
-            'Работать - круто!': 'Работать - круто!',
-            'Совсем не похоже': 'Совсем не похоже',
-            'Годная сатира': 'Годная сатира',
-            'Супер-романтика': 'Супер-романтика',
-            'Выключаем свет': 'Выключаем свет',
-            'Женский спорт': 'Женский спорт',
-            'Кухня, 7 сезон': 'Кухня, 7 сезон',
-            'Прохладная любовь': 'Прохладная любовь',
-            'Кратко про гаремы': 'Кратко про гаремы',
-            'Дела семейные': 'Дела семейные',
-            'Cyberpunk 2077': 'Cyberpunk 2077',
-            'Страшно смешно': 'Страшно смешно',
-            'Супергероини': 'Супергероини',
-            'Трава у дома': 'Трава у дома',
-            'Аниме \"5в1\"': 'Аниме \"5в1\"',
-        },
-        // status
-        statusFinished: 'Вышел', statusOngoing: 'Онгоинг', statusUpcoming: 'Анонс', statusUnknown: 'Неизв.',
-        //type
-        typeTV: 'TV Сериал', typeMovie: 'Фильм', typeONA: 'ONA', typeOVA: 'OVA', typeSpecial: 'Спешл', typeUnknown: 'Неизв.',
-        //season
-        seasonSpring: 'Весна', seasonSummer: 'Лето', seasonFall: 'Осень', seasonWinter: 'Зима', seasonUndefined: 'Неизв.',
-        // info table
-        infoHead: 'Информация',
-        infoEps: 'Серий: ',
-        infoYear404: 'Неизв.',
-        infoPreset: 'Пресет: ',
-        infoList: 'Список',
-        infoChangesCount: 'Изменений: ',
-        infoNoChanges: 'Изменений нет',
-        // MAL
-        malHead: 'Рейтинг MyAnimeList',
-        mal404: 'Нет данных...',
-        malScore: 'Ср. оценка: ',
-        malScoredBy: `Всего оценок: `,
-        // rollbar
-        rbRoll: 'Крутить!', rbWait: 'Ждём', rbMusicOff: 'Музыка выключена.', rbWarn: 'Победитель уже определён!',
-        // desc
-        descHead: 'Описание',
-        descWait: 'Секундочку...',
-        descNone: 'Описания нет',
-        descContinue: '    (далее на MyAnimeList)',
-        descTranslate: '[Перевести]',
-        descWork: 'Переводим... ',
-        descRoll: 'Рулетка крутится...',
-        descTrailer: '[Трейлер]',
-        descNoTrailer: 'Трейлер не найден...',
-        // single words
-        wordError: 'Ошибка',
-        wordOriginal: '[Оригинал]',
-        wordTranslate: '[Перевод]',
-        wordMinimum: 'Минимальный',
-        wordMaximum: 'Максимальный',
-        wordBack: 'Назад',
-        wordApply: 'Применить',
-        wordFiltrate: 'Фильтр!',
-        wordReset: 'Сбросить',
-        wordApp: 'Приложение',
-        wordDatabase: 'Датабаза',
-        // prompts
-        promIntLess: 'Введите целое число, меньше чем',
-        promIntOver: 'Введите целое число, больше чем',
-        promHoverCopy: 'Нажмите, чтобы скопировать название',
-        promFloatLess: 'Введите число с точностью до десятых (пример - "1.5"), меньше чем',
-        promFloatOver: 'Введите число с точностью до десятых (пример - "8.5"), больше чем',
-        // filter
-        filterApplyPreset: 'Применить',
-        filterWallpaper: 'Вставьте ссылку на изображение или нажмите "Отмена" для случайного изображения из заранее подготовленных...',
-        filterDiap: 'Диапазоны',
-        filterYear: 'Год выхода (0 - 2023)',
-        filterEps: 'Кол-во серий (1 - 9999)',
-        filterScore: 'Ср. оценка (0 - 10)',
-        filterScoreAllow: 'Учитывать оценки MAL',
-        filterSTS: 'Сезоны, типы и статусы',
-        filterTags: 'Тэги',
-        filterPresets: 'Пресеты',
-        filterAboutPresets: 'Нажмите на пресет, чтобы узнать, что именно он изменяет. Применение пресета выставит новые значения последующих настроек фильтра.',
-        filterWarn: 'Применение фильтра перезапишет старые элементы рулетки и удалит ПОБЕДИТЕЛЯ, если он уже определялся до этого.',
-        filterFindNone: 'Ни одного тайтла, прошедшего по условиям фильтра, не найдено! Фильтр восстановлен до настроек пресета.',
-        filterCounter: 'Кол-во тайтлов, проходящих по условиям: ',
-        filterFirstChange: 'Измените что-нибудь для подсчёта...',
-        filterAttempts: 'Игнорирование условий (0 - 4)',
-        filterStateFilter: 'Рандом',
-        filterStateArrays: 'Списки',
-        filterStateEditor: 'Редактор',
-        filterStateBrowser: 'Поиск',
-        filterBrowserFind: 'База данных',
-        filterBrowserPrompt: 'Введите слово (-а) из названия тайтла, который хотите найти, на английском языке.',
-        filterAttTags: 'Только для тэгов',
-        filterMALPrompt: 'Поиск аниме с помощью сайта MyAnimeList. Писать запрос нужно на английском языке.',
-        filterMALFind: 'MyAnimeList',
-        // browser, arrays
-        browserEnter: 'Ввести', browserPage: 'Страница', browserNext: 'Вперёд', browserPrev: 'Назад',
-        browserAddNote: 'Зажмите, чтобы добавить тайтл в редактируемый список',
-        browserAlreadyNote: 'Тайтл уже в редактируемом списке',
-        browserNoResult: 'Нет ни одного результата по запросу: ',
-        browserResultCount: ' результатов по запросу: ',
-        browserMALWait: 'Поиск аниме на сайте MyAnimeList, пожалуйста подождите...',
-        // editor
-        editorDeleteNote: 'Зажмите, чтобы удалить тайтл из списка',
-        editorClaimRoulette: 'Взять с рулетки',
-        editorListClear: 'Удалить все тайтлы из редактируемого списка?',
-        editorApplyEmpty: 'Отправлять на рулетку нечего - редактируемый список пуст!',
-        editorDownloadEmpty: 'Нечего скачивать - редактируемый список пуст!',
-        editorUploadEmpty: 'В загруженном файле не найдено ни одного тайтла!',
-        editorCompatibilityWarn_1: 'Версии компонентов, на которых был сделан загруженный список аниме и текущие версии отличаются:',
-        editorCompatibilityWarn_2: 'Это может вызвать некоторые проблемы, тайтлы в датабазе придётся искать по названиям (DBID могут отличаться). Продолжайте, если знаете, что делаете.',
-        editorUploadOverwrite: 'Для загрузки новых тайтлов необходимо удалить старые. Продолжить?',
-        editorDownloadJSON: 'Скачать .json',
-        editorUploadJSON: 'Загрузить .json',
-        editorJSON: 'Списки в JSON формате',
-        // load
-        loadJkrg: `Загрузка аниме датабазы...`,
-        loadPics: `Грузим картинки...`,
-        loadGen: `Генерируем рулетку...`,
-        loadDone: `Готово!`,
-        loadFirstEvent: `Нажмите в любую область экрана для продолжения...`,
-        loadNoCon: `Нет соединения с интернетом!`,
-        loadRecon: `Пожалуйста, проверьте соединение с интернетом и перезагрузите страницу.`,
-        // presetinfo
-        prinIncludes: 'Включения:', prinExcludes: 'Исключения:', prinPreset: 'Пресет: ', prinEps: ' Серии: ',
-        prinYears: '. Года выхода: ', prinScore: '. Ср. оценка: ', prinMultiplier: '. Множитель:',
-        // pref
-        prefHead: 'Настройки',
-        prefRoll: 'Рулетка',
-        prefRTime: 'Время',
-        prefRSpeed: 'Скорость',
-        prefRTitle: 'Максимум тайтлов',
-        prefROnscreen: 'Тайтлов на экране',
-        prefRAuto: 'Авто-вращение',
-        prefRNSFW: 'Разрешить NSFW-тайтлы',
-        prefAudio: 'Аудио',
-        prefASound: 'Звуки',
-        prefABG: 'Музыка (задний фон)',
-        prefARoll: 'Музыка (вращение)',
-        prefANew: 'Другой трек при вращении',
-        prefAShow: 'Показать плеер',
-        prefRender: 'Отрисовка',
-        prefRLimit: 'Ограничить FPS',
-        prefRFPS: 'FPS',
-        prefRSmooth: 'Сглаживание изображений',
-        prefRShadow: 'Непрозрачность теней',
-        prefRBG: 'Задний фон - ',
-        prefParallax: 'Параллакс',
-        prefShowFPS: 'Показать FPS',
-        prefDevinfo: 'Показать доп. информацию',
-        prefScale: 'Размер: ',
-        prefScaleSet: 'Размер интерфейса',
-        prefVersion: 'Версия: ',
-        prefAbout: 'О проекте',
-        prefVisual: 'Визуализация музыки',
-        prefPlayClip: 'Показывать видеоклип*',
-        prefLanguage: 'Язык',
-        prefOthers: 'Прочее',
-        prefRecovery: 'Восстановление',
-        prefResetDefault: 'Настройки по умолчанию',
-        prefResetStorage: 'Удалить все данные',
-        // prefsets
-        pstDisable: 'Выкл.', pstLow: 'Низко', pstMedium: 'Средне', pstHigh: 'Высоко', pstChange: 'Сменить',
-        // hints
-        hintTags: 'Тут можно включать и исключать тэги для фильтра. Не забывайте смотреть, есть ли аниме по уже выбранной комбинации. Для работы некоторых тэгов нужно включить `NSFW` в настройках.',
-        hintAllowScore: 'Это значит, что не пройдёт всё, чего нет на сайте MAL (+5000 тайтлов) и что не удовлетворяет минимальной и максимальной указанным средним оценкам.',
-        hintTitleMax: 'Ограничивает кол-во аниме, которые отправляются в рулетку после фильтрации.',
-        hintAutoScroll: 'Рулетка в спокойном состоянии будет автоматически медленно вращаться.',
-        hintAllowNSFW: 'В рулетке будет разрешено аниме с содержанием 18+. Включая это, вы подтверждаете, что достигли совершеннолетия. (Осторожно: постеры могут содержать нецензурный контент!)',
-        hintAudio: 'Микшеры "Задний фон" и  "Вращение" позволяют настроить разную громкость музыки в спокойном состоянии и во время вращения.',
-        hintNewTrack: 'При запуске рулетки будет играть новый трек с начала или с определённого момента.',
-        hintParallax: 'Изображение на заднем фоне будет немного следовать за указателем мыши.',
-        hintBackgroundURL: 'Ссылка на изображение: ',
-        hintPrefReset: 'Вернуть все настройки к значениям по умолчанию.',
-        hintTrackName: 'Сейчас играет: ',
-        hintMusicOff: 'Выберите "0", чтобы выключить музыку на заднем фоне.',
-        hintAudioVisual: 'Визуализация звука снизу во всю внутреннюю ширину интерфейса.',
-        hintRoll: 'На низких значениях времени и скорости будет слабый рандом. Рекомендуемое время = 20-60, скорость не меньше 20.',
-        hintPrefScale: 'Множитель размера всех элементов интерфейса. Можно настраивать кнопками "+" и "-".',
-        hintAttempts: 'Количество условий, которые фильтр сможет проигнорировать.',
-        hintAudioClips: 'Экспериментальная функция (требует хорошего подключения к интернету). Воспроизводит ролик к треку вместо заднего фона во время прокрута. Настройка времени рулетки игнорируется.',
-        hintAttTags: 'Опция "Игнорирование условий" будет использована только для тэгов.',
-        hintResetStorage: 'Удалить все накопленные данные из localStorage. Это касается настроек, аниме на рулетке, фильтра, сохранённых списков и т.п.',
-        hintClaimRoulette: 'Взять все тайтлы с рулетки',
-        hintAwaitingClip: 'Грузим видео с музычкой ...',
-        hintAwaitingMusic: 'Грузим музыку ...',
-        hintOpenURL: 'Нажмите, чтобы открыть в новой вкладке: ',
-    },
-    'en': {
-        // global
-        eagName: 'Anime Roulette',
-        eagFilter: 'Filtering Anime',
-        eagEmpty: 'Roulette is empty!',
-        eagBased: 'The project is based on an \"Offline Anime Database\" by manami-project. Some APIs are also used: Jikan REST API, Microsoft Text Translator (via restapi.com).',
-        eagThanks: 'Thanks for using :)',
-        eagAbout: 'An application for getting random anime from a list randomly generated or manually assembled.',
-        // lang
-        langWarn: 'A reboot is required!',
-        // tagnames
-        tagnames: {
-            'action':           'Action',
-            'adventure':        'Adventure',
-            'comedy':           'Comedy',
-            'drama':            'Drama',
-            'ecchi':            'Ecchi',
-            'fantasy':          'Fantasy',
-            'game':             'Game',
-            'harem':            'Harem',
-            'historical':       'Historical',
-            'horror':           'Horror',
-            'isekai':           'Isekai',
-            'magic':            'Magic',
-            'mecha':            'Mecha',
-            'military':         'Military',
-            'music':            'Music',
-            'mystery':          'Mystery',
-            'parody':           'Parody',
-            'psychological':    'Psychological',
-            'romance':          'Romance',
-            'school':           'School',
-            'sci-fi':           'Sci-Fi',
-            'seinen':           'Seinen',
-            'shoujo':           'Shoujo',
-            'shounen':          'Shounen',
-            'slice of life':    'Slice of life',
-            'sports':           'Sports',
-            'supernatural':     'Supernatural',
-            'yaoi':             'Yaoi',
-            'yuri':             'Yuri',
-            'work':             'Work',
-            'tsundere':         'Tsundere',
-            'yandere':          'Yandere',
-            'kuudere':          'Kuudere',
-            'detective':        'Detective',
-            'space':            'Space',
-            'future':           'Future',
-            'crime':            'Criminal',
-            'cooking':          'Food',
-            'present':          'Present',
-            'kids':             'Kids',
-            'manga':            'By manga',
-            'original':         'Original',
-            'male':             'Male protagonist',
-            'female':           'Female protagonist',
-            'family':           'Family',
-            'altworld':         'Another world',
-            'shorts':           'Shorts',
-            'secret':           'Secret!',
-            'allnsfw':          'NSFW',
-        },
-        // presetnames
-        presetnames: {
-            'Дефолтный': 'Default',
-            'Cтарая романтика': 'Old romance',
-            'Перерождение в 2007-й': 'Rebirth in 2007',
-            'Современный кал': 'Modern feces',
-            'Хорошая ностальгия': 'Good nostalgia',
-            'Мужская магия': 'Male magic',
-            'Сверхъестественная школа': 'Supernatural school',
-            'Девочки колдуют': 'Girls conjure',
-            'Женский исекай': 'Female isekai',
-            'Можно короче?': 'Can it be shorter?',
-            'Лучшая эротика': 'Best erotica',
-            'Бывалые гаремы': 'Experienced harems',
-            'Девочки в танках': 'Girls in tanks',
-            'Новая психология': 'New psychology',
-            'Повседневность нулевых': 'Everyday life in 2000',
-            '"Сполт это фыфнь".': '"Spoft is Life"',
-            'Игры десятых': 'Games of the 2010',
-            'Пережитая история': 'Experienced history',
-            'Лучшие приключения': 'Best adventures',
-            'Когда плакать?': 'When to cry?',
-            'Пожилые слёзы': 'Elderly tears',
-            'Что это было?': 'What was that?',
-            'Новое приключение': 'A new adventure',
-            'Фентезийная любовь': 'Fantasy love',
-            'Плюс уши': 'Plus ears',
-            'Плохие шутки': 'Bad jokes',
-            'Новаторский юмор': 'Innovative humor',
-            'Грустно, но вкусно': 'Sad, but delicious',
-            'Бесится, но любит': 'She\'s mad, but she loves',
-            'Влюбиться насмерть': 'Fall in love to death',
-            'Бесконечное "это"': 'The infinite "it"',
-            'Работать - круто!': 'Working is cool!',
-            'Совсем не похоже': 'Doesn\'t look like',
-            'Годная сатира': 'Good satire',
-            'Супер-романтика': 'Super-romance',
-            'Выключаем свет': 'Turning off the light',
-            'Женский спорт': 'Women\'s sports',
-            'Кухня, 7 сезон': 'Kitchen, season 7',
-            'Прохладная любовь': '\"Cool\" love',
-            'Кратко про гаремы': 'Briefly about harems',
-            'Дела семейные': 'Family matters',
-            'Cyberpunk 2077': 'Cyberpunk 2077',
-            'Страшно смешно': 'Terribly funny',
-            'Супергероини': 'Superheroines',
-            'Трава у дома': 'Grass at the house',
-            'Аниме \"5в1\"': 'Anime \"5in1\"',
-        },
-        // status
-        statusFinished: 'Finished', statusOngoing: 'Ongoing', statusUpcoming: 'Upcoming', statusUnknown: 'Unknown',
-        //type
-        typeTV: 'TV Series', typeMovie: 'Movie', typeONA: 'ONA', typeOVA: 'OVA', typeSpecial: 'Special', typeUnknown: 'Unknown',
-        //season
-        seasonSpring: 'Spring', seasonSummer: 'Summer', seasonFall: 'Fall', seasonWinter: 'Winter', seasonUndefined: 'Unknown',
-        // info table
-        infoHead: 'Information',
-        infoEps: 'Episodes: ',
-        infoYear404: 'Unknown',
-        infoPreset: 'Preset: ',
-        infoList: 'List: ',
-        infoChangesCount: 'Change count: ',
-        infoNoChanges: 'No changes',
-        // MAL
-        malHead: 'MyAnimeList Score',
-        mal404: 'No data...',
-        malScore: 'Avg. score: ',
-        malScoredBy: `Total scores: `,
-        // rollbar
-        rbRoll: 'Roll!', rbWait: 'Wait', rbMusicOff: 'Music is turned off.', rbWarn: 'The winner has already been determined!',
-        // desc
-        descHead: 'Description',
-        descWait: 'Please wait...',
-        descNone: 'No description',
-        descContinue: '    (continued in MyAnimeList)',
-        descTranslate: '[Translate]',
-        descWork: 'Translating... ',
-        descRoll: 'Roulette is spinning...',
-        descTrailer: '[Trailer]',
-        descNoTrailer: 'Trailer not found...',
-        // single words
-        wordError: 'Error',
-        wordOriginal: '[Original]',
-        wordTranslate: '[Translation]',
-        wordMinimum: 'Minimum',
-        wordMaximum: 'Maximum',
-        wordBack: 'Back',
-        wordApply: 'Apply',
-        wordFiltrate: 'Filter!',
-        wordReset: 'Reset',
-        wordApp: 'App',
-        wordDatabase: 'Database',
-        // prompts
-        promIntLess: 'Enter an integer less than',
-        promIntOver: 'Enter an integer greater than',
-        promHoverCopy: 'Click to copy the name',
-        promFloatLess: 'Enter a number with precision to tenths (example - "1.5"), less than',
-        promFloatOver: 'Enter a number with precision to tenths (example - "8.5"), over than',
-        // filter
-        filterApplyPreset: 'Apply',
-        filterWallpaper: 'Insert a URL link to the image or click "Cancel" for a random image from the pre-prepared ones...',
-        filterDiap: 'Ranges',
-        filterYear: 'Year of release (0 - 2023)',
-        filterEps: 'Episodes (1 - 9999)',
-        filterScore: 'Avg. score (0 - 10)',
-        filterScoreAllow: 'Take into account the MAL rating',
-        filterSTS: 'Seasons, types & statuses',
-        filterTags: 'Tags',
-        filterPresets: 'Presets',
-        filterAboutPresets: 'Click on the preset to find out exactly what it changes. Applying the preset will set new values for subsequent filter settings.',
-        filterWarn: 'Applying the filter will overwrite the old roulette elements and remove the WINNER if it has already been determined before.',
-        filterFindNone: 'Not a single title that passed the filter conditions was found! The filter has been restored to the preset settings.',
-        filterCounter: 'Number of filtered anime: ',
-        filterFirstChange: 'Precounter is waiting for changes...',
-        filterAttempts: 'Ignore conditions (0 - 4)',
-        filterStateFilter: 'Random',
-        filterStateArrays: 'Arrays',
-        filterStateEditor: 'Editor',
-        filterStateBrowser: 'Search',
-        filterBrowserFind: 'Database',
-        filterBrowserPrompt: 'Enter the name of the title you want to find... (in English)',
-        filterAttTags: 'Tags only',
-        filterMALPrompt: 'Search for anime using the MyAnimeList site. You need to write the request in English.',
-        filterMALFind: 'MyAnimeList',
-        // browser & arrays
-        browserEnter: 'Enter', browserPage: 'Page', browserNext: 'Next', browserPrev: 'Prev',
-        browserAddNote: 'Hold for add title to editable list',
-        browserAlreadyNote: 'Title is already in editable list!',
-        browserNoResult: 'There are no results for the query: ',
-        browserResultCount: ' results for the query: ',
-        browserMALWait: 'Searching anime on the MyAnimeList site, please wait...',
-        // editor
-        editorDeleteNote: 'Hold for delete title from list',
-        editorClaimRoulette: 'Claim roll',
-        editorListClear: 'Delete all titles from the edited list?',
-        editorApplyEmpty: 'There is nothing to send to roulette - the editable list is empty!',
-        editorDownloadEmpty: 'There is nothing to download - the editable list is empty!',
-        editorUploadEmpty: 'No titles were found in the uploaded file!',
-        editorCompatibilityWarn_1: 'The versions of the components on which the downloaded anime list was made and the current versions differ:',
-        editorCompatibilityWarn_2: 'This may cause some problems, the titles in the database will have to be searched by name (DBID\'s may differ). Go ahead if you know what you\'re doing.',
-        editorUploadOverwrite: 'To download new titles, you need to delete the old ones. Continue?',
-        editorDownloadJSON: 'Download .json',
-        editorUploadJSON: 'Upload .json',
-        editorJSON: 'Lists in JSON format',
-        // load
-        loadJkrg: `Loading anime database...`,
-        loadPics: `Loading pictures...`,
-        loadGen: `Generating roulette...`,
-        loadDone: `Success!`,
-        loadFirstEvent: `Tap anywhere on the screen to continue...`,
-        loadNoCon: `No internet connection!`,
-        loadRecon: `Please check your internet connection and reload the page.`,
-        // presetinfo
-        prinIncludes: 'Includes:', prinExcludes: 'Excludes:', prinPreset: 'Preset: ', prinEps: ' Episodes: ',
-        prinYears: '. Years: ', prinScore: '. Avg. score: ', prinMultiplier: '. Multiplier:',
-        // pref
-        prefHead: 'Options',
-        prefRoll: 'Roulette',
-        prefRTime: 'Time',
-        prefRSpeed: 'Speed',
-        prefRTitle: 'Filter maximum',
-        prefROnscreen: 'Posters on screen',
-        prefRAuto: 'Auto-scroll',
-        prefRNSFW: 'Allow NSFW-anime',
-        prefAudio: 'Audio',
-        prefASound: 'Sounds',
-        prefABG: 'Music (background)',
-        prefARoll: 'Music (during spin)',
-        prefANew: 'Another track when rotating',
-        prefAShow: 'Show music player',
-        prefRender: 'Render',
-        prefRLimit: 'Limit FPS',
-        prefRFPS: 'FPS',
-        prefRSmooth: 'Image Smoothing',
-        prefRShadow: 'Opacity of shadows',
-        prefRBG: 'BG Image - ',
-        prefParallax: 'Parallax',
-        prefShowFPS: 'Show FPS',
-        prefDevinfo: 'Show Dev. info',
-        prefScale: 'Scale: ',
-        prefScaleSet: 'UI size',
-        prefVersion: 'Version: ',
-        prefAbout: 'About the project',
-        prefVisual: 'Music visualization',
-        prefPlayClip: 'Show Video clip*',
-        prefLanguage: 'Language',
-        prefOthers: 'Other',
-        prefRecovery: 'Recovery',
-        prefResetDefault: 'Default settings',
-        prefResetStorage: 'Delete all data',
-        // prefsets
-        pstDisable: 'Off', pstLow: 'Low', pstMedium: 'Medium', pstHigh: 'High', pstChange: 'Change',
-        // hints
-        hintTags: 'Here you can include and exclude tags for the filter. Do not forget to see if there is an anime for the already selected combination. For some tags to work, you need to enable `NSFW` in the settings.',
-        hintAllowScore: 'This means that everything that is not on the MAL site (+5000 titles) and that does not meet the minimum and maximum avg. score will not pass.',
-        hintTitleMax: 'Limits the number of anime that are sent to roulette after filtering.',
-        hintAutoScroll: 'The roulette in a calm state will automatically rotate slowly.',
-        hintAllowNSFW: 'Anime with 18+ content will be allowed in roulette. By including this, you confirm that you have reached the age of majority. (Attention: Posters may contain obscene content!)',
-        hintAudio: 'The "Background" and "During spin" mixers allow you to adjust different music volume for a calm state and during spin.',
-        hintNewTrack: 'When you start the roulette, a new track will play from the beginning or from a certain moment.',
-        hintParallax: 'The image in the background will follow the mouse pointer a little.',
-        hintBackgroundURL: 'Background image URL: ',
-        hintPrefReset: 'Return all settings to default values.',
-        hintTrackName: 'Now playing: ',
-        hintMusicOff: 'Select "0" to turn off the background music.',
-        hintAudioVisual: 'Visualization of the sound at the bottom of the entire width of the interface.',
-        hintRoll: 'At low values of time and speed, there will be a weak random. Recommended time = 20-60, speed not less than 20.',
-        hintPrefScale: 'Multiplier of the size of all interface elements. You can configure it using the "+" and "-" buttons.',
-        hintAttempts: 'The number of conditions that the filter can ignore.',
-        hintAudioClips: 'Experimental feature (requires a good internet connection). Plays the video to the track instead of the background while the roulette is running. The roulette time setting is ignored.',
-        hintAttTags: 'The "Ignore conditions" option will be used only for tags.',
-        hintResetStorage: 'Delete all accumulated data from localStorage. This applies to settings, roulette anime, filter, saved lists, etc.',
-        hintClaimRoulette: 'Take all titles from the roulette',
-        hintAwaitingClip: 'Waiting for music & video ...',
-        hintAwaitingMusic: 'Waiting for music ...',
-        hintOpenURL: 'Click to open in a new tab: ',
-    },
-};
-//
+// getting lang object
+if(!pref.language in _TextTranslations) {pref.language = 'en'}; // debug for unknown langs
 let _Text = _TextTranslations[pref.language];
+delete _TextTranslations;
+//
 function txt(key) {
     return _Text[key] === undefined ? key : _Text[key]
 };
@@ -2405,6 +1910,9 @@ function txtTag(key) {
 };
 function txtPreset(key) {
     return _Text.presetnames[key] === undefined ? key : _Text.presetnames[key]
+};
+function txtMrth(key) {
+    return _Text.mrth[key] === undefined ? key : _Text.mrth[key]
 };
 //
 const langInitialized = pref.language;
@@ -2416,13 +1924,13 @@ let allTranslations = {
     },
     'ru': {
         name: 'Русский',
-        comment: 'Оригинальный язык',
+        comment: 'Язык оригинала',
     },
     //
     head: () => {
         return langInitialized === langSelected
         ? allTranslations[pref.language].name
-        : allTranslations[pref.language].name + ' - ' + _TextTranslations[pref.language].langWarn
+        : allTranslations[pref.language].name + ' - ' + `Press [F5] !!!`
     },
 };
 //
@@ -2783,7 +2291,7 @@ let filterPrecount = {
         };
         filterPrecount.first = true;
         filterPrecount.flag = true;
-        filterPrecount.timeout = 0.5
+        filterPrecount.timeout = 0.8
     },
     update: () => {
         if(!filterPrecount.first) {filterPrecount.count = txt('filterFirstChange'); return}
@@ -2833,16 +2341,22 @@ function getListFiltered(filter = filterDefault) {
         if(filter.skipSpecial) {if(anime['episodes'] == 1 && anime['type'] != 'MOVIE') {continue}};
         // sort by score, if allowed
         if(filter.scoreAllow) {
-            const anime_id = malAnimeID(anime.sources);
-            if(anime_id == null) {continue}
+            // const anime_id = malAnimeID(anime.sources);
+            // if(anime_id == null) {continue}
+            // else {
+            //     if(adb_ratings[anime_id] === undefined) {continue};
+            //     const score = adb_ratings[anime_id]['score'];
+            //     if(score == 'None' || score == undefined) {continue}
+            //     else {
+            //         if(score < floatNumber(filter.scoreMin, 2)) {if(_attemptAny()){continue}};               // OLD PART WITH USING DOWNLOADED INFO ABOUT ALL mal ANIME RATINGS
+            //         if(score > floatNumber(filter.scoreMax, 2)) {if(_attemptAny()){continue}};
+            //     }
+            // }
+            // check if aodb have score info & sort by limits
+            if(adb[i].score === null) {if(_attemptAny(2)){continue}} // 2 points by ignoring max & min score limits
             else {
-                if(adb_ratings[anime_id] === undefined) {continue};
-                const score = adb_ratings[anime_id]['score'];
-                if(score == 'None' || score == undefined) {continue}
-                else {
-                    if(score < floatNumber(filter.scoreMin, 2)) {if(_attemptAny()){continue}};
-                    if(score > floatNumber(filter.scoreMax, 2)) {if(_attemptAny()){continue}};
-                }
+                if(adb[i].score < floatNumber(filter.scoreMin, 2)) {if(_attemptAny()){continue}};
+                if(adb[i].score > floatNumber(filter.scoreMax, 2)) {if(_attemptAny()){continue}};
             }
         };
         // sort by year
@@ -2943,10 +2457,12 @@ class animeList {
         if(this.rangesMode == 'auto') {
             this.updateTimestamp();
             var anime = item;
-            var malid = malAnimeID(anime.sources);
-            if(malid == null) {anime.score = null}
-            else if(adb_ratings[malid] == undefined) {anime.score = null}
-            else {anime.score = String(adb_ratings[malid].score)};
+            // var malid = malAnimeID(anime.sources);
+            // if(malid == null) {anime.score = null}                               // it works with old `adb_ratings`
+            // else if(adb_ratings[malid] == undefined) {anime.score = null}
+            // else {anime.score = String(adb_ratings[malid].score)};
+            // debug for old versions
+            if(anime.score === undefined) {anime.score = null};
             //
             if(String(Number(anime.episodes)) !== 'NaN') {
                 if(this.eps.min == -1) {
@@ -3186,7 +2702,7 @@ function malAnimeID(sources) {
 };
 //
 // @EAG TRANSLATOR API
-// (MICROSOFT TRANSLATOR TEXT API)
+// (MyMemory API)
 //
 let transXHR = new XMLHttpRequest();
 transXHR.withCredentials = true;
@@ -3204,15 +2720,16 @@ let translator = {
     state: 'idle',
     error: false,
     target: 'ru',
-    len: 350,
+    len: 4500, // api limit is 5000
     //
     send: (text) => {
-        var data = JSON.stringify([{Text: text}]);
-        transXHR.open('POST', `https://microsoft-translator-text.p.rapidapi.com/translate?to%5B0%5D=${translator.target}&api-version=3.0&from=en`);
+        // var data = JSON.stringify([{Text: text}]);
+        transXHR.open('POST', `https://api.mymemory.translated.net/get?q=${text}&langpair=en%7C${translator.target}`);
+        // transXHR.open('POST', `https://microsoft-translator-text.p.rapidapi.com/translate?to%5B0%5D=${translator.target}&api-version=3.0&from=en`);
         transXHR.setRequestHeader('content-type', 'application/json');
-        transXHR.setRequestHeader('X-RapidAPI-Key', '1c1569888bmsha3e843083c42b72p166a6fjsn2ec89f708f43');
-        transXHR.setRequestHeader('X-RapidAPI-Host', 'microsoft-translator-text.p.rapidapi.com');
-        transXHR.send(data);
+        // transXHR.setRequestHeader('X-RapidAPI-Key', '1c1569888bmsha3e843083c42b72p166a6fjsn2ec89f708f43');
+        // transXHR.setRequestHeader('X-RapidAPI-Host', 'microsoft-translator-text.p.rapidapi.com');
+        transXHR.send();
     },
     //
     getProgress: () => {
@@ -3222,13 +2739,18 @@ let translator = {
     iteration: (response) => {
         var object = JSON.parse(response);
         // обработка ответа
-        if(object[0].translations === undefined) {
-            // если пришло что-то кроме текста - ошибка
+        if(object["responseData"] === undefined) {
+            // если не стандартная форма ответа
             translator.error = true;
-            translator.response.push(object[0])
+            translator.response.push(object)
         } else {
+            if(object["responseData"]["translatedText"] === undefined) { // если в ответе нет переведённого текста
+                translator.error = true;
+                translator.response.push(object["responseData"]);
+                return
+            };
             // если пришел текст - добавляем его
-            translator.response.push(object[0].translations[0].text);
+            translator.response.push(object["responseData"]["translatedText"]);
             // если ещё есть, что перевести - работаем дальше
             translator.progress++;
             if(translator.request.length > translator.progress) {
@@ -3249,7 +2771,7 @@ let translator = {
     },
     //
     ru: (text) => {
-        if(translator.state !== 'idle') {return null}
+        if(translator.state !== 'idle') {return null} // ru()
         else {
             translator.target = 'ru';
             translator.error = false;
@@ -3771,6 +3293,7 @@ class TextButtonShaped {
         this.needshadow = true;
         this.oldstate = 'idle';
         this.waitanim = true;
+        this.cooldown = 1;
         this.textpos = new Vector2();
         this.onclick = () => {};
         this.ondeact = () => {};
@@ -3785,6 +3308,7 @@ class TextButtonShaped {
             this.size.update();
             this.alpha.update();
             this.tap.update();
+            if(this.cooldown > 0) {this.cooldown -= deltaTime/1000};
             // scaling
             var size = this.size.get();
             var height = this.height * _scaleDynamic
@@ -3799,7 +3323,8 @@ class TextButtonShaped {
                 //
                 if(this.state === 'hover') {this.onhover()};
                 if(this.state !== this.oldstate) {
-                    if(this.state === 'click') {
+                    if(this.state === 'click' && this.cooldown <= 0) {
+                        //
                         if(this.isSwitcher) {
                             if(this.active) {
                                 if(!this.locked) {
@@ -3818,9 +3343,8 @@ class TextButtonShaped {
                             this.tap.move(this.height, 0.25, easeParabolaQuad);
                             mouse.click = false;
                             //
-                            this.waitanim
-                            ? setTimeout(() => {this.onclick()}, 250)
-                            : this.onclick()
+                            if(this.waitanim) {setTimeout(() => {this.onclick(); this.cooldown = 0.5}, 0.25)}
+                            else {this.onclick(); this.cooldown = 0.5}
                         }
                     };
                     this.oldstate = this.state
@@ -3893,6 +3417,7 @@ class ImageButtonShaped {
         this.locked = false;
         this.waitanim = true;
         this.needshadow = true;
+        this.cooldown = 1;
         this.ondeact = () => {};
         this.onclick = () => {};
         this.onhover = () => {};
@@ -3910,6 +3435,7 @@ class ImageButtonShaped {
             this.shapesize = this.zoom.get().multv(new Vector2(this.image.naturalWidth, this.image.naturalHeight).sumv(this.spacing.get().multxy(2)));
             this.alpha.update();
             this.tap.update();
+            if(this.cooldown > 0) {this.cooldown -= deltaTime/1000};
             // shapes
             this.shape = this.shapefunc(this.pos.get().sumxy(0, this.tap.get()), this.shapesize);
             this.shadow = this.shapefunc(this.pos.get().sumxy(0, this.tap.get()+1), this.shapesize.sumxy(0, this.height-this.tap.get()));
@@ -3918,7 +3444,7 @@ class ImageButtonShaped {
                 this.state = shapeCollisionState(this.shape, false);
                 if(this.state === 'hover') {this.onhover()};
                 if(this.state !== this.oldstate) {
-                    if(this.state === 'click') {
+                    if(this.state === 'click' && this.cooldown < 0) {
                         if(this.isSwitcher) {
                             if(this.active) {
                                 if(!this.locked) {
@@ -3938,9 +3464,8 @@ class ImageButtonShaped {
                             this.tap.move(this.height, 0.25, easeParabolaQuad);
                             mouse.click = false;
                             //
-                            this.waitanim
-                            ? setTimeout(() => {this.onclick()}, 250)
-                            : this.onclick()
+                            if(this.waitanim) {setTimeout(() => {this.onclick(); this.cooldown = 0.5}, 250)}
+                            else {this.onclick(); ; this.cooldown = 0.5}
                         }
                     };
                     this.oldstate = this.state
@@ -4007,9 +3532,11 @@ class TagSwitcherShaped {
             if(this.state === 'click') {
                 if(tagSelection[this.tag] === 'none') {
                     playSound(sound['taginc']);
+                    spartTopClicks(particleImages.apply);
                     tagSelection[this.tag] = 'inc'
                 } else if(tagSelection[this.tag] === 'inc') {
                     playSound(sound['tagexc']);
+                    spartTopClicks(particleImages.remove);
                     tagSelection[this.tag] = 'exc'
                 } else {
                     playSound(sound['tagnone']);
@@ -4079,12 +3606,19 @@ class ShapedSelectBar {
         this.mod = false;
         this.permanent = false;
         this.scrollable = false;
+        this.oldpoint = 0; // for sound
+        this.soundstep = 0.03;
+        this.playsound = true;
         this.onset = (value) => {};
         this.onhover = (value) => {};
         this.postdraw = (value) => {};
-        this.unpress = (value) => {};
+        this.unpress = (value) => {}; // only in permanent
     }
-    update(value, max=this.maxvalue) {this.maxvalue = max; this.progress = value / this.maxvalue}
+    update(value, max=this.maxvalue) {
+        this.maxvalue = max; 
+        this.progress = value / this.maxvalue; 
+        this.soundstep = 1/max < 0.02 ? 0.02 : 1/max; // max steps count = 50
+    }
     get() {return this.progress * this.maxvalue}
     point() {return this.pointer * this.maxvalue}
     draw() {
@@ -4099,15 +3633,17 @@ class ShapedSelectBar {
         // shapes
         this.shadow = shapeRectRounded(this.pos, this.size, this.radius * _scaleDynamic);
         this.shape = shapeRectRounded(this.pos.sumxy(this.spacing * _scaleDynamic), this.size.minxy(this.spacing*2 * _scaleDynamic).multxy(this.visual.get(), 1), this.radius * _scaleDynamic)
-        this.state = shapeCollisionState(this.shadow, false);
+        !mouse.press ? this.state = shapeCollisionState(this.shadow, false) : false;
         // control
-        if(!this.mod) {this.pointer = this.progress};
+        if(!this.mod) {this.pointer = +this.progress};
         if(this.permanent) {
             if(this.state === 'hover' || this.state === 'click') {
                 this.onhover(this.maxvalue * ((mouse.pos.x - this.pos.x) / this.size.x));
                 if(mouse.press) {
                     this.mod = true;
-                    this.progress = this.pointer = (mouse.pos.x - this.pos.x) / this.size.x;
+                    this.pointer = (mouse.pos.x - this.pos.x) / this.size.x;
+                    this.pointer = this.pointer < 0 ? 0 : this.pointer > 1 ? 1 : this.pointer;
+                    this.progress = +this.pointer;
                     this.onset(this.get())
                 } else if(this.mod){
                     this.mod = false;
@@ -4128,9 +3664,10 @@ class ShapedSelectBar {
                 this.onhover(this.maxvalue * ((mouse.pos.x - this.pos.x) / this.size.x));
                 if(mouse.press) {
                     this.pointer = (mouse.pos.x - this.pos.x) / this.size.x;
+                    this.pointer = this.pointer < 0 ? 0 : this.pointer > 1 ? 1 : this.pointer;
                     this.mod = true
                 } else if(this.mod) {
-                    this.progress = this.pointer;
+                    this.progress = +this.pointer;
                     this.onset(this.get());
                     this.mod = false
                 };
@@ -4141,11 +3678,18 @@ class ShapedSelectBar {
                     : this.pointer = Math.norma(this.progress + 0.05)
                 }
             } else if(this.mod) {
-                this.progress = this.pointer;
+                this.progress = +this.pointer;
                 this.onset(this.get());
                 this.mod = false
             }
         };
+        // playsound
+        if(this.playsound && this.state == 'hover') {
+            if(this.pointer < this.oldpoint - this.soundstep || this.pointer > this.oldpoint + this.soundstep) {
+                this.oldpoint = +this.pointer;
+                playSound(sound['tagnone'], 0.33 + this.pointer*0.67)
+            }
+        } else {this.oldpoint = +this.pointer};
         // draw
         fillShape(this.shadow, this.back.getColor());
         fillShape(this.shape, this.fore.getColor());
@@ -4156,7 +3700,7 @@ class ShapedSelectBar {
 // @EAG SHAPED HOLDBUTTON
 //
 const _holdbuttonbhvr = {
-    time: '1000',
+    time: 1000,
     ease: easeInOutSine,
 };
 class ShapedHoldButton {
@@ -4177,7 +3721,7 @@ class ShapedHoldButton {
         this.locked = false;
         this.needshadow = true;
         this.time = _holdbuttonbhvr.time;
-        this.dtime = Number(_holdbuttonbhvr.time);
+        this.dtime = _holdbuttonbhvr.time;
         this.operate = false;
         this.progress = Number(0);
         this.onact = () => {};
@@ -4218,15 +3762,14 @@ class ShapedHoldButton {
                         }
                     } else {
                         this.shapecm.setState('idle', 0.25);
-                        if(this.dtime < Number(this.time) && !this.operate) {
-                            this.dtime += deltaTime;
-                            if(this.dtime > Number(this.time)) {this.dtime = Number(this.time)}
+                        if(this.dtime < this.time && !this.operate) {
+                            this.dtime += deltaTime
                         }
                     }
                 } else {
                     this.shapecm.setState('idle', 0.25);
                     if(!this.operate) {
-                        this.dtime = Number(this.time);
+                        this.dtime = +this.time;
                     }
                 }
             } else {this.shapecm.setState('unaval', 0.25)};
@@ -4234,7 +3777,7 @@ class ShapedHoldButton {
             this.shapecm.update();
             this.shapecm.alphaMult(this.alpha);
             this.shapeclr = this.shapecm.get();
-            this.progress = 1 - (this.dtime / Number(this.time));
+            this.progress = 1 - Math.norma(this.dtime / this.time);
             // gradient
             this.grad = ctx.createLinearGradient(this.pos.x, 0, this.pos.x+this.size.x, 0);
             this.grad.addColorStop(0, this.progclr);
@@ -4249,7 +3792,7 @@ class ShapedHoldButton {
     // внешняя разблокировка после активации
     unblock() {
         this.operate = false;
-        this.dtime = Number(this.time);
+        this.dtime = +this.time;
         this.tap.move(0, 0.25, easeOutCirc)
     }
 };
@@ -4950,7 +4493,7 @@ let tInfo = {
     season: '',
     type: '',
     score: new Vector1(0),
-    scoredby: new Vector1(0),
+    scoret: '',
     //
     updateTitle: (title) => {
         tInfo.updater = tinfTime;
@@ -4962,16 +4505,17 @@ let tInfo = {
         tInfo.status = txt([typesDataMap[title['status']]]);
         // scores
         tInfo.rating = malAnimeID(title['sources']);
-        if(tInfo.rating !== null) {
-            if(adb_ratings[tInfo.rating] !== undefined) {
-                tInfo.score = adb_ratings[tInfo.rating].score !== 'None'
-                ? adb_ratings[tInfo.rating].score : '???';
-                tInfo.scoredby = adb_ratings[tInfo.rating].scoredby !== 'None'
-                ? adb_ratings[tInfo.rating].scoredby : '???';
-            } else {
-                tInfo.score = tInfo.scoredby = '???'
-            }
-        }
+        // if(tInfo.rating !== null) {
+        //     if(adb_ratings[tInfo.rating] !== undefined) {
+        //         tInfo.score = adb_ratings[tInfo.rating].score !== 'None'             // works with old `adb_ratings`
+        //         ? adb_ratings[tInfo.rating].score : '???';
+        //         tInfo.scoredby = adb_ratings[tInfo.rating].scoredby !== 'None'
+        //         ? adb_ratings[tInfo.rating].scoredby : '???';
+        //     } else {
+        //         tInfo.score = tInfo.scoredby = '???'
+        //     }
+        // }
+        if(title.score == null) {tInfo.score.move(-1, tinfTime, easeInOutCubic)} else {tInfo.score.move(title.score, tinfTime, easeInOutCubic)} // -1 is `???`
     },
     //
     posit: (x) => {return (new Vector2(tInfo.spacing, tInfo.spacing * (x+2) + tInfo.height * x)).sumv(tInfo.pos.get())},
@@ -4985,6 +4529,9 @@ let tInfo = {
              if(tInfo.title['animeSeason']['year'] < 1900 || typeof tInfo.title['animeSeason']['year'] !== 'number') {
                 tInfo.yeart = txt('infoYear404')} else {
                 tInfo.yeart = Math.round(tInfo.year.get())};
+            //
+            tInfo.score.update();
+            if(tInfo.score.getFixed() < 0) {tInfo.scoret = '???'} else {tInfo.scoret = floatNumber(tInfo.score.get(), 2)};
             //
             tInfo.updater -= deltaTime / 1000
         };
@@ -5033,27 +4580,29 @@ let tInfo = {
         fillTextFast(tInfo.posit(2).sumxy(tInfo.width*0.25, tInfo.height*0.7), tInfo.type);
         fillTextFast(tInfo.posit(1).sumxy(tInfo.width*0.75, tInfo.height*0.7), tInfo.yeart);
         fillTextFast(tInfo.posit(2).sumxy(tInfo.width*0.75, tInfo.height*0.7), tInfo.status);
+        // draw score info (строчки отдельно, чтобы не дрыгалось)
+        ctx.textAlign = 'end';
+        fillTextFast(tInfo.posit(3).sumxy(tInfo.width*0.62, tInfo.height*0.7), txt('malScore'));
+        ctx.textAlign = 'start';
+        fillTextFast(tInfo.posit(3).sumxy(tInfo.width*0.64, tInfo.height*0.7), tInfo.scoret);
         // пресет
+        ctx.textAlign = 'center';
         scaleFont(tinfFontSize, 'Segoe UI', 'bold');
         if(tInfo.meta.usePreset) {
-            fillTextFast(tInfo.posit(3).sumxy(tInfo.width/2, tInfo.height*0.7), textStringLimit(tInfo.meta.object.name, tInfo.width));
+            fillTextFast(tInfo.posit(4).sumxy(tInfo.width/2, tInfo.height*0.7), textStringLimit(tInfo.meta.object.name, tInfo.width));
             scaleFont(tinfFontSize, 'Segoe UI');
-            fillTextFast(tInfo.posit(4).sumxy(tInfo.width/2, tInfo.height*0.5), filterChangesString());
+            fillTextFast(tInfo.posit(5).sumxy(tInfo.width/2, tInfo.height*0.5), filterChangesString());
         } else {
-            fillTextFast(tInfo.posit(3).sumxy(tInfo.width/2, tInfo.height*0.7), textStringLimit(tInfo.meta.object.name, tInfo.width));
+            fillTextFast(tInfo.posit(4).sumxy(tInfo.width/2, tInfo.height*0.7), textStringLimit(tInfo.meta.object.name, tInfo.width));
             scaleFont(tinfFontSize, 'Segoe UI');
-            fillTextFast(tInfo.posit(4).sumxy(tInfo.width/2, tInfo.height*0.5), tInfo.meta.object.timestamp.created);
+            fillTextFast(tInfo.posit(5).sumxy(tInfo.width/2, tInfo.height*0.5), tInfo.meta.object.timestamp.created);
         }
         // MAL оценки
-        scaleFont(tinfFontSize, 'Segoe UI', 'bold');
-        fillTextFast(tInfo.posit(5).sumxy(tInfo.width*0.5, tInfo.height*0.7), txt('malHead'));
-        if(tInfo.rating  === null) {
-            fillTextFast(tInfo.posit(6).sumxy(tInfo.width*0.5, tInfo.height*0.7), txt('mal404'))
-        } else {
-            scaleFont(tinfFontSize, 'Segoe UI');
-            fillTextFast(tInfo.posit(6).sumxy(tInfo.width*0.5, tInfo.height*0.5), txt('malScore') +  tInfo.score);
-            fillTextFast(tInfo.posit(7).sumxy(tInfo.width*0.5, tInfo.height*0.3), txt('malScoredBy') + tInfo.scoredby)
-        };
+        // scaleFont(tinfFontSize, 'Segoe UI', 'bold');
+        // fillTextFast(tInfo.posit(5).sumxy(tInfo.width*0.5, tInfo.height*0.7), txt('malHead'));
+        // scaleFont(tinfFontSize, 'Segoe UI');
+        // fillTextFast(tInfo.posit(6).sumxy(tInfo.width*0.5, tInfo.height*0.5), txt('malScore') +  tInfo.scoret);
+        // fillTextFast(tInfo.posit(7).sumxy(tInfo.width*0.5, tInfo.height*0.3), txt('malScoredBy') + tInfo.scoredby)
         // malid & dbid
         ctx.fillStyle = '#fff8';
         ctx.textAlign = 'start';
@@ -5061,7 +4610,7 @@ let tInfo = {
         fillTextFast(tInfo.pos.sumxy(tInfo.spacing*3, tInfo.box-tInfo.spacing/2), '#' + tInfo.title['fake_dbid']);
         ctx.textAlign = 'end';
         if(tInfo.rating  !== null) {
-            fillTextFast(tInfo.pos.sumxy(tInfo.box-tInfo.spacing*3, tInfo.box-tInfo.spacing/2), 'malid' + tInfo.rating)
+            fillTextFast(tInfo.pos.sumxy(tInfo.box-tInfo.spacing*3, tInfo.box-tInfo.spacing/2), 'malid ' + tInfo.rating)
         } else {
             fillTextFast(tInfo.pos.sumxy(tInfo.box-tInfo.spacing*3, tInfo.box-tInfo.spacing/2), 'no malid')
         };
@@ -5311,7 +4860,7 @@ let tDesc = {
         scaleFont(descrFontSize, 'Segoe UI');
         descrWatchTrailer.size.setxy(tInfo.box/3, tDesc.fsize);
         descrWatchTrailer.pos = tDesc.pos.sumxy(tInfo.box).minv(descrWatchTrailer.size).minxy(tInfo.spacing, tInfo.spacing*2);
-        descrWatchTrailer.draw();
+        // descrWatchTrailer.draw();        // нет норм апи для перевода, клаудфл блокнут(((
         // начала и хвосты
         ctx.globalAlpha = ctx.globalAlpha * tDesc.alpha.get();
         var start = Math.floor(tDesc.scroll.get() / tDesc.height.y) - 1;
@@ -5328,11 +4877,11 @@ let tDesc = {
         clipRestore();
         if(pref.language !== 'en') {
             ctx.globalAlpha = tInfo.alpha.get();
-            // кнопка перевода (апи дало сбой, пока что вырубил нхй)
+            // кнопка перевода
             ctx.textAlign = 'center';
             decsrTranslate.size.setxy(tInfo.box/3, tDesc.fsize);
             decsrTranslate.pos = tDesc.pos.sumxy(tInfo.box/2, tInfo.box).minxy(tInfo.spacing+decsrTranslate.size.x/2, tInfo.spacing*2+decsrTranslate.size.y);
-            // decsrTranslate.draw();
+            decsrTranslate.draw();
             // перевод текста
             if(!tDesc.original && !tDesc.translate && !tDesc.terror) {
                 if(tDesc.tstate === 'work') {
@@ -5379,6 +4928,7 @@ buttonDoRoll.onclick = () => {
         buttonDoRoll.text = txt('rbWait');
         musicLite.hide();
         musicLite.wait = true;
+        spartWinnerDrop(mouse.pos, 8, 1.5);
         if(!pref.playClip) {
             musicRoll.oncanplay = () => {
                 playSound(sound['roll']);
@@ -5599,10 +5149,12 @@ mlcMusicBar.onset = (value) => {if(musicNormalComplete && pref.bgmusic > 0) {
     }
 }};
 mlcMusicBar.onhover = (value) => {
+    if(mouse.pos.x < mlcMusicBar.pos.x || mouse.pos.x > mlcMusicBar.pos.x + mlcMusicBar.size.x) {return};
     ctx.fillStyle = '#fff'; ctx.textAlign = 'end'; scaleFont(12, 'Consolas');
     ctx.fillText(timeStringify(musicNormalComplete ? value : 0), mouse.pos.x-(2*_scaleDynamic), mlcMusicBar.pos.y+mlcBarSize.y+(14*_scaleDynamic))
 };
 mlcMusicBar.permanent = false;
+mlcMusicBar.playsound = false;
 //
 let musicLite = {
     anchor: new Vector2(0.5, 0),
@@ -5734,6 +5286,8 @@ let roulette = {
     picsCount: 0,
     complete: false,
     initsound: true,
+    timeout: 10,
+    notfoundplaced: false,
     //
     dragged: 100,
     idleSpeed: 1,
@@ -5742,6 +5296,7 @@ let roulette = {
     isempty: false,
     //
     marathon: false,
+    pitch: 0.8, // prikol
     //
     mapper: rouletteItemsMapper,
     winnerStyle: new Color(63, 255, 63, 1),
@@ -5750,6 +5305,8 @@ let roulette = {
     //
     progress: new Vector1(0),
     picsGet: (array) => {
+        roulette.timeout = 10; // timeout for poster loading
+        roulette.notfoundplaced = false;
         roulette.anime = array;
         lsSaveObject('roulette.anime', optimizeAnimeArray(roulette.anime));
         roulette.pics = [];
@@ -5778,10 +5335,20 @@ let roulette = {
         roulette.complete = true
     },
     picsComplete: () => {
+        roulette.timeout -= deltaTime/1000;
         var progress = 0;
         for(var pic in roulette.pics) {
             if(roulette.pics[pic].complete) {progress++}
         };
+        if(roulette.timeout < 0 && !roulette.notfoundplaced) {
+            roulette.notfoundplaced = true;
+            for(var pic in roulette.pics) {
+                if(!roulette.pics[pic].complete) {
+                    console.warn('anime poster not loaded (timeout 10s.) -> ' + roulette.pics[pic].src);
+                    roulette.pics[pic].src = 'images/notfound.png'
+                }
+            };
+        }
         return progress
     },
     centerItem: () => {
@@ -5893,7 +5460,7 @@ let roulette = {
         };
         // звучим и обновляем ссылки
         if(roulette.oldCenter !== roulette.centerAnime) {
-            if(roulette.catchWinner || roulette.dragged || roulette.initsound) {playSound(sound['scroll'])};
+            if(roulette.catchWinner || roulette.dragged || roulette.initsound) {playSound(sound['scroll'], roulette.pitch)};
             roulette.anime[roulette.winnerPos] === roulette.centerAnime
             ? roulette.nameboxcolor = roulette.winnerStyle
             : roulette.nameboxcolor = roulette.nameboxdef;
@@ -6085,6 +5652,301 @@ function rouletteSortPosters(a,b) {
     }
 };
 //
+// @EAG VISUAL EFFECTS
+//
+const winnerLightRing = invokeNewImage('images/light.png');
+// с новой годой, с новой снегой, это к НГ крч эффект снега
+const novyigodSanta = invokeNewImage('images/chibi_santa.png');
+const novyigodElka = invokeNewImage('images/christmas_tree.png');
+const noviygodSize = new Vector2(160);
+const noviygodOffset = new Vector2(200, 0);
+//
+const particleImages = {
+    confetti: [
+        invokeNewImage('images/particles/conf1.png'),
+        invokeNewImage('images/particles/conf2.png'),
+        invokeNewImage('images/particles/conf3.png'),
+        invokeNewImage('images/particles/conf4.png'),
+        invokeNewImage('images/particles/conf5.png'),
+        invokeNewImage('images/particles/conf6.png'),
+        invokeNewImage('images/particles/conf7.png'),
+        invokeNewImage('images/particles/conf8.png'),
+    ],
+    apply: invokeNewImage('images/particles/apply.png'),
+    remove: invokeNewImage('images/particles/remove.png'),
+};
+// NOVYY GOD
+let snowflake = {
+    image: invokeNewImage('images/snowflake.png'),
+    depth: range(0.3, 1),
+    sizeMax: 40,
+    velX: range(-40, 40),
+    velY: range(40, 150),
+    rotate: range(-180, 180),
+    flow: range(0.15, 0.4),
+    flowX: range(50, 150),
+    //
+    count: 200,
+    array: [],
+};
+class Snowflake {
+    constructor() {
+        this.pos = fullsize.multxy(Math.random(), -Math.random()).minxy(snowflake.sizeMax);
+        var depth = Math.random()*(snowflake.depth.max-snowflake.depth.min)+snowflake.depth.min;
+        this.depth = depth;
+        this.size = new Vector2(snowflake.sizeMax * depth);
+        this.velocity = new Vector2();
+        this.velocity.x = (snowflake.velX.max-snowflake.velX.min)*Math.random()+snowflake.velX.min;
+        this.velocity.y = (snowflake.velY.max-snowflake.velY.min)*Math.random()+snowflake.velY.min;
+        this.alpha = 0.5 + 0.5*depth;
+        this.rotate = Math.random()*360;
+        this.rotatespeed = Math.random()*(snowflake.rotate.max-snowflake.rotate.min)+snowflake.rotate.min;
+        this.parallax = new Vector2();
+        this.flow = 2*Math.random();
+        this.flowspeed = Math.random()*(snowflake.flow.max-snowflake.flow.min)+snowflake.flow.min;
+        this.flowX = Math.random()*(snowflake.flowX.max-snowflake.flowX.min)+snowflake.flowX.min;
+        this.wave = 0;
+    }
+    draw() {
+        // flow (такого замороченного снега нет нигде нихуя, агада)
+        var dt = deltaTime/1000;
+        if(this.flow >= 2) {this.flow = 0} else {this.flow += this.flowspeed*dt};
+        this.wave = Math.sin(Math.PI*this.flow) * this.flowX;
+        // parallax
+        if(pref.parallax) {
+            this.parallax.setv(parallaxOffsW.multxy(this.depth - (snowflake.depth.max+snowflake.depth.min)/2))
+        };
+        // transform
+        this.pos = this.pos.sumv(this.velocity.multxy(dt*_scaleDynamic)).sumxy(-roulette.speed.get()/1.5, 0);
+        this.rotate += this.rotatespeed*dt;
+        this.rotate >= 360 ? this.rotate -= 360 : this.rotate < 0 ? this.rotate += 360 : null;
+        // draw
+        setRotation(this.pos.sumxy(this.wave, 0), this.rotate);
+        ctx.globalAlpha = this.alpha;
+        drawImageSized(snowflake.image, this.pos.sumxy(this.wave, 0).minv(this.size.multxy(_scaleDynamic/2)).sumv(this.parallax), this.size.multxy(_scaleDynamic));
+        ctx.globalAlpha = 1;
+        ctx.resetTransform();
+    }
+    getPos() {return this.pos.sumxy(this.wave, 0).minv(this.size.multxy(_scaleDynamic/2)).sumv(this.parallax)}
+};
+let resetSnowflakes = () => {snowflake.array=[];for(var i=0; i<snowflake.count; i++) {snowflake.array[i] = new Snowflake()}};
+function novyigodSnowflakes() {
+    // приколы
+    if(firstMouseEvent) {
+        noviygodOffset.update();
+        var ngsize = noviygodSize.multxy(_scaleDynamic);
+        drawImageSized(novyigodSanta, new Vector2(-noviygodOffset.get().x, fullsize.y-ngsize.y), ngsize);
+        drawImageSized(novyigodElka, new Vector2(fullsize.x-ngsize.x+noviygodOffset.get().x, fullsize.y-ngsize.y), ngsize)
+    } else {
+        noviygodOffset.movexy(0, 0, 1.5, easeOutCirc)
+    };
+    // снежинки
+    var sfs = snowflake.sizeMax * _scaleDynamic, sfp = new Vector2();
+    if(snowflake.image.complete) {
+        for(var sf in snowflake.array) {
+            snowflake.array[sf].draw();
+            sfp = snowflake.array[sf].getPos();
+            // bottom portal
+            if(sfp.y - sfs > fullsize.y) {
+                snowflake.array[sf].pos = new Vector2(Math.random()*fullsize.x, 0).minxy(sfs);
+            };
+            // side portals
+            if(sfp.x < -sfs) {snowflake.array[sf].pos.x += fullsize.x+sfs}
+            else if(sfp.x > fullsize.x) {snowflake.array[sf].pos.x -= fullsize.x+sfs};
+        }
+    }
+};
+//
+class visualParticle {
+    constructor() {
+        // transform
+        this.pos = new Vector2();
+        this.velocity = new Vector2();
+        this.size = new Vector2();
+        this.rotate = 0; // 360
+        this.angVelocity = new Vector1();
+        // picture
+        this.pic = new Image();
+        this.alpha = new Vector1(1);
+        // meta
+        this.lifetime = 0;
+    }
+    draw(posMod=false, posMult=new Vector2(1), scale=false) {
+        // update all vectors
+        this.pos.update();
+        this.velocity.update();
+        this.size.update();
+        this.angVelocity.update();
+        this.alpha.update();
+        // modifying & scaling
+        this.pos = this.pos.sumv(this.velocity.get().multxy(_scaleDynamic*deltaTime/1000));
+        var pos = posMod === false ? this.pos.get() : (this.pos.get().multxy(posMult).sumv(posMod));
+        var size = scale === false ? this.size.get() : this.size.get().multxy(scale);
+        // life
+        this.lifetime -= deltaTime/1000;
+        // update rotation
+        this.rotate += this.angVelocity.get() * deltaTime/1000;
+        this.rotate >= 360 ? this.rotate -= 360 : this.rotate < 0 ? this.rotate += 360 : null;
+        // draw
+        setRotation(pos, this.rotate);
+        ctx.globalAlpha = this.alpha.get();
+        drawImageSized(this.pic, pos.minv(size.multxy(0.5*_scaleDynamic)), size.multxy(_scaleDynamic));
+        ctx.globalAlpha = 1;
+        ctx.resetTransform();
+    }
+};
+//      BASE FUNCTIONS
+//
+function particleSplash(particle, pool, pos, count, time=1) {
+    for(let i=0; i<count; i++) {
+        var p = visual[pool][visual.pointers[pool]];
+        var rtime = time + time * 0.2 * Math.random();
+        // setting
+        p.lifetime = rtime;
+        p.pos.setv(pos);
+        p.size.setxy(60);
+        var vel = 350 + 100 * Math.random();  // distantion from center
+        var ang = 600 + 200 * Math.random(); // angular velocity
+        var rad = (Math.random() * 359.99) * (Math.PI / 180); // random direction
+        p.velocity.setxy(Math.cos(rad)*vel, -Math.sin(rad)*vel);
+        p.angVelocity.set(ang);
+        p.pic = particle;
+        p.alpha.set(1);
+        p.rotate = 359.9 * Math.random();
+        // moving
+        p.velocity.movexy(0, 0, rtime/2, easeOutCirc);
+        p.angVelocity.move(0, rtime*0.8, easeOutCirc);
+        p.alpha.move(0, rtime, easeInCirc);
+        // pointer
+        visual.pointers[pool]++;
+        if(visual.pointers[pool] >= visual[pool].length) {visual.pointers[pool] = 0}
+    }
+};
+function particleDrop(particle, pool, pos, count, time=1) {
+    for(let i=0; i<count; i++) {
+        var p = visual[pool][visual.pointers[pool]];
+        var rtime = time + time * 0.2 * Math.random();
+        // setting
+        p.lifetime = rtime;
+        p.pos.setv(pos);
+        p.size.setxy(30);
+        var vel = 250 + 150 * Math.random();  // distantion from center
+        var ang = 600; // angular velocity
+        var rad = (30 + Math.random() * 120) * (Math.PI / 180);
+        p.velocity.setxy(Math.cos(rad)*vel*0.8, -Math.sin(rad)*vel);
+        p.angVelocity.set(ang + ang*0.25 * Math.random());
+        p.pic = particle;
+        p.alpha.set(0.8);
+        p.rotate = 359 * Math.random();
+        // moving
+        p.velocity.movexy(0, 250 + 100*Math.random(), rtime*0.67);
+        p.angVelocity.move(ang*0.25, rtime, easeOutCirc);
+        p.alpha.move(0, rtime, easeInCirc);
+        // pointers
+        visual.pointers[pool]++;
+        if(visual.pointers[pool] >= visual[pool].length) {visual.pointers[pool] = 0}
+    }
+};
+//      SPECIAL FUNCTIONS
+//
+function spartMrthLogos(rect) {
+    if(mrthMeta.visuals === false) {return}; // false, 'half', 'full'
+    var mult = mrthMeta.visuals == 'full' ? 1 : 0.5;
+    if(rect.type == 'empty') {
+        particleSplash(filterImageBrowser, 'mrth', mapRectCenter(rect), 4*mult, 1.5)
+    } else {
+        particleSplash(mrthTypedLogos[rect.type], 'mrth', mapRectCenter(rect), 8*mult, 2.5)
+    }
+};
+function spartTopClicks(particle, count=1) {
+    particleDrop(particle, 'top', mouse.pos, count, 2)
+};
+function spartWinnerDrop(pos, count=1, time=4) {
+    for(let i=0; i<count; i++) {
+        var part = particleImages.confetti[Math.floor(Math.random() * (particleImages.confetti.length-0.001))];
+        // var part = particleImages.confetti[1];
+        particleDrop(part, 'top', pos, 1, time)
+    }
+};
+// for event rects
+function spartMrthGoodIssue(coins=false) {
+    if(mrthMeta.visuals === false) {return};
+    var mult = mrthMeta.visuals == 'full' ? 1 : 0.5;
+    if(!coins) {
+        particleSplash(particleImages.apply, 'mrth', mapRectCenter(mapMeta.selected), 8*mult, 1.5)
+    } else {
+        particleSplash(particleImages.apply, 'mrth', mapRectCenter(mapMeta.selected), 6*mult, 1.5)
+    };
+    // sounds & coins
+    playSound(sound['success']);
+    if(coins) {
+        setTimeout(() => {
+        particleSplash(mrthBadgeCoins, 'mrth', mapRectCenter(mapMeta.selected), 4*mult, 1.5);
+        playSound(sound['coins'])
+    }, 1000)
+    }
+};
+function spartMrthBadIssue() {
+    if(mrthMeta.visuals === false) {return};
+    var mult = mrthMeta.visuals == 'full' ? 1 : 0.5;
+    particleSplash(particleImages.remove, 'mrth', mapRectCenter(mapMeta.selected), 6*mult, 1.5);
+    playSound(sound['warn'])
+};
+//
+let visual = {
+    // pools
+    mrth: [], top: [],
+    // pool pointers
+    pointers: {
+        mrth: 0, top: 0,
+    },
+    //
+    counters: {
+        mrth: 0, top: 0,
+    },
+    // light ring
+    lightAngle1: 0,
+    lightAngle2: 180,
+    lightDiam: new Vector1(fitFrameSize.y*1.6),
+    lightRing: (center, radius) => {
+        visual.lightDiam.update();
+        setRotation(center, visual.lightAngle1);
+        drawImageSized(winnerLightRing, center.minxy(radius/2), new Vector2(radius));
+        ctx.resetTransform();
+        setRotation(center, visual.lightAngle2);
+        drawImageSized(winnerLightRing, center.minxy(radius/2), new Vector2(radius));
+        ctx.resetTransform();
+    },
+    // layers
+    backgroundLayer: () => {
+        if(pref.snowflakes) {
+            novyigodSnowflakes()
+        };
+        if(pref.visual) {
+            // соме щит
+            musicAnalysis.update();
+            musicEqualizer.draw()
+        }
+    },
+    mrthLayer: (posMod=false, posMult=false, scale=false) => {
+        visual.counters.mrth = 0;
+        for(var p in visual.mrth) {
+            if(visual.mrth[p].lifetime > 0) {visual.counters.mrth++; visual.mrth[p].draw(posMod, posMult, scale)}
+        }
+    },
+    topLayer: () => {
+        visual.counters.top = 0;
+        for(var p in visual.top) {
+            if(visual.top[p].lifetime > 0) {visual.counters.top++; visual.top[p].draw()}
+        }
+    },
+};
+// filling particle pool
+for(let i=0; i<100; i++) { // size is 100
+    visual.mrth[i] = new visualParticle();
+    visual.top[i] = new visualParticle();
+};
+//
 // @EAG STUFF ROULETTE
 //
 function radialShadow(p=0) {
@@ -6101,6 +5963,7 @@ function radialShadow(p=0) {
 const rmpBarHeight = 10;
 let rouletteMapBar = new ShapedSelectBar(new Vector2(cvssize.x*0.3, rmpBarHeight*_scaleDynamic), colorMatrix(`rgba(0,0,0,0)`), colorMatrix(`rgba(0,0,0,0.5)`));
 rouletteMapBar.permanent = true;
+rouletteMapBar.playsound = false;
 rouletteMapBar.onset = (value) => {
     roulette.progress.set(value);
     roulette.pause(5000)
@@ -6158,7 +6021,7 @@ function getAnimeDatabase() {
     _adb_xml_request.send(null);
 };
 function awaitForDatabase() {
-    if(databaseRequestResult !== null) {
+    if(databaseRequestResult !== null && databaseRequestResult !== 'success' && databaseRequestResult !== 'error') {
         if(databaseRequestResult[0] !== false) {
             var fulldata = JSON.parse(databaseRequestResult);
             adb = fulldata.data;
@@ -6412,10 +6275,10 @@ namebox.onupd = () => {
 };
 //
 function screenRoulette() {
+    srv.hideProgress.update();
     var srvhp = srv.hideProgress.get();
     if(srv.state === 'show_roulette') {
         fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), radialShadow(srvhp));
-        srv.hideProgress.update();
         // развёртываем рулетку
         roulette.alphaMult = 1 - srvhp;
         roulette.zoomMult = 1 - srvhp;
@@ -6454,7 +6317,6 @@ function screenRoulette() {
     } else if(srv.state === 'roll_start') {
         mnMenu.break = true;
         fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), radialShadow(0));
-        srv.hideProgress.update();
         //
         namebox.pos = normalAlign(new Vector2(0.5, 0.8+0.05*srvhp), new Vector2(0, namebox.shadow.get().y));
         ctx.textAlign = 'center';
@@ -6508,7 +6370,6 @@ function screenRoulette() {
     //
     } else if(srv.state === 'roll_stop') {
         fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), radialShadow(0));
-        srv.hideProgress.update();
         //
         namebox.pos = normalAlign(new Vector2(0.5, 0.8+0.05*srvhp), new Vector2(0, namebox.shadow.get().y));
         ctx.textAlign = 'center';
@@ -6547,7 +6408,6 @@ function screenRoulette() {
 // hint operator
 let sbBlockHint = {
     size: 32,
-    // logo: invokeNewImage('images/hint.png'),
     text: null,
     //
     show: () => {
@@ -6784,14 +6644,15 @@ class AnimeItem {
         this.malid = malAnimeID(data.sources);
         this.dbid = this.data.dbid !== undefined ? this.data.dbid : Number(getAnimeDBID(data));
         // get score
-        this.score = null;
-        if(this.malid != null) {
-            if(adb_ratings[this.malid] !== undefined) {
-                this.score = Number(adb_ratings[this.malid].score)}};
-        if(typeof this.score !== 'number' || String(this.score) == 'NaN') {this.score = '???'};
+        // this.score = null;
+        // if(this.malid != null) {
+        //     if(adb_ratings[this.malid] !== undefined) {                  // old version with `adb_ratings`, score already provided in ADB
+        //         this.score = Number(adb_ratings[this.malid].score)}};
+        // if(typeof this.score !== 'number' || String(this.score) == 'NaN') {this.score = '???'};
+        data.score == null ? this.score = null : this.score = +data.score;
         // fast meta
         this.name = data.title;
-        this.about = `Ep. ${data.episodes} | MAL ${this.score} | ${data.animeSeason.season}, ${data.animeSeason.year} | ${data.type} | ${data.status} | #${this.dbid}`;
+        this.about = `Ep. ${data.episodes} | Rating ${this.score} | ${data.animeSeason.season}, ${data.animeSeason.year} | ${data.type} | ${data.status} | #${this.dbid}`;
     }
 };
 //
@@ -6855,8 +6716,8 @@ let tagSelection = {
 let tagSelectionString = JSON.stringify(tagSelection);
 let presetSelected = lsLoadString('presetSelected', 'Бесится, но любит');
 let newPresetSelected = lsLoadString('presetSelected', 'Бесится, но любит');
-let presetOnRoulette =  lsLoadString('presetOnRoulette', presetbase[presetSelected].name);
-let listOnRoulette = lsLoadString('listOnRoulette', 'ListName');
+// let presetOnRoulette =  lsLoadString('presetOnRoulette', presetbase[presetSelected].name); UNUSED
+// let listOnRoulette = lsLoadString('listOnRoulette', 'ListName'); UNUSED
 //
 let presetButtons = {};
 const presetButtonFont = {
@@ -6915,12 +6776,14 @@ function generateTagButtons() {
 generateTagButtons();
 //
 function presetButtonDeactivator() {
+    spartWinnerDrop(mouse.pos, 1, 1);
     presetButtons[presetSelected].active = false;
     presetButtons[presetSelected].tap.move(0, 0.25, easeInOutSine);
     presetSelected = newPresetSelected;
     lsSaveValue('presetSelected', presetSelected)
 };
 function presetSwitcher() {
+    spartWinnerDrop(mouse.pos, 8, 1.5);
     // обновляем фильтр
     resetFilter();
     filterDefault = filterModify(filterDefault, presetbase[presetSelected].addon());
@@ -6948,8 +6811,8 @@ function generateAnotherButton(value) {
         colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
         colorMapMatrix(`rgba(173,83,19,1)#rgba(222,90,0,1)#rgba(222,90,0,1)#rgba(200,200,47,0.5)`));
     button.isSwitcher = true; button.initactivity = filterDefault[value];
-    eval(`button.onclick = () => {filterDefault['${value}'] = true; lsSaveObject('filterDefault', filterDefault); filterPrecount.request()}`);
-    eval(`button.ondeact = () => {filterDefault['${value}'] = false; lsSaveObject('filterDefault', filterDefault); filterPrecount.request()}`);
+    eval(`button.onclick = () => {filterDefault['${value}'] = true; lsSaveObject('filterDefault', filterDefault); filterPrecount.request(); spartTopClicks(particleImages.apply)}`);
+    eval(`button.ondeact = () => {filterDefault['${value}'] = false; lsSaveObject('filterDefault', filterDefault); filterPrecount.request(); spartTopClicks(particleImages.remove)}`);
     return button
 };
 //
@@ -7017,8 +6880,8 @@ let buttonScoreAllow = new TextButtonShaped(shapeRectRounded, '', filterPromptSi
     colorMapMatrix(filterSwitchPalette)
 );
 buttonScoreAllow.isSwitcher = true; buttonScoreAllow.needshadow = false; buttonScoreAllow.height = 0;
-buttonScoreAllow.onclick = () => {filterDefault['scoreAllow'] = true; lsSaveObject('filterDefault', filterDefault); filterPrecount.request()}; 
-buttonScoreAllow.ondeact = () => {filterDefault['scoreAllow'] = false; lsSaveObject('filterDefault', filterDefault); filterPrecount.request()};
+buttonScoreAllow.onclick = () => {filterDefault['scoreAllow'] = true; lsSaveObject('filterDefault', filterDefault); filterPrecount.request(); spartTopClicks(particleImages.apply)};
+buttonScoreAllow.ondeact = () => {filterDefault['scoreAllow'] = false; lsSaveObject('filterDefault', filterDefault); filterPrecount.request(); spartTopClicks(particleImages.remove)};
 // score
 let buttonFilterScoreMin = new TextButtonShaped(shapeRectRounded, filterDefault['scoreMin'], filterPromptSize,
 colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
@@ -7114,20 +6977,20 @@ let filterMainThreePal = `rgba(24,110,24,1)#rgba(40,160,40,1)#rgba(63,255,63,1)#
 let buttonFilterLeave = new TextButtonShaped(shapeRectRounded, txt('wordBack'), filterThreeSize,
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
     colorMapMatrix(filterMainThreePal));
-buttonFilterLeave.onclick = () => {requestScreen(screenRoulette, false)};
+buttonFilterLeave.onclick = () => {requestScreen(screenRoulette, false); playSound(sound['player'])};
 let buttonFilterApply = new TextButtonShaped(shapeRectRounded, txt('wordApply'), filterThreeSize,
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
     colorMapMatrix(filterMainThreePal));
-buttonFilterApply.onclick = () => {animeFilterApply()};
+buttonFilterApply.onclick = () => {animeFilterApply(); spartWinnerDrop(mouse.pos, 8, 1.5); playSound(sound['prompt'])};
 let buttonFilterReset = new TextButtonShaped(shapeRectRounded, txt('wordReset'), filterThreeSize,
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
     colorMapMatrix(filterMainThreePal));
-buttonFilterReset.onclick = () => {resetFilter(); filterPrecount.request(); tagSelectionPrepare(); lsSaveObject('tagSelection', tagSelection)};
+buttonFilterReset.onclick = () => {resetFilter(); filterPrecount.request(); tagSelectionPrepare(); lsSaveObject('tagSelection', tagSelection); playSound(sound['prompt'])};
 //
 let buttonSwitchPreset = new TextButtonShaped(shapeRectRounded, txt('filterApplyPreset'), new Vector2(300, 50),
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
     colorMapMatrix(filterMainThreePal));
-buttonSwitchPreset.onclick = () => {presetSwitcher(); filterPrecount.request(); lsSaveObject('tagSelection', tagSelection)};
+buttonSwitchPreset.onclick = () => {presetSwitcher(); filterPrecount.request(); lsSaveObject('tagSelection', tagSelection); playSound(sound['prompt'])};
 //
 buttonFilterLeave.waitanim = false; buttonFilterLeave.needshadow = false;
 buttonFilterApply.waitanim = false; buttonFilterApply.needshadow = false;
@@ -7185,12 +7048,12 @@ function animeFilterApply() {
     roulette.pause(100);
     // переключаем экран
     sload.state = 'loadnew';
-    requestScreen(screenLoading)
+    requestScreen(screenLoading, false)
 };
 //
 function animeArrayApply(array) {
     sload.state = 'loadstart';
-    requestScreen(screenLoading);
+    requestScreen(screenLoading, false);
     setTimeout(() => {
         rouletteSetItems(randomItemsFrom(array, pref.rouletteItemsMax));
         localStorage.removeItem(savePrefix+'roulette.winner');
@@ -7203,7 +7066,7 @@ function animeListApply(list) {
     lsSaveObject('tinfoMeta', tInfo.meta);
     //
     sload.state = 'loadstart';
-    requestScreen(screenLoading);
+    requestScreen(screenLoading, false);
     setTimeout(() => {
         rouletteSetItems(list.getAnime(), false);
         localStorage.removeItem(savePrefix+'roulette.winner');
@@ -7253,28 +7116,32 @@ buttonAnimeFilter.onclick = () => {
     buttonAnimeEditor.state = 'idle';
     buttonAnimeFilter.state = 'unaval';
     buttonAnimeArrays.state = 'idle';
-    saf.state = 'filter'; saf.scroll.set(0)
+    saf.state = 'filter'; saf.scroll.set(0);
+    playSound(sound['button'])
 };
 buttonAnimeBrowser.onclick = () => {
     buttonAnimeBrowser.state = 'unaval';
     buttonAnimeEditor.state = 'idle';
     buttonAnimeFilter.state = 'idle';
     buttonAnimeArrays.state = 'idle';
-    saf.state = 'browser'; saf.scroll.set(0)
+    saf.state = 'browser'; saf.scroll.set(0);
+    playSound(sound['button'])
 };
 buttonAnimeEditor.onclick = () => {
     buttonAnimeBrowser.state = 'idle';
     buttonAnimeEditor.state = 'unaval';
     buttonAnimeFilter.state = 'idle';
     buttonAnimeArrays.state = 'idle';
-    saf.state = 'editor'; saf.scroll.set(0)
+    saf.state = 'editor'; saf.scroll.set(0);
+    playSound(sound['button'])
 };
 buttonAnimeArrays.onclick = () => {
     buttonAnimeBrowser.state = 'idle';
     buttonAnimeEditor.state = 'idle';
     buttonAnimeFilter.state = 'idle';
     buttonAnimeArrays.state = 'unaval';
-    saf.state = 'arrays'; saf.scroll.set(0)
+    saf.state = 'arrays'; saf.scroll.set(0);
+    playSound(sound['button'])
 };
 buttonAnimeFilter.state = 'unaval';
 buttonAnimeBrowser.needshadow = buttonAnimeEditor.needshadow = 
@@ -7310,6 +7177,7 @@ let buttonBrowseTitles = new TextButtonShaped(shapeRectRounded, txt('filterBrows
     colorMapMatrix(filterMainThreePal));
 buttonBrowseTitles.onclick = () => {
     var p = prompt(txt('filterBrowserPrompt'));
+    playSound(sound['prompt']);
     if(p == null) {return} else {sDBs.find(p)}
 };
 buttonBrowseTitles.needshadow = false;
@@ -7318,6 +7186,7 @@ let buttonBrowseTitlesMAL = new TextButtonShaped(shapeRectRounded, txt('filterMA
     colorMapMatrix(filterMainThreePal));
 buttonBrowseTitlesMAL.onclick = () => {
     var p = prompt(txt('filterMALPrompt'));
+    playSound(sound['prompt']);
     if(p == null) {return} else {sDBs.findMAL(p)}
 };
 buttonBrowseTitlesMAL.needshadow = false;
@@ -7420,7 +7289,7 @@ function animeSStateFilter(header, fbSpacing, swidth, xanchor) {
     fillRectRounded(new Vector2(width, h), pos.sumxy(fbSpacing*4 + width*3, 0), saf.bgcolor, fbSpacing);
     ctx.fillStyle = '#fff';
     // scaleFontObject(titleCounterFont); ctx.textAlign = 'center';
-    if(filterPrecount.flag || !filterPrecount.first) {fillRectRounded(new Vector2(width * Math.norma(filterPrecount.timeout*2), h), pos.sumxy(fbSpacing*4 + width*3, 0), `#0c05`, fbSpacing)}
+    if(filterPrecount.flag || !filterPrecount.first) {fillRectRounded(new Vector2(width * Math.norma(filterPrecount.timeout/0.8), h), pos.sumxy(fbSpacing*4 + width*3, 0), `#0c05`, fbSpacing)}
     else {fillTextFast(pos.sumxy(fbSpacing*4 + width*3.5, h - fbSpacing), textStringLimit(String(filterPrecount.count), width))};
     // отрезаем
     clipCanvas(fullsize.minxy(0, header), new Vector2(cvsxoffset, header));
@@ -7496,7 +7365,7 @@ function animeSStateFilter(header, fbSpacing, swidth, xanchor) {
     saf.height += sbTextHeader(txt('filterDiap'), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
     // оценки года и серии
     scaleFont(24, 'Segoe UI Light');
-    sbBlockHint.text = txt('hintAllowScore');
+    sbBlockHint.text = txt('hintAllowScore') + (adb.length - adb_information.scored);
     saf.height += sbButtonPrefix(txt('filterScoreAllow'), buttonScoreAllow, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
     saf.height += sbTwoButtonPrefix(txt('filterScore'), buttonFilterScoreMin, buttonFilterScoreMax, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
     saf.height += sbTwoButtonPrefix(txt('filterYear'), buttonFilterYearMin, buttonFilterYearMax, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
@@ -7638,10 +7507,11 @@ let browserPromptPage = new TextButtonShaped(shapeRectRounded, txt('browserEnter
     colorMapMatrix(`rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`));
 browserPromptPage.waitanim = false; browserPromptPage.needshadow = false;
 //
-browserPrevPage.onclick = () => {sDBs.getPage(sDBs.current-1); saf.scroll.set(0)};
-browserNextPage.onclick = () => {sDBs.getPage(sDBs.current+1); saf.scroll.set(0)};
+browserPrevPage.onclick = () => {sDBs.getPage(sDBs.current-1); saf.scroll.set(0); playSound(sound['button'])};
+browserNextPage.onclick = () => {sDBs.getPage(sDBs.current+1); saf.scroll.set(0); playSound(sound['button'])};
 browserPromptPage.onclick = () => {
     sDBs.getPage(promptNumber(txt('browserPage') + '...', 1, sDBs.pages, sDBs.current));
+    playSound(sound['prompt']);
     saf.scroll.set(0)
 };
 //
@@ -7655,12 +7525,13 @@ buttonBrowserAdd.onhover = () => {
 buttonBrowserAdd.onact = () => {
     if(!edList.haveTitle(buttonBrowserAdd.bhvr)) {
         edList.addTitle(buttonBrowserAdd.bhvr);
+        playSound(sound['button']);
         setTimeout(() => {buttonBrowserAdd.operate = false; buttonBrowserAdd.dtime=500}, 500)
     } else {
         buttonBrowserAdd.operate = false; buttonBrowserAdd.dtime=500
     }
 };
-buttonBrowserAdd.time = '500';
+buttonBrowserAdd.time = 500;
 //
 let _saf_browserheight = 0;
 function animeSStateBrowser(header, fbSpacing, swidth, xanchor) {
@@ -7838,16 +7709,16 @@ buttonEditorDelete.onhover = () => {
     } else {hoverHint.invoke(txt('editorErrorDBID'))}
 };
 buttonEditorDelete.onact = () => {
-    if(buttonEditorDelete.bhvr != null) {edList.deleteTitle(buttonEditorDelete.bhvr)};
+    if(buttonEditorDelete.bhvr != null) {edList.deleteTitle(buttonEditorDelete.bhvr); playSound(sound['tagexc'])};
     setTimeout(() => {buttonEditorDelete.operate = false; buttonEditorDelete.dtime=500}, 500)
 };
-buttonEditorDelete.time = '500';
+buttonEditorDelete.time = 500;
 //
 let buttonEditorApply = new TextButtonShaped(shapeRectRounded, txt('wordApply'), new Vector2(500,40),
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
     colorMapMatrix(filterMainThreePal));
 buttonEditorApply.needshadow = false; buttonEditorApply.waitanim = false;
-buttonEditorApply.onclick = () => {edList.setRoulette()};
+buttonEditorApply.onclick = () => {edList.setRoulette(); playSound(sound['player'])};
 buttonEditorApply.onhover = () => {
     if(edList.edited.list.length == 0) {hoverHint.invoke(txt('editorApplyEmpty'), '#f94')}
 };
@@ -7860,7 +7731,8 @@ buttonEditorClaimRoll.onhover = () => {
 };
 buttonEditorClaimRoll.onclick = () => {if(roulette.anime.length > 0) {
     var conf = true; if(edList.edited.list.length > 0) {conf = confirm(txt('editorUploadOverwrite'))};
-    if(conf) {edList.edited.compressArray(roulette.anime); edList.getMeta()}
+    if(conf) {edList.edited.compressArray(roulette.anime); edList.getMeta()};
+    playSound(sound['button'])
 }};
 //
 let buttonClearEditable = new TextButtonShaped(shapeRectRounded, txt('wordReset'), new Vector2(500,40),
@@ -7870,7 +7742,8 @@ buttonClearEditable.needshadow = false; buttonClearEditable.waitanim = false; bu
 buttonClearEditable.onclick = () => {
     if(edList.edited.list.length > 0) {
         edList.clear();
-        buttonClearEditable.state = 'idle'
+        buttonClearEditable.state = 'idle';
+        playSound(sound['tagexc'])
     };
 };
 //
@@ -7886,8 +7759,8 @@ buttonEditorUpload.needshadow = false; buttonEditorUpload.waitanim = false;
 buttonEditorDownload.onhover = () => {
     if(edList.edited.list.length == 0) {hoverHint.invoke(txt('editorDownloadEmpty'), '#f94')}
 };
-buttonEditorDownload.onclick = () => {if(edList.edited.list.length > 0) {edList.downloadJSON()}};
-buttonEditorUpload.onclick = () => {edList.uploadJSON()};
+buttonEditorDownload.onclick = () => {if(edList.edited.list.length > 0) {edList.downloadJSON(); playSound(sound['button'])}};
+buttonEditorUpload.onclick = () => {edList.uploadJSON(); playSound(sound['button'])};
 //
 function animeSStateEditor(header, fbSpacing, swidth, xanchor) {
     // свои кнопки
@@ -7943,71 +7816,151 @@ let mrthStuff = {
     items: {
         // POSITIVE
         'glasses': {
-            name: 'Крутые очки',
-            desc: 'Применяется перед генерацией аниме. Увеличивает кол-во очков за просмотр на 25%. Уничтожаются в паре с "Слабительное".',
+            name: txtMrth('itemGlassesName'),
+            desc: txtMrth('itemGlassesDesc'),
             specials: {conflict: 'poop'},
         },
-        'bribery': { // need to add
-            name: 'Пачка денег',
-            desc: 'Может спасти Вас от негативных эффектов во время неудачных встреч. Уничтожаются в паре с "Черная метка".',
+        'bribery': {
+            name: txtMrth('itemBriberyName'),
+            desc: txtMrth('itemBriberyDesc'),
             max: 2,
             specials: {conflict: 'black'},
         },
         'radar': {
-            name: 'Радар',
-            desc: 'Расходуется само во время исследования клетки, делая исследование бесплатным.',
+            name: txtMrth('itemRadarName'),
+            desc: txtMrth('itemRadarDesc'),
             max: 8,
         },
         'chocolate': {
-            name: 'Шоколадка',
-            desc: 'Применяется перед генерацией аниме. Увеличивает минимально допустимую оценку аниме до 7.5, максимальную до 10. Уничтожаются в паре с "Прошлогодний салат".',
+            name: txtMrth('itemChocolateName'),
+            desc: txtMrth('itemChocolateDesc'),
             specials: {conflict: 'salad'},
         },
         'recycler': {
-            name: 'Утилизатор',
-            desc: 'Применяется на неиспользованной клетке с аниме. Уничтожает её взамен на очки исследования.',
+            name: txtMrth('itemRecyclerName'),
+            desc: txtMrth('itemRecyclerDesc'),
         },
         'marathon_key': {
-            name: 'Ключ от марафона',
-            desc: 'Применяется само перед генерацией аниме. Даёт возможность настроить фильтр и сгенерировать свою рулетку.',
+            name: txtMrth('itemMkeyName'),
+            desc: txtMrth('itemMkeyDesc'),
         },
         'universal_key': {
-            name: 'Универсальный ключ',
-            desc: 'Позволяет повторно посмотреть новое аниме на уже использованной клетке.',
+            name: txtMrth('itemUkeyName'),
+            desc: txtMrth('itemUkeyDesc'),
+        },
+        'joker': {
+            name: txtMrth('itemJokerName'),
+            desc: txtMrth('itemJokerDesc'),
+            specials: {conflict: 'order'},
+            max: 2,
+        },
+        'monitor': {
+            name: txtMrth('itemMonitorName'),
+            desc: txtMrth('itemMonitorDesc'),
         },
         // NEGATIVE
         'poop': {
-            name: 'Слабительное',
-            desc: 'Применяется само перед генерацией аниме. Уменьшает кол-во очков за просмотр аниме на 25%.',
+            name: txtMrth('itemPoopName'),
+            desc: txtMrth('itemPoopDesc'),
         },
         'black': {
-            name: 'Черная метка',
-            desc: 'Следующая генерация предмета или встреча с 50% шансом может оказаться для Вас неудачной. Расходуется, даже если эффект не сыграл.',
+            name: txtMrth('itemBlackName'),
+            desc: txtMrth('itemBlackDesc'),
         },
         'tax': {
-            name: 'Сверхналог',
-            desc: 'Исследования станут дороже на 50% на следующие 10 клеток.',
+            name: txtMrth('itemTaxName'),
+            desc: txtMrth('itemTaxDesc'),
             max: 10,
         },
         'salad': {
-            name: 'Прошлогодний салат',
-            desc: 'Применяется само перед генерацией аниме. Уменьшает минимально допустимую оценку аниме до нуля, максимальную - до 7.5',
+            name: txtMrth('itemSaladName'),
+            desc: txtMrth('itemSaladDesc'),
         },
-        // 'order': {
-        //     name: 'Ордер на арест',
-        //     desc: 'Применяется само в случае реролла аниме. Утяжеляет наказание за реролл.',
-        //     specials: false,
-        // },
+        'order': {
+            name: txtMrth('itemOrderName'),
+            desc: txtMrth('itemOrderDesc'),
+        },
         'azart': {
-            name: 'Штраф за азарт',
-            desc: 'Потеряйте 25% очков исследования.',
+            name: txtMrth('itemAzartName'),
+            desc: txtMrth('itemAzartDesc'),
+        },
+        'handcuffs': {
+            name: txtMrth('itemHandcuffsName'),
+            desc: txtMrth('itemHandcuffsDesc'),
+        },
+    },
+    perms: {
+        points: {
+            value: 'permPoints',
+            name: txtMrth('permPointsName'),
+            desc: txtMrth('permPointsDesc'),
+            limits: [0.5, 999], // normal is 1
+            buff: [.08, .16], debuff: [-.05, -.15],
+        },
+        series: {
+            value: 'permSeries',
+            name: txtMrth('permSeriesName'),
+            desc: txtMrth('permSeriesDesc'),
+            limits: [5, 999], // normal is 10
+            buff: [.08, .16], debuff: [-.05, -.15],
+        },
+        explore: {
+            value: 'permExplore',
+            name: txtMrth('permExploreName'),
+            desc: txtMrth('permExploreDesc'),
+            limits: [1, 5], // normal is 3
+            buff: [-.05, -.1], debuff: [.04, .09],
+        },
+        quota: {
+            value: 'permQuota',
+            name: txtMrth('permQuotaName'),
+            desc: txtMrth('permQuotaDesc'),
+            limits: [10, 90], // normal is 50
+            buff: [-.05, -.12], debuff: [.04, .11],
+        },
+    },
+    missions: {
+        question: {
+            name: txtMrth('missionQuestion'),
+            limits: [2, 4],
+        },
+        meeting: {
+            name: txtMrth('missionMeeting'),
+            limits: [3, 5],
+        },
+        treasure: {
+            name: txtMrth('missionTreasure'),
+            limits: [3, 4],
+        },
+        anime: {
+            name: txtMrth('missionAnime'),
+            limits: [1, 1],
+            nobar: true,
+        },
+        points: {
+            name: txtMrth('missionPoints'),
+            // limits: [150, 450],
+            limits: () => {return [itemFunc.getHonestCost(150), itemFunc.getHonestCost(350)]},
+            value: 'total',
+        },
+        series: {
+            name: txtMrth('missionSeries'),
+            limits: [14, 33],
+            value: 'episodes',
+        },
+        explore: {
+            name: txtMrth('missionExplore'),
+            limits: [20, 45],
+            value: 'explored',
         },
     },
 };
 //
-let _itemsPositive = ['glasses', 'bribery', 'radar', 'chocolate', 'recycler', 'marathon_key', 'universal_key',];
-let _itemsNegative = ['poop', 'black', 'tax', 'salad', 'azart',];
+let _itemsPositive = ['glasses', 'bribery', 'radar', 'chocolate', 'recycler', 'marathon_key', 'universal_key', 'joker', 'monitor'];
+let _itemsNegative = ['poop', 'black', 'tax', 'salad', 'azart', 'azart', 'order', 'handcuffs']; // азарт 2 раза потому что лудики ыеееееее
 let _itemsAll = [].concat(_itemsPositive, _itemsNegative);
+let _permsAll = ['points', 'explore', 'series', 'quota',];
+let _missionsAll = ['question', 'meeting', 'treasure', 'anime', 'points', 'series', 'explore',];
 //
 function mrthInventoryAddItem(tag='') {
     // check negative OR positive
@@ -8051,6 +8004,24 @@ function mrthInventoryAddItem(tag='') {
         var neg = mapMeta.effects[ind].tag;
         mapMeta.effects[ind] = mrthCreateItem(tag);
         return ['eff_replace', tag, neg]
+    }
+};
+function mrthIsPositiveItem(item) {
+    for(var i in _itemsPositive) {
+        if(item == _itemsPositive[i]) {return true}
+    };
+    return false
+};
+function mrthInventoryComment(array) {
+    // commentary
+    switch (array[0]) {
+        case 'add_item': return txtMrth('commItemPref') + mrthStuff.items[array[1]].name + txtMrth('commItemAdd');
+        case 'item_none': return txtMrth('commItemPref') + mrthStuff.items[array[1]].name + txtMrth('commItemNone');
+        case 'delete_eff': return txtMrth('commItemPref') + mrthStuff.items[array[1]].name + '", ' + txtMrth('commNegPref') + mrthStuff.items[array[2]].name + txtMrth('commDelete');
+        case 'eff_already': return txtMrth('commNegPref') + mrthStuff.items[array[1]].name + txtMrth('commEffAlready');
+        case 'eff_replace': return txtMrth('commNegPref') + mrthStuff.items[array[1]].name + txtMrth('commEffReplace') + mrthStuff.items[array[2]].name + '".';
+        case 'add_eff': return txtMrth('commNegAdded') + mrthStuff.items[array[1]].name + '".';
+        default: {console.log(array); return txtMrth('commUnknown')}
     }
 };
 //
@@ -8101,6 +8072,7 @@ function mrthDeleteRandomItem() {
     return tags.length == 0 ? false : mrthDeleteItem(tags[Math.floor(Math.random() * (tags.length - 0.001))])
 };
 function mrthReduceItem(item) {
+    if(item === false) {return}; // skip if no item
     if(item.count !== undefined) {
         item.count -= 1;
         if(item.count <= 0) {
@@ -8113,211 +8085,127 @@ function mrthReduceItem(item) {
 // ITEM FUNCTIONS
 let itemFunc = {
     recyclerPoints: (pos, preset) => { // calc recycle points
-        return Math.round(mrthGetExploreCost(pos) * 2 * presetbase[preset].mult) // center number is recycle multiplier
+        return Math.round(mrthGetExploreCost(pos) * 2 * presetbase[preset].mult * mapMeta.permPoints) // center number is recycle multiplier
+    },
+    getHonestCost: (points) => { // просчёт честной цены для штрафов/магазинов с учётом текущих множителей
+        return Math.round(points * mapMeta.permPoints * (mapMeta.permSeries/10))
+    },
+};
+// PERMANENT VALUES FUNCTIONS
+function getPermanentEffect(buff = true, tag=false, mult=false) {
+    // get indexed or randomized AND get perc if not allowed
+    if(tag === false) {tag = _permsAll[Math.floor(Math.random() * 3.999)]};
+    var perm = mrthStuff.perms[tag];
+    // counting perm value change
+    var effect = {value: perm.value,};
+    if(buff) {effect.perc = perm.buff[0] + Math.random() * (perm.buff[1] - perm.buff[0])}
+    else {effect.perc = perm.debuff[0] + Math.random() * (perm.debuff[1] - perm.debuff[0])};
+    if(mult !== false) {effect.perc = effect.perc * mult};
+    // formatting and returning
+    effect.perc = floatNumber(effect.perc, 4);
+    effect.limits = perm.limits;
+    effect.tag = tag;
+    return effect
+};
+function applyPermanentEffect(effect) {
+    mapMeta[effect.value] = floatNumber(mapMeta[effect.value] + mapMeta[effect.value] * effect.perc, 2);
+    mapMeta[effect.value] = mapMeta[effect.value] < effect.limits[0] ? effect.limits[0] : mapMeta[effect.value] > effect.limits[1] ? effect.limits[1] : mapMeta[effect.value];
+};
+function commentPermanentEffect(effect) {
+    var _new = floatNumber(mapMeta[effect.value] + mapMeta[effect.value] * effect.perc, 2);
+    if(effect.perc > 0) {
+        return txtMrth('commPermPref') + mrthStuff.perms[effect.tag].name + txtMrth('commPermIncr') + `${floatNumber(effect.perc*100, 2)}%. (${mapMeta[effect.value]} => ${_new})`
+    } else {
+        return txtMrth('commPermPref') + mrthStuff.perms[effect.tag].name + txtMrth('commPermDecr') + `${floatNumber(effect.perc*-100, 2)}%. (${mapMeta[effect.value]} => ${_new})`
     }
 };
-//
-// @EAG MARATHON MEETINGS
-//
-mrthStuff.meetings = {};
-//
-mrthStuff.meetings['hole'] = {
-    meta: {name: 'Дыра', values: {}},
-    start: {text: ['Спустя некоторое время блужданий в этом секторе мне открывается прекрасный вид на его внутренний мир. Казалось бы, я давно уже должен был оказаться в его центре, но всё никак не могу его достичь.',
-            'Мне стоило раньше обратить на это внимание - обернувшись, всё позади вдруг стало странно больше. А тот бескрайний лес, в котором я сейчас нахожусь, ещё минуту назад казался тремя соснами.',
-            'Надо же, в этом секторе умещается целый отдельным мир, возможно такой же, каков и внешний. Размышлял я, пока не наткнулся на странника. Внешне он был не опасен, скорее всего это такой же исследователь, как и я.',
-            'Он подошел ко мне. Только сейчас я заметил, что он уже очень стар. Он протягивает мне руку с каким то предметом, явно показывая, что хочет отдать...'
-        ],choice: [
-            {name: 'Взять', root: 'pick'},{name: 'Ничего не делать', root: 'not'},
-        ]}, pick: {text: ['Стоило мне попытаться взять предмет, который он давал мне, он тут же убрал руку под свой плащ. После он бросил на меня недовольный взгляд, развернулся и начал уходить...',
-            'Но вдруг заговорил. Говорил он о том, что одалела его жадность, когда он посетил данный сектор. Нет ему больше выхода отсюда, поскольку один шаг внутрь равняется тысяче шагов назад.',
-            'По моей спине пробежал холод. Пусть я и шел всего три минуты, зато возвращаться отсюда мне придётся двое суток. Дед после добавил, что пытался добраться до центра около полугода из-за желания поживиться добром. Как так получилось, что мы с ним встретились - непонятно.',
-            'После он окончательно ушёл, обратно в центр. Мне ничего не оставалось, как просто развернуться и начать этот очень долгий путь назад из сектора. Я потеряю на это очень много сил и времени...',
-        ],choice: [
-            {name: 'Начать путь', root: 'bads'},
-        ]},not: {text: ['Немая сцена длилась около половины минуты, пока дед не заулыбался и не нарушил тишину.',
-            'Он рассказал мне, как оказался здесь - как пытался достичь центра полгода и даже не подозревал, что один шаг внутрь приравнивается к тысяче шагов назад. Для меня эта информация оказалась крайне неприятной. Я отвернулся от деда, уставившись на внешний мир, и тут он меня окликнул...',
-            'В этот раз он сам взял меня за руку и дал мне два предмета, конвертик из очень старой потёртой бумаги и несколько зарядов радара. Он добавил, что конверт может вернуть назад, но воспользоваться им может только тот, кому его отдали, если же ты его забрал, то ничего не получится.',
-            'Я вдруг похвалил себя за изначальный выбор бездействовать. В голове так и крутились мысли, вдруг в этом правиле есть какой-то изьян, может, получиться вернуть деда. Я пытался найти информацию в конверте, бегло читая весь текст, который мог разобрать.',
-            'Воздух вокруг меня переменился, я отрываю голову от конверта - ни огромного внешнего мира, ни деда уже нет. Конверт тут же рассыпался в руках, я оказался совсем рядом с сектором. Понемногу приходя в себя я начал двигаться дальше...',
-        ],choice: [
-            {name: 'Проверить радары', root: 'item'},
-        ]},item: {
-            callback: (obj) => {if(mrthInventoryFreeSpace()) {obj.root = 'get'; return 'root'} else {obj.root = 'money'; return 'root'}
-        }},get: {
-            callback: (obj) => {mrthInventoryAddItem('radar'); obj.result = 'Вы получили 8 радаров.'},
-            text: ['Радары хоть и старые, но ещё вполне себе рабочие, думаю, я могу оставить их себе, пригодятся.', '...']
-    },money: {
-        callback: (obj) => {mapMeta.points += 30; obj.result = 'Вы получили 30 монет.'},
-        text: ['Радары уже слишком старые, да и места у меня не было, чтобы их оставить. Поэтому я решил продать их первому встречному скупщику за 30 монет.', '...']
-    },bads: {
-        callback: (obj) => {var bad = Math.round(mapMeta.points*0.2); mapMeta.points -= bad; obj.result = `Вы потеряли ${bad} монет.`},
-    },end: {}
+// MISSIONS FUNCTIONS
+function missionGenerateRandom(difficulty=1) {
+    // gets random effect, gets VALUE of effect and get comment
+    var mission = {reward: getPermanentEffect(), progress: 0};
+    var perm = mrthStuff.perms[mission.reward.tag];
+    var value = Math.abs(mission.reward.perc - perm.buff[0]) / Math.abs(perm.buff[1] - perm.buff[0]);
+    // get random valued quest
+    mission.type = _missionsAll[Math.floor(Math.random() * (_missionsAll.length-0.001))];
+    var quest = mrthStuff.missions[mission.type];
+    var limits = typeof quest.limits == 'function' ? quest.limits = quest.limits() : quest.limits;
+    mission.target = Math.round(limits[0] + (limits[1] - limits[0]) * value * difficulty);
+    mission.name = quest.name;
+    // gets type of mission - auto or manual
+    if(quest.value !== undefined) {
+        mission.auto = true;
+        mission.value = quest.value;
+        mission.old = 0 + mapMeta[quest.value]; // 0+ for copy
+    } else {mission.auto = false};
+    // hide progress bar if needed
+    if(quest.nobar !== undefined) {mission.nobar = true};
+    return mission
 };
-//
-mrthStuff.meetings['tower'] = {
-    meta: {name: 'Мельница', values: {used: false}},
-    start: {text: ['На этом секторе мне повезло найти высокую мельницу, пусть и заброшенную. Располагалась она на небольшом возвышении, вокруг неё простирались уже окончательно заросшие пшеничные поля.',
-            'Подойдя к ней я принялся обходить её со всех сторон и пытаться проникнуть внутрь - нужно найти хотя бы небольшую щель или слабую деревянную перегородку. Обойдя её вокруг два раза я сделал для себя открытие - каждый раз, когда я отворачиваюсь от мельницы и снова смотрю на неё, все её гнилые дощечки, бревна, камни у фундамента и столбы странным образом меняют своё положение.',
-            'Пройдя ещё два круга мне повезло скажем так «сгенерировать» себе проход внутрь. Перед входом я подумал дважды, ведь внутри я не смогу видеть всей мельницы сразу. Да и вдруг я более не смогу выйти и стану там заложником? Эта мысль меня напугала, и я встал прямо у входа и посмотрел наверх, как раз на верхушку башни, чтобы подумать третий раз...',
-        ],choice: [
-            {name: 'Войти', root: 'enter'},{name: 'Ничего не делать', root: 'not'},
-        ]}, enter: {
-        callback: () => {return [mrthGetItem('radar') !== false, true]},
-        text: ['Я решил рискнуть и войти в башню. Внутри она оказалась недвижимой - она сохраняет тот облик, в котором я её видел снаружи последний раз. Видимо она меняет своё строение для меня только когда я снаружи. Это радует, осталось только найти способ подняться наверх.',
-            'В конце концов, мне сейчас очень не помешает запечатлеть местность с достаточно большой высоты. По мере того, как взбирался ввысь я начал замечать, что мельница всё же не перестала меняться. Точнее она просто без конца удлиняется вверх. Посмотрев вниз я понял, что за долгие попытки подняться на мельницу по хрупким конструкциям я преодолел полметра от силы.',
-            'Однако ощущение высоты мне говорило, что на самом деле я достаточно высоко. Я был рядом с дверцей, сквозь щели которой завывал такой ветер, какой бывает только на высоте птичьего полёта. Я уже хотел выйти и убедиться в том, что я очень высоко, но дверца была заперта. После недолгих попыток поднять щеколду на другой стороне я смог выйти и осмотреться.',
-        ],choice: [
-            {name: 'Использовать 1 радар', root: 'radar'},{name: 'Просто осмотреться', root: 'view'},
-        ]},radar: {
-        callback: (obj) => {mrthReduceItem(mrthGetItem('radar')); obj.values.used = 'radar'},
-        text: ['Использовав карманный радар я смог быстро запечатлеть всё то, что было видно ему с этой высоты, до мельчайших деталей. Осмотревшись ещё раз я спустился вниз мельницы и покинул её. Уходя я отметил на своей карте четыре интересных места, которые нужно посетить как можно скорее.', '...'],
-    },view: {
-        callback: (obj) => {obj.values.used = 'view'},
-        text: ['Зарядов радара у меня с собой не было, а он бы мог сейчас помочь мне запечатлеть побольше. Осмотревшись ещё раз я спустился вниз мельницы и покинул её. На карте я отметил себе пару интересных мест, которые смог увидеть, нужно будет их посетить в ближайшее время.', '...'],
-    },not: {text: ['Откажусь сегодня от удовольствия сойти с ума в замкнутом и постоянно меняющемся пространстве. Ещё раз вдоволь походив вокруг башни и посмотрев на неё, я не обнаружил больше никаких интересных странностей. Только кем-то потерянный планшет с двадцатью пятью серебряных.',
-            'Искать тут более нечего, мне нужно продолжать исследования, поэтому я отправился от мельницы прочь.', '...'
-        ],},end: {
-        callback: (obj) => {
-            if(obj.values.used !== false) {
-                if(obj.values.used == 'radar') {setTimeout(() => {mapGenerateSpoilers(4); obj.result = 'Вы нашли 4 полезных сектора.'}, 1500)}
-                else {setTimeout(() => {mapGenerateSpoilers(2); obj.result = 'Вы нашли 2 полезных сектора.'}, 1500)}
-            } else {mapMeta.points += 25; obj.result = 'Вы получили 25 монет.'}
+function missionGetProgress(mission) {
+    var prog = floatNumber(mission.progress / mission.target, 2);
+    prog = prog < 0 ? 0 : prog > 1 ? 1 : prog;
+    return mission.auto ? [prog, mission.old, mission.old + mission.target] : [prog, 0, mission.target]
+};
+function missionUpdate(mission) {
+    if(mission.auto) {mission.progress = mapMeta[mission.value] - mission.old}; // get progress for auto missions
+    return mission.progress >= mission.target
+};
+function missionProcessor() {
+    for(var m in mapMeta.missions) {
+        if(mapMeta.missions[m] === false) {continue} // skip empty mission slots
+        else {if(missionUpdate(mapMeta.missions[m])) { // true if mission completed
+            applyPermanentEffect(mapMeta.missions[m].reward);
+            mapMeta.missCompleted++;
+            mapMeta.missions[m] = false // give reward & delete mission
         }}
+    }
 };
-//
-mrthStuff.meetings['shop'] = {
-    meta: {name: 'Рынок', values: {}},
-    start: {
-        callback: () => {return [mrthInventoryFreeSpace(), mrthInventoryHaveItems(), true]},
-        text: ['Мне повезло обнаружить в этом секторе небольшой рынок. При необходимости здесь можно будет продать или купить что-нибудь нужное для исследований.',
-            'А не повезло с тем, что у меня очень мало времени. Я не успею толком поторговать, и мне очень повезёт если я успею сделать хотя бы одну сделку.',
-            'Что мне сейчас нужнее?',
-        ],choice: [
-            {name: 'Купить', root: 'buy'},{name: 'Продать', root: 'sell'},{name: 'Уйти', root: 'leave'},
-        ]},leave: {
-        callback: (obj) => {obj.result = 'Вы просто ушли.'},
-        text: ['Нет у меня времени на торговлю, как и лишних вещей. Подумал я и направился прочь из сектора.', '...']
-    },buy: {
-        callback: () => {return [mapMeta.points >= 50, mapMeta.points >= 50, true]},
-        text: ['Пробегая мимо всех торгашей я обратил внимание на прилавок "Всё по 50", тут были полезные предметы для особых секторов. Думаю, было бы неплохо прикупить что-то одно...'],
-        choice: [
-            {name: 'Крутые очки', root: 'glasses'},{name: 'Шоколадка', root: 'cake'},{name: 'Ничего не покупать', root: 'leave'},
-        ]},glasses: {
-        callback: (obj) => {obj.result = 'Вы купили "Крутые очки".'; mrthInventoryAddItem('glasses'); mapMeta.points -= 50},
-        text: ['Расчитавшись за очки я ринулся продолжать исследование, будучи более весёлым после успешной покупки.', '...']
-    },cake: {
-        callback: (obj) => {obj.result = 'Вы купили "Шоколадку".'; mrthInventoryAddItem('chocolate'); mapMeta.points -= 50},
-        text: ['Расчитавшись за "Шоколадку" я ринулся продолжать исследование, будучи более весёлым после успешной покупки.', '...']
-    },sell: {
-        callback: () => {return [mrthGetItem('marathon_key') !== false, mrthGetItem('universal_key') !== false, true]},
-        text: ['Пробегая мимо всех торгашей я обратил внимание на прилавок "Скупка ключей", тут можно будет продать лишний завалявшийся ключик. Дают тут за ключи по 50 за каждый, думаю, это стоит того...'],
-        choice: [
-            {name: 'Ключ от марафона', root: 'marathon_key'},{name: 'Универсальный ключ', root: 'universal_key'},{name: 'Ничего не продавать', root: 'leave'},
-        ]},marathon_key: {
-        callback: (obj) => {obj.result = 'Вы продали "Ключ от марафона".'; mrthDeleteItem('marathon_key'); mapMeta.points += 50},
-        text: ['Получив свои деньги за ключ я ринулся продолжать исследование, будучи более весёлым после успешной продажи.', '...']
-    },universal_key: {
-        callback: (obj) => {obj.result = 'Вы продали "Универсальный ключ".'; mrthDeleteItem('universal_key'); mapMeta.points += 50},
-        text: ['Получив свои деньги за ключ я ринулся продолжать исследование, будучи более весёлым после успешной продажи.', '...']
-    },
-    end: {},
+function missionHaveSlots() {
+    for(var m in mapMeta.missions) {
+        if(m == 'daily') {continue}; // skip check daily slot
+        if(mapMeta.missions[m] === false) {return true}
+    };
+    return false
 };
-//
-mrthStuff.meetings['tyan'] = {
-    meta: {name: 'Опасная девушка', values: {}},
-    start: {text: ['Этот сектор буквально ничего мне не дал, несмотря на то, что я потратил на него очень много времени. Уходя я то и дело оборачивался, потому что мои поиски хоть чего-то прервали чужие разборки, и чтобы не стать их участником мне пришлось под шумок уходить отсюда.',
-            'Я уже достаточно далеко ушёл, чтобы не беспокоиться, что что-то может пойти не так. Но ощущение того, что за мной наблюдают, всё никак не проходит. То и дело мне послышится шорох справа, или как кто-то вспарил прямо надо мной с крыши на крышу. Да, я покидаю заброшенный город, к сожалению, уже полностью разворованный.',
-            'Вновь слышу шаги, это тихие шаги сзади. Создаётся ощущение, что шаги постепенно приближаются ко мне. Я до этого всегда оборачивался на малейший шорох, однако сейчас боюсь этого делать, потому что точно уверен, что мне это не кажется.',
-        ],choice: [
-            {name: 'Убежать [30%]', root: 'r_run'},{name: 'Развернуться', root: 'check'},
-        ]},check: {
-        callback: () => {return [true, mrthGetItem('bribery') !== false]},
-        text: ['Только я начал разворачиваться как шаги ускорились - в меня устремился какой-то тёмный силуэт. Он сбил меня с ног, уселся на меня и начал угрожать ударом по лицу. На исследователя явно не похож, скорее всего разбойник. А если разбойник то скорее всего меня не оставят в живых.'
-        ],choice: [
-            {name: 'Попытаться ударить [40%]', root: 'r_hit'}, {name: 'Откупиться', root: 'bribery'},
-        ]},saved: {
-        callback: (obj) => {obj.result = 'Вы спаслись.'},
-        text: ['Верное решение, сделанное мною вовремя, помогло мне избежать плохих последствий. Я смог удрать от безумца и спокойно покинуть сектор. Мне стоит немного передохнуть, после я смогу продолжить исследования...', '...'
-        ]},run_bad: {
-        callback: () => {return [true, mrthGetItem('bribery') !== false]},
-        text: ['Стоило мне ускорить шаг как незнакомец сзади тоже ускорил его. Да и ещё как ускорил - мы и десяти секунд не пробежали, как я услышал рывок и ощутил идущий за рывком удар сзади. Во время рывка она крикнула, и да, это была она, судя по голосу.',
-            'Я упал на бок, нападавшая развернула меня на спину, уселась на меня и начала угрожать ударом по лицу. На исследователя явно не похожа, скорее всего разбойница. А если разбойница то, скорее всего, меня не оставят в живых.'
-        ],choice: [
-            {name: 'Ничего не делать', root: 'not'},{name: 'Откупиться', root: 'bribery'},
-        ]},not: {callback: (obj) => {mrthInventoryAddItem('black'); obj.result = 'Вы получили "Черную метку".'},
-        text: ['Спустя некоторое время бездействия разбойница поняла, что я не опасен, она покопалась в моей сумке, что-то сунула в неё и, угрожая уже ножом, слезла с меня и скрылась в ночи. Я не хотел бить её первым, меня смутило то, что это была девушка.',
-            'Проверив сумку, я к величайшему разочарованию обнаружил, что она подсунула мне чёрную метку. Это точно не к добру - подумал я и начал более активно покидать сектор.', '...'
-        ]},bribery: {
-        callback: (obj) => {mrthReduceItem(mrthGetItem('bribery')); obj.result = 'Вы откупились.'},
-        text: ['Точным и медленным движением руки я достаю заначку - пачку денег. Все разбойники падки на деньги, и возможно, у меня получится откупиться. Тут разбойник снимает капюшон и к моему большому удивлению я узнаю, что напавшим на меня разбойником была девушка.',
-            'Она фыркнула глядя на меня, взяла деньги из моих рук и спрятала их в своём плаще. После она помогла мне встать, и, осмотревшись хорошенько вокруг, удалилась. Я стал участником крайне странной сцены, которая, к счастью, для меня закончилась вполне благополучно. Я покинул данный сектор и продолжил исследования...', '...'
-        ]},hit_bad: {
-            callback: (obj) => {mrthInventoryAddItem('black'); obj.result = 'Вы получили "Черную метку".'},
-            text: ['Я попытался ударить разбойника локтем по голове, но тщетно - я лишь слегка задел по лбу, сняв капюшон. И вдруг на мне уже не грозный разбойник, а девушка, которая прямо сейчас замахивается на меня.',
-            'После я очнулся уже один. После удара я чувствовал, как она роется в моей сумке. Проверив сумку, я к величайшему разочарованию обнаружил, что она подсунула мне чёрную метку. Это точно не к добру - подумал я и начал более активно покидать сектор.', '...'
-        ]},
-    r_hit: {callback: (obj) => {obj.root = Math.random() <= 0.4 ? 'saved' : 'hit_bad'; return 'root'}},
-    r_run: {callback: (obj) => {obj.root = Math.random() <= 0.3 ? 'saved' : 'run_bad'; return 'root'}},
-    end: {},
+function missionAdd(mission) {
+    for(var m in mapMeta.missions) {
+        if(m == 'daily') {continue}; // skip adding mission to daily slot
+        if(mapMeta.missions[m] === false) {mapMeta.missions[m] = mission; return true}
+    };
+    console.warn('mrth: mission cannot be added due no empty slots');
+    return false
 };
-//
-mrthStuff.meetings['labyr'] = {
-    meta: {name: 'Лабиринт', values: {}},
-    start: {text: ['В этом секторе мне «повезло» заблудиться в лабиринте. Каменный лабиринт с очень высокими стенами, нигде нет ни подсказок, ни способов вернуться назад. Подняться на стену тоже никак не получается - гладкие как лёд, да ещё и дождь недавно прошёл.',
-            'Навязчивые мысли, что я могу застрять здесь непросто надолго, а может быть и навсегда, постоянно лезли мне в голову. Вот что точно сейчас не нужно - паниковать. Подумал я и встал, чтобы перевести дух и выровнять дыхание. Я вышел, вроде бы, на знакомую развилку. Куда мне бы тут пойти...',
-        ],choice: [{name: 'Пойти налево [35%]', root: 'check'}, {name: 'Пойти направо [35%]', root: 'check'}]
-    },var1: {
-        text: ['В этот раз пойду сюда. Стены невыносимо давят на меня своей громоздкостью, из-за их высоты проходы кажутся слишком узкими, настолько, что когда задумываешься над этим, становится труднее дышать. Снова развилка, куда в этот раз?'
-        ],choice: [{name: 'Пойти налево [35%]', root: 'check'}, {name: 'Пойти направо [35%]', root: 'check'}]
-    },var2: {
-        text: ['Поверну сюда. Каждый мой шаг по мокрому бетону разносится долгим, затяжным эхом по всему лабиринту. Иногда я просто вставал и пытался прислушаться, может, удастся услышать хоть какие-то звуки, кроме тех, что издаю я.',
-            'Но все мною изданные ранее звуки унеслись эхом по тоннелям и превратились в гул, в котором тяжело хоть что-то услышать.'
-        ],choice: [{name: 'Пойти налево [35%]', root: 'check'}, {name: 'Пойти направо [35%]', root: 'check'}]
-    },var3: {
-        text: ['Это никогда не закончится - подумал я на очередной развилке, продолжив блуждания. В голове я то и дело пытался придумать способ как-то отмечать уже пройденные места. Размотать очень длинную верёвку, делать пометки на стенах или оставлять какие-нибудь предметы на развилках... ',
-            'Видимо, придётся моим идеям остаться в моей голове, никаким из этих способов я, пожалуй, так и не воспользуюсь.'
-        ],choice: [{name: 'Пойти налево [35%]', root: 'check'}, {name: 'Пойти направо [35%]', root: 'check'}]
-    },var4: {
-        text: ['В этот раз пойду сюда. Где-то я слышал, что чтобы гарантированно прочесать весь лабиринт, то нужно делать три поворота налево, а один направо. Или там нужно делать только два поворота? Я явно зря полез в этот лабиринт с таким-то скудным багажом знаний о лабиринтах...'
-        ],choice: [{name: 'Пойти налево [35%]', root: 'check'}, {name: 'Пойти направо [35%]', root: 'check'}]
-    },check: {
-        callback: (obj) => {if(Math.random() <= 0.35) {obj.root = 'exit'} else {obj.root = `var${Math.floor(1+Math.random() * 3.999)}`}; mapMeta.points -= Math.floor(mapMeta.points * 0.08); return 'root'}
-    },exit: {
-        callback: (obj) => {obj.result = 'Вы получили "Сверхналог".'; mrthInventoryAddItem('tax')},
-        text: ['За очередной развилкой показалось нечто - ворота в стене, из которых бьёт уже рассвет. Зашёл я в лабиринт, вроде бы в обед. Надо же, прошли почти сутки, я почти всё это время беспрестанно бродил. Радоваться спасению уже нет сил - нужно отдохнуть и возвращаться к работе.', '...']
-    },end: {}
+function missionMoving(type, value=1) {
+    for(var m in mapMeta.missions) {
+        if(mapMeta.missions[m] !== false) {
+            if(mapMeta.missions[m].type == type) {mapMeta.missions[m].progress += value; break}
+        }
+    }
 };
-//
-mrthStuff.meetings['ded'] = {
-    meta: {name: 'Дед', values: {}},
-    start: {callback: () => {return [mapMeta.points >= 40, mrthInventoryHaveItems(), true]},
-        text: ['Лесная тропа, сельская местность, где-то между секторов, очень снежная прохладная местность, равноудалённая от всей цивилизации. Интересное, красивое место, иногда попадаются особенно завораживающие дома, украшенные крайне сложной резьбой по дереву.',
-            'На перекрёстке, где горит один единственный, как мне казалось, фонарь на всё поселение, стоял дед и играл на маленькой гармошке. Он был сверху донизу укутан в тёплую одежду, на его голове уже скопилась небольшая кучка снега. Он что-то пытался играть, смотря при этом вниз, на шапку, которая лежала перед ним на снегу.',
-            'Проходя мимо я заметил, что ничего, кроме снега, в его шапке нет. Это мало удивительно, ведь место на настолько людное, чтобы вот так зарабатывать себе на жизнь. Но мне почему-то стало его жаль, и мне вдруг захотелось хоть как-то улучшить его день, дать ему что-нибудь...'
-        ],choice: [
-            {name: '30 монет', root: 'money'},{name: 'Случайный предмет', root: 'item'},{name: 'Ничего', root: 'not'},
-        ]},not: {callback: (obj) => {obj.result = `Вы ничего не сделали.`},
-            text: ['Проходя мимо него я сделал вид, что бурно ищу что-то у себя в карманах, но, к сожалению, ничего подходящего не нашлось. Он на миг взглянул на меня, мой жест привлёк его внимание, его наидобрейшие глаза были полны надежды на то, что хотя бы я смогу ему хоть что-то дать. Но увы, этому не суждено быть.',
-            'Уходя я чувствовал себя плохим человеком, хотя ничего не сделал. Наверное в этом, как раз, и проблема - я ничего не сделал...', '...'
-        ]},money: {callback: (obj) => {mapMeta.points -= 40; obj.root = 'donat'; return 'root'}},
-    item: {callback: (obj) => {mrthDeleteRandomItem(); obj.root = 'donat'; return 'root'}},
-    donat: {callback: (obj) => {
-            if(mapMeta.effects[1] !== false) {obj.result = `Вы избавились от "${mrthStuff.items[mapMeta.effects[1].tag].name}".`; mrthDeleteItem(mapMeta.effects[1].tag); return};
-            if(mapMeta.effects[2] !== false) {obj.result = `Вы избавились от "${mrthStuff.items[mapMeta.effects[2].tag].name}".`; mrthDeleteItem(mapMeta.effects[2].tag); return};
-            obj.result = 'Вы сделали что-то хорошее.';
-        },text: ['Я поднял его шапку, отряхнул её от снега и вручил владельцу вместе с тем, что было не жалко. Он ничего не сказал мне, лишь бросил на меня полный радости взгляд, который вмиг заставил меня забыть о том, что я что-то отдал ради этого. Это того стоило - дед отправился домой согреваться, а я уже более радостный после хорошего поступка продолжил путь.',
-            'Дед не выглядел как какой-нибудь священник, однако после этой короткой встречи с ним я как будто избавился от тяжёлой ноши на душе.', '...'
-        ]},end: {}
+// DAILY MISSION
+function missionDaily() {
+    // get date
+    var date = new Date().toDateString();
+    if(date !== mapMeta.date) {
+        mapMeta.date = date;
+        mapMeta.days++;
+        mapMeta.missions.daily = missionGenerateRandom(0.6);
+        marathonSave() // save after getting mission
+    }
 };
+// LOAD TRANSLATED MEETINGS OBJECT
+pref.language in _allMeetings
+? mrthStuff.meetings = _allMeetings[pref.language]
+: mrthStuff.meetings = _allMeetings['ru'];
+delete _allMeetings;
 // list of all scenarios
-let mrthMeetingsHard = ['tyan', 'labyr'];
-let mrthMeetingsEasy = ['shop', 'tower', 'hole', 'ded'];
+let mrthMeetingsHard = ['tyan', 'labyr', 'city_danger', 'abandoned', 'portal_maze'];
+let mrthMeetingsEasy = ['shop', 'tower', 'hole', 'ded', 'wasteland', 'mountain_stranger'];
 let mrthMeetingsAll = [].concat(mrthMeetingsHard, mrthMeetingsEasy);
 //
 // @EAG MARATHON RECT MISC
 //
-let buttonRollAnime = new TextButtonShaped(shapeRectRounded, `Крутить рулетку`, new Vector2(), 
+let buttonRollAnime = new TextButtonShaped(shapeRectRounded, txtMrth('rollAnime'), new Vector2(), 
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
     colorMapMatrix(`rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`));
 buttonRollAnime.needshadow = false; buttonRollAnime.waitanim = false; buttonRollAnime.height = 0;
@@ -8346,7 +8234,7 @@ animeReviewWatched.onset = (value) => {
 };
 //
 function getButtonApplyItem(tag) {
-    var b = new TextButtonShaped(shapeRectRounded, `Применить "${mrthStuff.items[tag].name}"`, new Vector2(), 
+    var b = new TextButtonShaped(shapeRectRounded, `${txtMrth('rollApply')} "${mrthStuff.items[tag].name}"`, new Vector2(), 
         colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
         colorMapMatrix(`rgba(128,32,128,1)#rgba(180,48,180,1)#rgba(255,64,255,1)#rgba(200,47,200,0.1)`));
     b.onhover = () => {hoverHint.invoke(mrthStuff.items[tag].desc)};
@@ -8355,9 +8243,10 @@ function getButtonApplyItem(tag) {
 };
 let buttonApplyItemGlasses = getButtonApplyItem('glasses');
 buttonApplyItemGlasses.onclick = () => {
-    buttonApplyItemChocolate.insp.items.push('glasses');
-    buttonApplyItemChocolate.insp.multiplier = 1.25;
-    mrthReduceItem(mrthGetItem('glasses'))
+    buttonApplyItemGlasses.insp.items.push('glasses');
+    buttonApplyItemGlasses.insp.multiplier = 1.25;
+    mrthReduceItem(mrthGetItem('glasses'));
+    playSound(sound['button'])
 };
 let buttonApplyItemChocolate = getButtonApplyItem('chocolate');
 buttonApplyItemChocolate.onclick = () => {
@@ -8365,24 +8254,32 @@ buttonApplyItemChocolate.onclick = () => {
     buttonApplyItemChocolate.insp.filters.scoreAllow = true;
     buttonApplyItemChocolate.insp.filters.scoreMin = 7.5;
     buttonApplyItemChocolate.insp.filters.scoreMax = 10;
-    mrthReduceItem(mrthGetItem('chocolate'))
+    mrthReduceItem(mrthGetItem('chocolate'));
+    playSound(sound['button'])
 };
 let buttonApplyItemRecycler = getButtonApplyItem('recycler');
 buttonApplyItemRecycler.onclick = () => {};
+let buttonApplyItemMonitor = getButtonApplyItem('monitor');
+buttonApplyItemMonitor.onclick = () => {
+    buttonApplyItemMonitor.insp.items.push('monitor');
+    buttonApplyItemMonitor.insp.watchplus += 2;
+    mrthReduceItem(mrthGetItem('monitor'));
+    playSound(sound['button'])
+};
+//
 let buttonApplyItemList = {
     'glasses': buttonApplyItemGlasses,
     'chocolate': buttonApplyItemChocolate,
     'recycler': buttonApplyItemRecycler,
+    'monitor': buttonApplyItemMonitor,
 };
 //
 function recycleAnimeRect(pos) {
-    var index = 0;
-    for(var i in mapMeta.map) {
-        if(mapMeta.map[i].pos.condAND(pos)) {index = i; break}
-    };
+    var index = mapPosStringify(pos);
     mapMeta.map[index] = new mrthRect(pos, 'empty');
     mapMeta.map[index].open();
     mapMeta.selected = mapMeta.map[index];
+    playSound(sound['button'])
 };
 //
 let imageExternalLink = invokeNewImage(`images/extlink.png`);
@@ -8395,15 +8292,15 @@ let buttonExternalShiki = new ImageButtonShaped(shapeRectRounded, siteLogos[0], 
 buttonExternalDB.needshadow = false; buttonExternalMAL.needshadow = false; buttonExternalShiki.needshadow = false;
 buttonExternalDB.height = 0; buttonExternalMAL.height = 0; buttonExternalShiki.height = 0;
 buttonExternalDB.exturl = ''; buttonExternalMAL.exturl = ''; buttonExternalShiki.exturl = '';
-buttonExternalDB.onclick = () => {window.open(buttonExternalDB.exturl)};
-buttonExternalMAL.onclick = () => {window.open(buttonExternalMAL.exturl)};
-buttonExternalShiki.onclick = () => {window.open(buttonExternalShiki.exturl)};
+buttonExternalDB.onclick = () => {window.open(buttonExternalDB.exturl); playSound(sound['prompt'])};
+buttonExternalMAL.onclick = () => {window.open(buttonExternalMAL.exturl); playSound(sound['prompt'])};
+buttonExternalShiki.onclick = () => {window.open(buttonExternalShiki.exturl); playSound(sound['prompt'])};
 //
-let buttonMeetContinue = new TextButtonShaped(shapeRectRounded, `Продолжить`, new Vector2(), 
+let buttonMeetContinue = new TextButtonShaped(shapeRectRounded, txtMrth('meetContinue'), new Vector2(), 
     colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
     colorMapMatrix(`rgba(0,0,0,0)#rgba(48,180,180,0.5)#rgba(64,255,255,0.5)#rgba(200,200,47,0.1)`));
 buttonMeetContinue.needshadow = false; buttonMeetContinue.height = 0;
-buttonMeetContinue.onclick = () => {mapGetRect(mapMeta.pos).object.readstate = 'gettext'};
+buttonMeetContinue.onclick = () => {mapGetRect(mapMeta.pos).object.readstate = 'gettext'; playSound(sound['scroll'])};
 //
 let buttonMeetRoot1 = new TextButtonShaped(shapeRectRounded, `root1text`, new Vector2(), 
     colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
@@ -8437,10 +8334,33 @@ buttonsQuestionAnswer[1].onclick = () => {buttonsQuestionAnswer[0].insp.answer =
 buttonsQuestionAnswer[2].onclick = () => {buttonsQuestionAnswer[0].insp.answer = 2}; buttonsQuestionAnswer[2].height = 0; buttonsQuestionAnswer[2].needshadow = false;
 buttonsQuestionAnswer[3].onclick = () => {buttonsQuestionAnswer[0].insp.answer = 3}; buttonsQuestionAnswer[3].height = 0; buttonsQuestionAnswer[3].needshadow = false;
 //
-let buttonTeleportPlayer = new TextButtonShaped(shapeRectRounded, `Переместиться сюда`, new Vector2(), 
+let buttonTeleportPlayer = new TextButtonShaped(shapeRectRounded, txtMrth('tpPlayer'), new Vector2(), 
 colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
 colorMapMatrix(`rgba(48,48,180,0.3)#rgba(48,48,180,0.7)#rgba(64,64,255,0.9)#rgba(64,64,64,0.3)`));
 buttonTeleportPlayer.needshadow = false; buttonTeleportPlayer.height = 0; buttonTeleportPlayer.waitanim = false;
+//
+let buttonsMissionSelect = [
+    new TextButtonShaped(shapeRectRounded, `1`, new Vector2(), 
+    colorMapMatrix(`rgba(255,255,0,1)#rgba(255,255,0,1)#rgba(255,255,0,1)#rgba(255,255,0,0.8)`),
+    colorMapMatrix(`rgba(255,0,0,0.2)#rgba(255,0,0,0.8)#rgba(255,0,0,1)#rgba(64,64,64,0.3)`)),
+    new TextButtonShaped(shapeRectRounded, `2`, new Vector2(), 
+    colorMapMatrix(`rgba(255,255,0,1)#rgba(255,255,0,1)#rgba(255,255,0,1)#rgba(255,255,0,0.8)`),
+    colorMapMatrix(`rgba(255,0,0,0.2)#rgba(255,0,0,0.8#rgba(255,0,0,1)#rgba(64,64,64,0.3)`)),
+    new TextButtonShaped(shapeRectRounded, `3`, new Vector2(), 
+    colorMapMatrix(`rgba(255,255,0,1)#rgba(255,255,0,1)#rgba(255,255,0,1)#rgba(255,255,0,0.8)`),
+    colorMapMatrix(`rgba(255,0,0,0.2)#rgba(255,0,0,0.8)#rgba(255,0,0,1)#rgba(64,64,64,0.3)`)),
+];
+buttonsMissionSelect[0].onclick = () => {buttonsMissionOnclick(0)}; buttonsMissionSelect[0].height = 0; buttonsMissionSelect[0].needshadow = false;
+buttonsMissionSelect[1].onclick = () => {buttonsMissionOnclick(1)}; buttonsMissionSelect[1].height = 0; buttonsMissionSelect[1].needshadow = false;
+buttonsMissionSelect[2].onclick = () => {buttonsMissionOnclick(2)}; buttonsMissionSelect[2].height = 0; buttonsMissionSelect[2].needshadow = false;
+function buttonsMissionOnclick(i) {
+    var mission = buttonsMissionSelect[0].insp.pool[i];
+    mission.nobar = mission.nobar == 'yes' ? true : undefined;
+    missionAdd(mission);
+    buttonsMissionSelect[0].insp.state = 'pick';
+    buttonsMissionSelect[0].insp.mission = mission.name;
+    playSound(sound['button'])
+};
 //
 function debugSizeLine(pos, size) {
     ctx.beginPath();
@@ -8454,7 +8374,7 @@ function debugSizeLine(pos, size) {
 function getWatchPointCount(episodes=1, rating=7, watched=1, multiplier=1, type='tv') {
     var typemult = type == 'MOVIE' ? 4 : type != 'TV' ? 1.2 : 1;
     var mult = watched >= episodes ? 1.25 : watched >= episodes/2 ? 1.1 : watched > 0 ? 1 : 0;
-    return Math.round(watched * mult * (1 + (10 - rating)/20) * multiplier * typemult * mapMeta.permSeries)
+    return Math.round(watched * mult * (1 + (10 - rating)/20) * multiplier * typemult * mapMeta.permSeries * mapMeta.permPoints)
 };
 // MARKUP
 //
@@ -8464,36 +8384,36 @@ function inspDefHeader(pos, width, spacing, text) {
     fillTextFast(pos.sumxy(width/2, spacing), text)
 };
 function inspTextInput(statpos, width, spacing, container='', fsize) {
-    var [str, sizes] = textWidthFit(container, width-spacing*3, 10);
+    var [str, fit] = textWidthFit(container, width-spacing*3, 10); // add pointer
     var len = str.length > 3 ? str.length : 3;
-    var size = new Vector2(sizes.x, spacing + (sizes.y + fsize*0.5*_scaleDynamic) * len);
+    var sizey = spacing + (fit.y + fsize*0.5*_scaleDynamic) * len;
     var edit = String(container);
     ctx.fillStyle = '#00000077';
-    fillRectFast(new Vector2(width, size.y), statpos);
+    fillRectFast(new Vector2(width, sizey), statpos);
     ctx.fillStyle = '#ffffff';
-    fillTextArray(statpos.sumxy(spacing,  fsize*0.5*_scaleDynamic), [str,sizes], fsize*0.5*_scaleDynamic);
+    fillTextArray(statpos.sumxy(spacing,  fsize*0.5*_scaleDynamic), [str, fit], fsize*0.5*_scaleDynamic);
     //
     ctx.fillStyle = '#cccccc'; ctx.textAlign = 'start';
     scaleFont(12, 'Consolas');
-    if(mouse.pos.overAND(statpos) && mouse.pos.lessAND(statpos.sumxy(width, size.y))) {
+    if(mouse.pos.overAND(statpos) && mouse.pos.lessAND(statpos.sumxy(width, sizey))) {
         readKeyboardInput = true;
         edit = editTextInput(edit);
-        fillTextFast(statpos.sumxy(spacing, size.y+spacing), '[Delete] убрать слово, [Escape] удалить всё')
+        fillTextFast(statpos.sumxy(spacing, sizey+spacing), txtMrth('inputComm1'))
     } else {
-        fillTextFast(statpos.sumxy(spacing, size.y+spacing), '*наведите мышкой и вводите текст*')
+        fillTextFast(statpos.sumxy(spacing, sizey+spacing), txtMrth('inputComm2'))
     };
     //
-    return [edit, statpos.sumxy(0, size.y + spacing*2)]
+    return [edit, statpos.sumxy(0, sizey + spacing*2)]
 };
-function inspTextBlock(statpos, width, spacing, text, smax, fsize) {
+function inspTextBlock(statpos, width, spacing, text, smax, fsize, drawing=true) {
     var [str, vec] = textWidthFit(text, width - spacing, smax);
-    fillTextArray(statpos.sumxy(0, spacing/2), [str, vec], fsize*0.5*_scaleDynamic);
+    drawing ? fillTextArray(statpos.sumxy(0, spacing/2), [str, vec], fsize*0.5*_scaleDynamic):false;
     // debugSizeLine(statpos, new Vector2(width, spacing/2 + (fsize*0.5*_scaleDynamic + vec.y) * str.length));      // debug
     return statpos.sumxy(0, spacing + (fsize*0.5*_scaleDynamic + vec.y) * str.length);
 };
-function inspSingleString(statpos, width, spacing, text, fsize) {
+function inspSingleString(statpos, width, spacing, text, fsize, drawing=true) {
     var xoff = ctx.textAlign == 'start' ? 0 : ctx.textAlign == 'center' ? width/2 : width;
-    fillTextFast(statpos.sumxy(xoff, fsize*_scaleDynamic), textStringLimit(text, width-spacing));
+    drawing ? fillTextFast(statpos.sumxy(xoff, fsize*_scaleDynamic), textStringLimit(text, width-spacing)):false;
     // debugSizeLine(statpos, new Vector2(width, spacing + fsize*_scaleDynamic));       // debug
     return statpos.sumxy(0, spacing + fsize*_scaleDynamic)
 };
@@ -8508,41 +8428,134 @@ function inspWideButton(statpos, width, spacing, button) {
     button.pos.setv(statpos);
     button.size.setxy(width, 30*_scaleDynamic);
     button.draw();
-    return statpos.sumxy(0, spacing + 30*_scaleDynamic)
+    return statpos.sumxy(0, spacing + 25*_scaleDynamic)
 };
 function inspInventorySlot(statpos, width, spacing, item) {
     if(item === false) {
-        ctx.fillStyle = '#cccccc'; scaleFont(14, 'Segoe UI');
-        return inspSingleString(statpos, width, spacing, `[пусто]`, 14);
+        ctx.fillStyle = '#cccccc'; scaleFont(12, 'Segoe UI');
+        return inspSingleString(statpos, width, spacing, txtMrth('emptySlot'), 12);
     } else {
         // get name & count info
         var str = mrthStuff.items[item.tag].name;
         if(item.count !== undefined) {str += ` x${item.count}`};
         // draw
-        ctx.fillStyle = '#ffffff'; scaleFont(18, 'Segoe UI', 'bold');
-        var st = inspSingleString(statpos, width, spacing, str, 16).minxy(0, spacing);
-        ctx.fillStyle = '#cccccc'; scaleFont(14, 'Segoe UI');
-        st = inspTextBlock(st, width, spacing, mrthStuff.items[item.tag].desc, 3, 14);
+        ctx.fillStyle = '#ffff55'; scaleFont(18, 'Segoe UI');
+        var st = inspSingleString(statpos, width, spacing, str, 18).minxy(0, spacing);
+        ctx.fillStyle = '#cccccc'; scaleFont(12, 'Segoe UI');
+        st = inspTextBlock(st, width, spacing, mrthStuff.items[item.tag].desc, 3, 12);
         return st
     }
 };
 function inspAnimePositiveItem(statpos, width, spacing, itemtag, insp) {
-    var item = mrthGetItem(itemtag); buttonApplyItemList[itemtag].insp = insp;
+    var item = mrthGetItem(itemtag);
     // if player have item
     if(item !== false) {
-        // draw if item not already used
+        // update & draw if item not already used
         var used = false;
-        for(var i in insp.items) {if(insp.items[i] == item.tag) {used = true} };
-        if(!used) {return inspWideButton(statpos, width, spacing, buttonApplyItemList[itemtag])} 
-        else {return statpos}
+        for(var i in insp.items) {if(insp.items[i] == item.tag) {used = true}};
+        if(!used) {
+            buttonApplyItemList[itemtag].insp = insp;
+            return inspWideButton(statpos, width, spacing, buttonApplyItemList[itemtag])
+        } else {return statpos}
     }
     else {return statpos}
 };
 //
-// @EAG MARATHON RECT CLASSES
+function inspDoubleStringCentered(statpos, width, spacing, xalign, str1, str2, DSS) {
+    var fsize = defaultDSS.DSSsizeMax(DSS);
+    var center = width * xalign;
+    ctx.textAlign = 'end'; scaleFont(DSS.size[0], DSS.font[0], DSS.style[0]); ctx.fillStyle = DSS.color[0]; // prefix string
+    fillTextFast(statpos.sumxy(center-spacing, fsize*_scaleDynamic), textStringLimit(str1, center-spacing*2));
+    ctx.textAlign = 'start'; scaleFont(DSS.size[1], DSS.font[1], DSS.style[1]); ctx.fillStyle = DSS.color[1]; // suffix string
+    fillTextFast(statpos.sumxy(center+spacing, fsize*_scaleDynamic), textStringLimit(str2, (width-center)-spacing*2));
+    // debugSizeLine(statpos, new Vector2(width, spacing + fsize*_scaleDynamic));       // debug
+    return statpos.sumxy(0, spacing + fsize*_scaleDynamic)
+};
+let defaultDSS = { // DSS - double string styles
+    DSSsizeMax: (DDS) => {return DDS.size[0] > DDS.size[1] ? DDS.size[0] : DDS.size[1]},
+    multPoints: {size: [14, 16], font: ['Segoe UI', 'Consolas'], style: [false, 'bold'], color: ['#ffffff', '#ffff88']},
+    multExplore: {size: [14, 16], font: ['Segoe UI', 'Consolas'], style: [false, 'bold'], color: ['#ffffff', '#ff8888']},
+    multSeries: {size: [14, 16], font: ['Segoe UI', 'Consolas'], style: [false, 'bold'], color: ['#ffffff', '#88ff88']},
+    stats: {size: [14, 16], font: ['Segoe UI', 'Consolas'], style: [false, 'bold'], color: ['#ffffff', '#8888ff']},
+};
 //
-let mrthDiclaimer = `Этот режим находится в разработке, на данный момент он добавлен исключительно ради тестирования. Всё, что тут есть, может быть изменено, перемещено или вовсе удалено. Прогресс сохраняется автоматически, но из-за некоторых сложностей что-то да может пойти не так. Если Вы решили попробовать, не забывайте регулярно делать бекапы сохранения, сделать это можно здесь во вкладке настроек.`;
-let mrthIntro1 = `Добро пожаловать в "AYAYA Marathon"! Чтобы проходить марафон - нужно смотреть аниме и получать за это очки. За очки можно исследовать области карты или тратить их в различных событиях. В ходе исследований можно найти новые клетки с аниме, а так же клетки с разными событиями. В клетках событий можно получить больше очков или некоторые предметы. Предметы могут как помочь в исследованиях, так и "подсолить". Карту можно осматривать, зажимая мышкой и двигая, информацию о клетках можно узнать, кликнув по ним, передвигаться нужно стрелками на клавиатуре.`;
+function inspAnimeNegativeInfo(statpos, width, spacing) {
+    var poop = mrthGetItem('poop'); var salad = mrthGetItem('salad'); var order = mrthGetItem('order');
+    if(poop !== false || salad !== false || order !== false) {
+        ctx.fillStyle = '#f33';
+        statpos = inspSingleString(statpos, width, spacing, txtMrth('inspNegatives'), 14);
+        ctx.fillStyle = '#faa';
+        poop === false ? false : statpos = inspSingleString(statpos, width, spacing, mrthStuff.items['poop'].name, 14);
+        salad === false ? false : statpos = inspSingleString(statpos, width, spacing, mrthStuff.items['salad'].name, 14);
+        order === false ? false : statpos = inspSingleString(statpos, width, spacing, mrthStuff.items['order'].name, 14);
+    };
+    return statpos
+};
+function inspMissionsList(statpos, width, spacing, list=false) {
+    list = list !== false ? list : mapMeta.missions;
+    for(var m in list) {
+        ctx.textAlign = 'center';
+        if(m == 'daily') {continue}; // skip only in default missions
+        if(list[m] !== false) {
+            var prog = missionGetProgress(list[m]);
+            ctx.fillStyle = '#ffff55'; scaleFont(16, 'Segoe UI');
+            statpos = inspSingleString(statpos, width, spacing, `${list[m].name} (${prog[2]})`, 16).minxy(0, spacing); // name
+            ctx.fillStyle = '#cccccc'; scaleFont(12, 'Segoe UI');
+            statpos = inspTextBlock(statpos, width, spacing, commentPermanentEffect(list[m].reward), 2, 12); // reward info
+            if(list[m].nobar === undefined) {
+                // progress bar
+                var height = 13 * _scaleDynamic;
+                fillRectRounded(new Vector2(width*0.8, height), statpos.sumxy(width*0.1, 0), '#ff000044');
+                fillRectRounded(new Vector2(width*prog[0]*0.8, height), statpos.sumxy(width*0.1, 0), '#ff0000ff');
+                statpos = statpos.sumxy(0, height*0.85);
+                // progress text
+                ctx.fillStyle = '#ffff55'; scaleFont(12, 'Consolas');
+                fillTextFast(statpos.sumxy(width/2, 0), Math.round(prog[0]*1000)/10 + '%');
+                ctx.textAlign = 'end'; fillTextFast(statpos.sumxy(width*0.1-spacing, 0), prog[1]);
+                ctx.textAlign = 'start'; fillTextFast(statpos.sumxy(width*0.9+spacing, 0), prog[2]);
+                statpos = statpos.sumxy(0, spacing)
+            }
+        } else { // empty slot
+            if(m != 'd') {
+                ctx.fillStyle = '#cccccc'; scaleFont(12, 'Segoe UI');
+                statpos = inspSingleString(statpos, width, spacing, txtMrth('emptySlot'), 12);
+            } else {
+                ctx.fillStyle = '#cccccc'; scaleFont(12, 'Segoe UI');
+                statpos = inspSingleString(statpos, width, spacing, txtMrth('charDailyComplete'), 12);
+            }
+        }
+    };
+    return statpos
+};
+function inspThreeButtons(statpos, width, spacing, height, array) {
+    var w = (width - spacing*2)/3;
+    array[0].size = array[1].size = array[2].size = new Vector2(w, height*_scaleDynamic);
+    array[0].pos = statpos;                         array[0].draw();
+    array[1].pos = statpos.sumxy(w+spacing, 0);     array[1].draw();
+    array[2].pos = statpos.sumxy((w+spacing)*2, 0); array[2].draw();
+    return statpos.sumxy(0, spacing + array[0].size.y)
+};
+function inspAnimeWatched(statpos, width, spacing, animew, drawing=true) {
+    ctx.textAlign = 'center'; ctx.fillStyle = '#ffff00';
+    scaleFont(18, 'Segoe UI', 'bold');
+    // anime title, info, stats & review
+    statpos = inspTextBlock(statpos, width, spacing, animew.n, 2, 16, drawing);
+    scaleFont(14, 'Segoe UI'); ctx.fillStyle = '#ffffff';
+    statpos = inspSingleString(statpos, width, spacing, animew.p, 13, drawing);
+    statpos = inspSingleString(statpos, width, spacing, animew.y, 13, drawing);
+    if(animew.r.length > 0) {
+        ctx.textAlign = 'start';
+        statpos = inspSingleString(statpos, width, spacing, txtMrth('aniReview2'), 13, drawing).minxy(0, spacing);
+        scaleFont(12, 'Segoe UI');
+        statpos = inspTextBlock(statpos, width, spacing, animew.r, 11, 11, drawing)
+    };
+    // end
+    fillRect(new Vector2(width, 3*_scaleDynamic), statpos, '#ffffff');
+    statpos = statpos.sumxy(0, spacing/2 + 3*_scaleDynamic);
+    return statpos
+};
+//
+// @EAG MARATHON RECT CLASSES
 //
 class inspEmpty {
     constructor(pos) {
@@ -8561,17 +8574,17 @@ class inspEmpty {
             //
             scaleFont(12, 'Segoe UI');
             ctx.textAlign = 'start'; ctx.fillStyle = '#ff9999';
-            statpos = inspTextBlock(statpos, width, spacing, mrthDiclaimer, 20, 12).sumxy(0, spacing*2);
+            statpos = inspTextBlock(statpos, width, spacing, txtMrth('disclaimer'), 20, 12).sumxy(0, spacing*2);
             //
             scaleFont(14, 'Segoe UI'); ctx.fillStyle = '#ffffff';
-            statpos = inspTextBlock(statpos, width, spacing, mrthIntro1, 20, 14);
+            statpos = inspTextBlock(statpos, width, spacing, txtMrth('intro1'), 20, 14);
             return statpos.y
         } else {
-            inspDefHeader(pos, width, spacing, 'Пустая клетка');
+            inspDefHeader(pos, width, spacing, txtMrth('emptyName'));
             var statpos = pos.sumxy(0, spacing*3);
             // teleport button
-            if(!mapMeta.pos.condAND(this.pos) && !mapMeta.watching && !mapMeta.cutscene) {
-                buttonTeleportPlayer.onclick = () => {if(!mapMeta.watching && !mapMeta.cutscene) {mapMeta.pos = this.pos}};
+            if(!mapMeta.pos.condAND(this.pos) && !mapMeta.watching) { // cutscene checking in button for prevent blicking
+                buttonTeleportPlayer.onclick = () => {if(!mapMeta.watching && !mapMeta.cutscene) {mapMeta.pos = this.pos; playSound(sound['teleport'])}};
                 scaleFont(14, 'Segoe UI');
                 statpos = inspWideButton(statpos, width, spacing, buttonTeleportPlayer)
             }
@@ -8605,6 +8618,10 @@ class inspAnime {
         this.items = [];
         this.multiplier = 1;
         this.filters = {};
+        this.watchplus = 0;
+        // debuffs
+        this.quota = {};
+        this.reroll = 0;
     }
     collect(content='medium') {
         if(content == 'easy') {this.preset = _mrthpresetsEasy[Math.floor(Math.random() * (_mrthpresetsEasy.length - 0.001))]}
@@ -8616,7 +8633,7 @@ class inspAnime {
     update() {}
     inspector(pos, width, spacing) {
         // ui
-        inspDefHeader(pos, width, spacing, 'Просмотр аниме');
+        inspDefHeader(pos, width, spacing, txtMrth('aniName'));
         // preset info
         ctx.fillStyle = '#ffffff'; ctx.textAlign = 'start';
         scaleFont(14, 'Segoe UI');
@@ -8627,24 +8644,31 @@ class inspAnime {
         //
         if(this.state == 'roll') {
             ctx.fillStyle = `#cccccc`;
-            var sub = `[!] Чтобы начать прохождение клетки, прокрутите рулетку и узнайте тайтл, который нужно будет посмотреть. После получения тайтла вы не сможете перемещаться, пока не посмотрите аниме.`;
-            statpos = inspTextBlock(statpos, width, spacing, sub, 3, 14);
-            // button
+            statpos = inspTextBlock(statpos, width, spacing, txtMrth('aniDesc'), 3, 14);
+            // buttons & items & neg effects
             if(mapMeta.pos.condAND(this.pos)) {
                 ctx.textAlign = 'center';
                 buttonRollAnime.onclick = this.buttonRoll;
                 buttonRollAnime.insp = this;
-                buttonRollAnime.text = 'Крутить рулетку';
+                buttonRollAnime.text = txtMrth('rollAnime');
                 statpos = inspWideButton(statpos, width, spacing, buttonRollAnime).sumxy(0, spacing);
-                // positive items
-                statpos = inspAnimePositiveItem(statpos, width, spacing, 'glasses', this);
-                statpos = inspAnimePositiveItem(statpos, width, spacing, 'chocolate', this);
+                // positive items & handc
+                var handc = mrthGetItem('handcuffs');
+                if(handc === false) {
+                    statpos = inspAnimePositiveItem(statpos, width, spacing, 'glasses', this);
+                    statpos = inspAnimePositiveItem(statpos, width, spacing, 'chocolate', this);
+                    statpos = inspAnimePositiveItem(statpos, width, spacing, 'monitor', this);
+                } else {
+                    // handcuffs alert
+                    ctx.textAlign = 'center'; ctx.fillStyle = '#ffaaaa';
+                    statpos = inspTextBlock(statpos, width, spacing, txtMrth('aniHandcAlert'), 3, 14)
+                };
                 if(this.list.length == 0) { // recycler (aval if no watched anime)
                     var item = mrthGetItem('recycler');
                     if(item !== false) {
                         // calc recycle points & show
                         var recyclepoints = itemFunc.recyclerPoints(this.pos, this.preset);
-                        statpos = inspTextBlock(statpos, width, spacing, `Очки за утилизацию клетки: ${recyclepoints}. ВАЖНО: после утилизации клетка полностью удалится и ей больше нельзя будет воспользоваться.`, 3, 14);
+                        statpos = inspTextBlock(statpos, width, spacing, txtMrth('aniUtil1') + recyclepoints +  txtMrth('aniUtil2'), 3, 14);
                         // setup button
                         buttonApplyItemRecycler.insp = this;
                         buttonApplyItemRecycler.onclick = () => {
@@ -8661,28 +8685,20 @@ class inspAnime {
                 // info about marathon_key
                 var mkey = mrthGetItem('marathon_key');
                 if(mkey !== false) {
-                    statpos = inspTextBlock(statpos, width, spacing, 'У Вас есть предмет "Ключ от марафона" - перейдя к рулетке предмет израсходуется сам! Перед прокрутом рулетки кнопка экрана фильтрации не будет заблокирована, т.е. можно будет настроить фильтр и сгенерировать рулетку из такого аниме, из какого хотите.', 5, 14);  
+                    statpos = inspTextBlock(statpos, width, spacing, txtMrth('aniMkey'), 5, 14);  
                 };
                 // info about items
                 if(this.items.length > 0) {
-                    statpos = inspSingleString(statpos, width, spacing, 'Применённые предметы', 14);
+                    statpos = inspSingleString(statpos, width, spacing, txtMrth('aniItems'), 14);
                     ctx.fillStyle = '#afa';
                 };
                 for(var i in this.items) {
                     statpos = inspSingleString(statpos, width, spacing, mrthStuff.items[this.items[i]].name, 14)
                 };
                 // negative effects
-                var poop = mrthGetItem('poop'); var salad = mrthGetItem('salad');
-                if(poop !== false || salad !== false) {
-                    ctx.fillStyle = '#fff';
-                    statpos = inspSingleString(statpos, width, spacing, 'Негативные эффекты', 14);
-                    ctx.fillStyle = '#faa';
-                    poop === false ? false : statpos = inspSingleString(statpos, width, spacing, mrthStuff.items['poop'].name, 14);
-                    salad === false ? false : statpos = inspSingleString(statpos, width, spacing, mrthStuff.items['salad'].name, 14);
-                };
+                statpos = inspAnimeNegativeInfo(statpos, width, spacing);
             } else {
-                sub = `Встаньте на клетку, чтобы можно было взаимодействовать!`;
-                statpos = inspTextBlock(statpos, width, spacing, sub, 3, 14);
+                statpos = inspTextBlock(statpos, width, spacing, txtMrth('stepOnRect'), 3, 14);
             }
         //
         } else if(this.state == 'jikan_wait') {
@@ -8692,20 +8708,28 @@ class inspAnime {
             statpos = inspTextBlock(statpos, width, spacing, this.animedata.title, 2, 24);
             // waiting
             scaleFont(14, 'Segoe UI');
-            statpos = inspSingleString(statpos, width, spacing, `Загружаем данные об аниме...`);
+            statpos = inspSingleString(statpos, width, spacing, txtMrth('aniJikan'));
             this.pic.src = String(this.animedata.picture);
             this.pic.size = new Vector2();
             this.timeout += deltaTime/1000;
             //
             if(jikan._result != `wait`) {
-                this.rating = Number(jikan._result.data.score);
-                this.malid = Number(jikan._result.data.mal_id);
                 this.state = 'anime';
+                if(jikan._result != null && !jikan._error) {
+                    this.rating = Number(jikan._result.data.score); // read from JIKAN cause in jikan actual data about rating (и потому что магу, баля)
+                    this.malid = Number(jikan._result.data.mal_id);
+                } else {
+                    this.rating = this.animedata.score;
+                    this.malid = false;
+                    console.warn('Error with load data from jikan for marathon anime inspector!');
+                };
                 marathonSave() // save AFTER try to load data from jikan
             } else if(this.timeout > 8) { // wait for result 8 seconds
+                console.warn('Error with load data from jikan for marathon anime inspector!');
+                this.malid = false;
+                this.rating = this.animedata.score;
                 this.state = 'anime';
                 marathonSave();
-                console.warn('Error with load data from jikan for marathon anime inspector!')
             };
         //
         } else if(this.state == 'anime') {
@@ -8715,7 +8739,7 @@ class inspAnime {
             statpos = inspTextBlock(statpos, width, spacing, this.animedata.title, 2, 24);
             // anime info
             scaleFont(14, 'Segoe UI');
-            var str = `${this.animedata.episodes} эп. | ${this.rating} | ${txt(typesDataMap[this.animedata.type])} | ${this.animedata.status} | ${this.animedata.animeSeason.year} | ${txt(seasonsDataMap[this.animedata.animeSeason.season][1])}`;
+            var str = `${this.animedata.episodes} ep. | Rating ${this.rating} | ${txt(typesDataMap[this.animedata.type])} | ${this.animedata.status} | ${this.animedata.animeSeason.year} | ${txt(seasonsDataMap[this.animedata.animeSeason.season][1])}`;
             statpos = inspSingleString(statpos, width, spacing, str, 14);
             // external links
             buttonExternalShiki.sizedZoom(new Vector2(40*_scaleDynamic));
@@ -8738,62 +8762,68 @@ class inspAnime {
             statpos = statpos.sumxy(0, 40*_scaleDynamic);
             // dialog
             ctx.fillStyle = '#cccccc'; ctx.textAlign = 'start';
-            sub = `Можете приступать к просмотру! Потом вернитесь, поставьте оценку, напишите отзыв, отметьте кол-во просмотренных серий и сохраните результат. После Вы сможете продолжить исследование.`;
-            statpos = inspTextBlock(statpos, width, spacing, sub, 4, 14);
+            statpos = inspTextBlock(statpos, width, spacing, txtMrth('aniWatching'), 4, 14);
             // watched
             ctx.fillStyle = '#ffffff';
-            statpos = inspSingleString(statpos, width, spacing, `Просмотрено серий: ${Math.round(animeReviewWatched.point())} из ${this.animedata.episodes}`, 14);
+            statpos = inspSingleString(statpos, width, spacing, `${txtMrth('aniWatched')}: ${Math.round(animeReviewWatched.point())+this.watchplus} / ${this.animedata.episodes}`, 14);
             statpos = inspSelectBar(statpos, width, spacing, animeReviewWatched, this.animedata.episodes);
             // score
-            statpos = inspSingleString(statpos, width, spacing, 'Оценка: ' + Math.round(animeReviewScore.point()), 14);
+            statpos = inspSingleString(statpos, width, spacing, txtMrth('aniScore') + Math.round(animeReviewScore.point()), 14);
             statpos = inspSelectBar(statpos, width, spacing, animeReviewScore, 10);
             // review
-            statpos = inspSingleString(statpos, width, spacing, 'Отзыв (макс. 10 строк): ', 14);
+            statpos = inspSingleString(statpos, width, spacing, txtMrth('aniReview'), 14);
             scaleFont(12, 'Segoe UI');
             [this.review, statpos] = inspTextInput(statpos, width, spacing, this.review, 12);
-            // points
-            scaleFont(14, 'Segoe UI', 'bold'); ctx.fillStyle = `#ffb92e`;
-            this.points = getWatchPointCount(this.animedata.episodes, this.rating, this.watched, presetbase[this.preset].mult * this.multiplier, this.animedata.type);
+            // points & spoilers
+            scaleFont(14, 'Segoe UI', 'bold'); ctx.fillStyle = `#06a803`;
+            this.points = getWatchPointCount(this.animedata.episodes, this.rating, this.watched+this.watchplus, presetbase[this.preset].mult * this.multiplier, this.animedata.type);
             var pstr = this.watched > 0
-            ? `Кол-во очков за просмотр: ${this.points} (~${floatNumber(this.points / this.watched+1, 1)} за серию)`
-            : `Кол-во очков за просмотр: ${this.points}`;
+            ? `${txtMrth('aniWatchPoints')}: ${this.points} (~${floatNumber(this.points / (this.watched + this.watchplus), 1)} ${txtMrth('aniPointsEp')})`
+            : `${txtMrth('aniWatchPoints')}: ${this.points}`;
             statpos = inspSingleString(statpos, width, spacing, pstr, 14);
+            //
+            var spoilers = getSpoilerCount(this.watched + this.watchplus, this.animedata.type);
+            if(spoilers > 0) {statpos = inspSingleString(statpos, width, spacing, txtMrth('aniExplore') + spoilers, 14)};
+            // quota info
+            var quotaeps = Math.round(this.animedata.episodes * (mapMeta.permQuota/100) - 0.25); // 1.74 = 1, 1.75 = 2 (немного смещённое округление)
+            if(this.watched > 0 && this.watched + this.watchplus < quotaeps) {
+                ctx.fillStyle = `#fa7223`;
+                var qtext = txtMrth('aniQuota1') + quotaeps + txtMrth('aniQuota2') + commentPermanentEffect(this.quota);
+                statpos = inspTextBlock(statpos, width, spacing, qtext, 3, 14);
+            };
             // apply button
             ctx.textAlign = 'center';
-            buttonApplyWatch.insp = this; 
-            buttonApplyWatch.onact = this.buttonApply;
             if(this.watched > 0) {
+                buttonApplyWatch.insp = this; 
+                buttonApplyWatch.onact = this.buttonApply;
+                //
                 inspWideButton(statpos, width, spacing, buttonApplyWatch);
                 ctx.fillStyle = `#ffffff`;
-                statpos = inspSingleString(statpos.sumxy(0, spacing/2), width, spacing, 'Закончить просмотр', 14);
+                statpos = inspSingleString(statpos.sumxy(0, spacing/2), width, spacing, txtMrth('aniEnding'), 14);
             } else {
                 ctx.fillStyle = `#ff8888`;
-                statpos = inspSingleString(statpos.sumxy(0, spacing/2), width, spacing, 'Вы ещё ничего не посмотрели.', 14);
+                statpos = inspSingleString(statpos.sumxy(0, spacing/2), width, spacing, txtMrth('aniNotWatched'), 14);
             };
             // info about items
             scaleFont(14, 'Segoe UI');
             if(this.items.length > 0) {
-                statpos = inspSingleString(statpos.sumxy(0, spacing/2), width, spacing, 'Применённые предметы', 14);
+                ctx.fillStyle = `#ffffff`;
+                statpos = inspSingleString(statpos.sumxy(0, spacing/2), width, spacing, txtMrth('aniItems'), 14);
                 ctx.fillStyle = '#afa';
             };
             for(var i in this.items) {statpos = inspSingleString(statpos, width, spacing, mrthStuff.items[this.items[i]].name, 14)};
             // info about negative items
-            var poop = mrthGetItem('poop'); var salad = mrthGetItem('salad');
-            if(poop !== false || salad !== false) {
-                ctx.fillStyle = '#faa';
-                statpos = inspSingleString(statpos.sumxy(0, spacing/2), width, spacing, 'Действуют негативные эффекты', 14);
-                if(poop !== false) {statpos = inspSingleString(statpos, width, spacing, mrthStuff.items['poop'].name, 14)};
-                if(salad !== false) {statpos = inspSingleString(statpos, width, spacing, mrthStuff.items['salad'].name, 14)};
-            };
+            statpos = inspAnimeNegativeInfo(statpos, width, spacing);
             // reroll button
             ctx.textAlign = 'start'; ctx.fillStyle = '#cccccc';
             scaleFont(12, 'Segoe UI');
-            sub = `Если данное аниме сильно Вас отторгает, не удовлетворяет условиям пресета или Вы не можете найти способ нормально его посмотреть, то его можно реролльнуть, чтобы выбить другое аниме. Не увлекайтесь этой функцией - она только для крайних случаев (по задумке за реролл должен быть штраф, но него пока что нет). Применённые предметы после реролла не восстановятся - Вы их потеряете! Чтобы сделать реролл - зажмите красную кнопку снизу.`;
-            statpos = inspTextBlock(statpos, width, spacing, sub, 6, 12);
-            scaleFont(16, 'Segoe UI'); ctx.textAlign = 'center'; ctx.fillStyle = '#ffffff';
+            statpos = inspTextBlock(statpos, width, spacing, txtMrth('aniRerollDesc'), 6, 12);
             buttonRerollAnime.insp = this;
             buttonRerollAnime.onact = this.buttonRoll;
             statpos = inspWideButton(statpos, width, spacing, buttonRerollAnime);
+            // reroll info
+            scaleFont(14, 'Segoe UI', 'bold'); ctx.fillStyle = '#fa7223';
+            statpos = inspTextBlock(statpos, width, spacing, txtMrth('aniFine1') + this.reroll + txtMrth('aniFine2') + commentPermanentEffect(this.quota), 3, 14);
             // add some free space in bottom for easy-to-read
             statpos.y += 200 / _scaleDynamic;
         //
@@ -8807,7 +8837,7 @@ class inspAnime {
                 statpos = inspSingleString(statpos, width, spacing, this.history[i].p, 14);
                 statpos = inspSingleString(statpos, width, spacing, this.history[i].y, 14);
                 ctx.textAlign = 'start';
-                statpos = inspSingleString(statpos, width, spacing, `Отзыв:`, 14).minxy(0, spacing);
+                statpos = inspSingleString(statpos, width, spacing, txtMrth('aniReview2'), 14).minxy(0, spacing);
                 scaleFont(12, 'Segoe UI');
                 statpos = inspTextBlock(statpos, width, spacing, this.history[i].r, 11, 12);
                 // end
@@ -8818,9 +8848,10 @@ class inspAnime {
             var item = mrthGetItem('universal_key');
             if(mapMeta.pos.condAND(this.pos) && item !== false) {
                 ctx.textAlign = 'center'; scaleFont(14, 'Segoe UI');
-                buttonRollAnime.text = 'Использовать универсальный ключ';
+                buttonRollAnime.text = txtMrth('aniUseUkey');
                 buttonRollAnime.insp = this;
                 buttonRollAnime.onclick = () => {
+                    playSound(sound['player']);
                     mrthDeleteItem('universal_key');
                     buttonRollAnime.insp.state = 'roll';
                     buttonRollAnime.insp.completed = false;
@@ -8837,10 +8868,23 @@ class inspAnime {
         return statpos.y
     }
     buttonRoll() {
-        if(this.insp.state == 'anime') {
-            mapMeta.rerolls++;
+        //
+        if(this.insp.state == 'anime') { // удалять предметы пока не буду))))))
             this.insp.state = 'roll';
             mrthMeta.scroll.set(0);
+            // reroll FINE with JOKERS and ORDER
+            var joker = mrthGetItem('joker');
+            if(joker === false) {
+                mapMeta.rerolls++; // с жокером реролл не засчитывается
+                if(mapMeta.points >= this.insp.reroll && mrthGetItem('order') === false) {mapMeta.points -= this.insp.reroll}
+                else {applyPermanentEffect(this.insp.quota)}
+            } else {
+                mrthReduceItem(joker)
+            };
+            spartMrthBadIssue()
+        } else {
+            playSound(sound['player']);
+            spartWinnerDrop(mouse.pos, 5, 1.5);
         };
         this.insp.completed = false;
         // reset inspector objects
@@ -8848,7 +8892,10 @@ class inspAnime {
         animeReviewWatched.update(0, 1);
         buttonRerollAnime.progress = 0; buttonRerollAnime.operate = false;
         buttonApplyWatch.progress = 0; buttonApplyWatch.operate = false;
-        this.insp.points = this.insp.episodes = 0; this.insp.review = '';
+        this.insp.points = 0; this.insp.episodes = 0; this.insp.review = '';
+        // get quota debuff and reroll fine
+        this.insp.quota = getPermanentEffect(false);
+        this.insp.reroll = itemFunc.recyclerPoints(this.insp.pos, this.insp.preset);
         // block movement while screen animation
         mapMeta.cutscene = true;
         // reset roulette winner
@@ -8859,9 +8906,10 @@ class inspAnime {
         };
         // data for title info block
         tInfo.meta.usePreset = true;
-        presetSelected = this.insp.preset;
+        presetSelected = ''+this.insp.preset;
         tInfo.meta.object = presetbase[presetSelected];
         tInfo.meta.changes = 0;
+        lsSaveObject('tinfoMeta', tInfo.meta);
         // generate anime from preset modified by item filter addons
         filterPreset(presetbase[presetSelected]);
         for(var f in this.insp.filters) {filterDefault[f] = this.insp.filters[f]}; // modify filter by items
@@ -8874,11 +8922,14 @@ class inspAnime {
         animeArrayApply(getListFiltered(filterDefault));
     }
     buttonApply() {
+        spartTopClicks(imageMarathonLogo, 10);
+        setTimeout(() => {spartMrthGoodIssue(true)}, 500);
         // save anime to history
         buttonApplyWatch.insp.history.push({
+            index: +mapMeta.animes,
             n: ''+buttonApplyWatch.insp.animedata.title,
-            p: `${buttonApplyWatch.insp.animedata.episodes} эп. | ${buttonApplyWatch.insp.rating} | ${txt(typesDataMap[buttonApplyWatch.insp.animedata.type])} | ${buttonApplyWatch.insp.animedata.status} | ${buttonApplyWatch.insp.animedata.animeSeason.year} | ${txt(seasonsDataMap[buttonApplyWatch.insp.animedata.animeSeason.season][1])}`,
-            y: `Просмотрено серий: ${buttonApplyWatch.insp.watched} | Оценка: ${buttonApplyWatch.insp.score} | Получено очков: ${buttonApplyWatch.insp.points}`,
+            p: `${buttonApplyWatch.insp.animedata.episodes} ep. |  Rating ${buttonApplyWatch.insp.rating} | ${txt(typesDataMap[buttonApplyWatch.insp.animedata.type])} | ${buttonApplyWatch.insp.animedata.status} | ${buttonApplyWatch.insp.animedata.animeSeason.year} | ${txt(seasonsDataMap[buttonApplyWatch.insp.animedata.animeSeason.season][1])}`,
+            y: `${txtMrth('aniWatched')}: ${buttonApplyWatch.insp.watched} | ${txtMrth('aniScore')}${buttonApplyWatch.insp.score} | ${txtMrth('aniPointsGain')}: ${buttonApplyWatch.insp.points}`,
             r: ''+buttonApplyWatch.insp.review,
         });
         buttonApplyWatch.insp.review = ''; // delete already saved review into history.r
@@ -8891,18 +8942,27 @@ class inspAnime {
         mapMeta.total += buttonApplyWatch.insp.points;
         mapMeta.episodes += buttonApplyWatch.insp.watched;
         mapMeta.animes++;
+        // updating missions
+        if(buttonApplyWatch.insp.watched + buttonApplyWatch.insp.watchplus >= buttonApplyWatch.insp.animedata.episodes) {missionMoving('anime')};
         // deleting positive items from this rect
         buttonApplyWatch.insp.items = [];
         // deleting negative items
         if(mrthGetItem('poop') !== false) {mrthDeleteItem('poop')};
         if(mrthGetItem('salad') !== false) {mrthDeleteItem('salad')};
+        if(mrthGetItem('order') !== false) {mrthDeleteItem('order')};
+        //debuff by quota with JOKERS
+        if(buttonApplyWatch.insp.watched + buttonApplyWatch.insp.watchplus < Math.floor(buttonApplyWatch.insp.animedata.episodes * (mapMeta.permQuota/100))) {
+            var joker = mrthGetItem('joker');
+            if(joker === false) {applyPermanentEffect(buttonApplyWatch.insp.quota)} else {mrthReduceItem(joker)};
+        };
+        // IF FULLY WATCHED delete handcuffs (+1 for prevent huita ebana)
+        if(buttonApplyWatch.insp.watched + buttonApplyWatch.insp.watchplus + 1 >= buttonApplyWatch.insp.animedata.episodes) {
+            mrthReduceItem(mrthGetItem('handcuffs'))
+        };
         // checking map, if map do not have any anime rect - generating opened anime rect on random empty rect
         mapCheckAvalaibleAnimes();
         // rect spoiler cutscene
-        var spoiler = 0;
-        if(buttonApplyWatch.insp.watched >= 20) {spoiler = 3}
-        else if(buttonApplyWatch.insp.watched >= 11) {spoiler = 2}
-        else if(buttonApplyWatch.insp.watched >= 6 || (buttonApplyWatch.insp.watched >= 1 && buttonApplyWatch.insp.animedata.type == 'MOVIE')) {spoiler = 1}
+        var spoiler = getSpoilerCount(buttonApplyWatch.insp.watched, buttonApplyWatch.insp.animedata.type);
         if(spoiler > 0) {setTimeout(() => {mapMeta.cutscene = true; mapGenerateSpoilers(spoiler)}, 1500)};
         // save all
         marathonSave()
@@ -8934,31 +8994,33 @@ class inspQuestion {
         };
         this.reward = {type: '', content: '', default: 0};
         this.result = false;
+        this.comment = '';
         this.answer = false;
-        // идеи
-        // из какого аниме персонаж
     }
     collect(content='medium') {
         // set reward type
-        this.reward.type = ['point', 'item', 'spoiler'][Math.floor(Math.random() * 2.999)]; // @dev мб надо отбалансить пожоще)
-        // set default points reward, if inventory not have free space
-        this.reward.default = Math.floor(mrthGetExploreCost(this.pos) * (1 + Math.random()*2));
-        // set other reward content
-        if(this.reward.type == 'spoiler') {
-            var spoil = Math.random();
-            if(spoil > 0.5) {this.reward.content = 2} else {this.reward.content = 1}
+        this.reward.type = Math.random();
+        if(content == 'easy') {
+            if(this.reward.type <= 0.6) {this.reward.type = 'point'}
+            else if(this.reward.type > 0.6 && this.reward.type < 0.8) {this.reward.type = 'item'}
+            else {this.reward.type = 'spoiler'}
+        } else {
+            this.reward.type <= 0.7 ? this.reward.type = 'point' : this.reward.type = 'item'
         };
+        // set default points reward in coins, if inventory not have free space
+        this.reward.default = Math.floor(mrthGetExploreCost(this.pos) * (2 + Math.random()*2) * mapMeta.permPoints);
+        // set other reward content
+        if(this.reward.type == 'spoiler') {this.reward.content = Math.random() > 0.5 ? 2 : 1};
         if(this.reward.type == 'item') {this.reward.content = _itemsPositive[Math.floor(Math.random() * (_itemsPositive.length - 0.001))]};
     }
     update() {}
     inspector(pos, width, spacing) {
         // ui
-        inspDefHeader(pos, width, spacing, 'Вопрос на удачу');
+        inspDefHeader(pos, width, spacing, txtMrth('queName'));
         // quest info
         ctx.fillStyle = '#cccccc'; ctx.textAlign = 'start';
         scaleFont(14, 'Segoe UI');
-        var about = `Попытайте свою удачу в случайных вопросах и получите шанс получить что-то ценное в случае правильного ответа. Да-да, полагаться тут на свои знания в аниме не стоит - вопросы генерируются по разной информации о тысячах аниме и персонажей.`;
-        var statpos = inspTextBlock(pos.sumxy(0, spacing*2), width, spacing, about, 3, 14);
+        var statpos = inspTextBlock(pos.sumxy(0, spacing*2), width, spacing, txtMrth('queAbout'), 3, 14);
         // line && states
         fillRect(new Vector2(width, 3*_scaleDynamic), statpos, '#ffffff');
         statpos = statpos.sumxy(0, spacing/2 + 3*_scaleDynamic);
@@ -8967,8 +9029,9 @@ class inspQuestion {
             if(mapMeta.pos.condAND(this.pos)) {
                 ctx.textAlign = 'center';
                 buttonRollAnime.insp = this;
-                buttonRollAnime.text = 'Сгенерировать вопрос';
+                buttonRollAnime.text = txtMrth('queGenerate');
                 buttonRollAnime.onclick = () => {
+                    playSound(sound['player']);
                     // start jikan state, requesting question data & enable cutscene
                     buttonRollAnime.insp.state = 'jikan_top';
                     jikan.custom(`https://api.jikan.moe/v4/top/anime?page=${Math.floor(Math.random()*40)}&sfw=true`);
@@ -8976,18 +9039,18 @@ class inspQuestion {
                 };
                 statpos = inspWideButton(statpos, width, spacing, buttonRollAnime).sumxy(0, spacing);
             } else {
-                statpos = inspTextBlock(statpos, width, spacing, `Встаньте на клетку, чтобы можно было взаимодействовать!`, 3, 14);
+                statpos = inspTextBlock(statpos, width, spacing, txtMrth('stepOnRect'), 3, 14);
             };
             // draw reward info
             ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
-            statpos = inspSingleString(statpos, width, spacing, `Награда за правильный ответ`, 14);
+            statpos = inspSingleString(statpos, width, spacing, txtMrth('queInfo'), 14);
             scaleFont(20, 'Segoe UI', 'bold');
-            if(this.reward.type == 'point') {statpos = inspSingleString(statpos, width, spacing, `Монеты х${this.reward.default}`, 20)};
-            if(this.reward.type == 'spoiler'){statpos = inspSingleString(statpos, width, spacing, `Исследование клеток х${this.reward.content}`, 20)};
+            if(this.reward.type == 'point') {statpos = inspSingleString(statpos, width, spacing, txtMrth('queCoins') + this.reward.default, 20)};
+            if(this.reward.type == 'spoiler'){statpos = inspSingleString(statpos, width, spacing, txtMrth('queExplore') + this.reward.content, 20)};
             if(this.reward.type == 'item'){
                 statpos = inspSingleString(statpos, width, spacing, mrthStuff.items[this.reward.content].name, 20);
                 if(!mrthInventoryFreeSpace()) {ctx.fillStyle = '#ff5555'; scaleFont(14, 'Segoe UI');
-                    statpos = inspTextBlock(statpos, width, spacing, `В Вашем инвентаре нет места для нового предмета! Вместо предмета вы получите ${this.reward.default} монет.`, 4, 14);
+                    statpos = inspTextBlock(statpos, width, spacing, txtMrth('queNoItems') + this.reward.default, 4, 14);
                 }
             };
         //
@@ -8995,16 +9058,17 @@ class inspQuestion {
         } else if(this.state == 'jikan_top') {
             // top anime from 1000 (25 * 40 pages)
             if(jikan._result != 'wait') {
-                if(jikan._result == 'failed' || jikan._result == 'error') {this.state = 'start'};
+                if(jikan._result == 'failed' || jikan._result == 'error') {this.state = 'start'; return};
                 // parse animes, get random one and send request for chars
                 this.animes = JSON.parse(JSON.stringify(jikan._result));
+                // if(typeof this.animes != 'object') {this.state = 'start'; return}; // if request throw error in data
                 this.title = Math.floor(Math.random() * (this.animes.data.length - 0.001));
                 jikan.custom(`https://api.jikan.moe/v4/anime/${this.animes.data[this.title].mal_id}/characters`);
                 this.state = 'jikan_chars'
             };
         } else if(this.state == 'jikan_chars') {
             if(jikan._result != 'wait') {
-                if(jikan._result == 'failed' || jikan._result == 'error') {this.state = 'start'};
+                if(jikan._result == 'failed' || jikan._result == 'error') {this.state = 'start'; return};
                 this.characters = JSON.parse(JSON.stringify(jikan._result));
                 this.state = 'forming'
             }
@@ -9019,7 +9083,7 @@ class inspQuestion {
             // generate question
             //
             if(this.type == 'pic') {
-                this.content.quest = 'Какому аниме принадлежит этот постер?';
+                this.content.quest = txtMrth('queTypePic');
                 this.content.type = 'pic';
                 this.picture = new Image(); this.picture.timeo = 0;
                 this.picture.src = this.animes.data[this.title].images.webp.image_url;
@@ -9037,7 +9101,7 @@ class inspQuestion {
                 this.state = 'waitpic'
             //
             } else if(this.type == 'synop') {
-                this.content.quest = 'Какому аниме принадлежит это описание?';
+                this.content.quest = txtMrth('queTypeSynop');
                 this.content.type = 'text';
                 this.content.object = this.animes.data[this.title].synopsis;
                 this.content.answers = [];
@@ -9060,7 +9124,7 @@ class inspQuestion {
                     this.state = 'jikan_chars'
                 } else {
                     this.title = Math.floor(Math.random() * (this.characters.data.length - 0.001));
-                    this.content.quest = 'Как зовут этого персонажа?';
+                    this.content.quest = txtMrth('queTypeName');
                     this.content.type = 'pic';
                     this.picture = new Image(); this.picture.timeo = 0;
                     this.picture.src = this.characters.data[this.title].character.images.webp.image_url;
@@ -9085,7 +9149,7 @@ class inspQuestion {
                     this.state = 'jikan_chars'
                 } else {
                     var char = Math.floor(Math.random() * (this.characters.data.length - 0.001));
-                    this.content.quest = 'Из какого аниме этот персонаж?';
+                    this.content.quest = txtMrth('queTypeFrom');
                     this.content.type = 'pic';
                     this.picture = new Image(); this.picture.timeo = 0;
                     this.picture.src = this.characters.data[char].character.images.webp.image_url;
@@ -9106,12 +9170,12 @@ class inspQuestion {
         } else if(this.state == 'waitpic') {
             this.picture.timeo += deltaTime;
             if(this.picture.complete) {this.state = 'quest'};
-            if(this.picture.timeo > 10000) {this.state = 'start'} // timeout 10 sec & new request
+            if(this.picture.timeo > 10000) {this.state = 'start'; return} // timeout 10 sec & new request
         };
         // drawing waiting
         if(this.state != 'quest' && this.state != 'start' && this.state != 'end') {
             ctx.fillStyle = '#fff';
-            statpos = inspSingleString(statpos, width, spacing, 'Загружаем информацию и генерируем вопрос...', 14)
+            statpos = inspSingleString(statpos, width, spacing, txtMrth('queLoading'), 14)
         };
         //
         // draw question
@@ -9150,13 +9214,15 @@ class inspQuestion {
                 mapMeta.cutscene = false;
                 // give reward, if result is true
                 if(this.result) {
-                    if(this.reward.type == 'point') {mapMeta.points += this.reward.default};
-                    if(this.reward.type == 'spoiler') {setTimeout(() => {mapGenerateSpoilers(this.reward.content)}, 500);};
+                    if(this.reward.type == 'point') {mapMeta.points += this.reward.default; spartMrthGoodIssue(true)};
+                    if(this.reward.type == 'spoiler') {spartMrthGoodIssue(); setTimeout(() => {mapGenerateSpoilers(this.reward.content)}, 500);};
                     if(this.reward.type == 'item') {
-                        if(mrthInventoryFreeSpace()) {mrthInventoryAddItem(this.reward.content)}
-                        else {this.reward.type = 'point'; mapMeta.points += this.reward.default}
-                    }
-                };
+                        if(mrthInventoryFreeSpace()) {this.comment = mrthInventoryComment(mrthInventoryAddItem(this.reward.content)); spartMrthGoodIssue()}
+                        else {this.reward.type = 'point'; mapMeta.points += this.reward.default; spartMrthGoodIssue(true)}
+                    };
+                    // missions
+                    missionMoving('question')
+                } else {spartMrthBadIssue()}; // bad ending)))
                 marathonSave()
             }
         } else if(this.state == 'end') {
@@ -9164,20 +9230,26 @@ class inspQuestion {
             statpos.sumxy(0, spacing);
             if(this.result) {
                 ctx.fillStyle = '#4f4';
-                statpos = inspSingleString(statpos, width, spacing, 'Правильный ответ!', 14);
+                statpos = inspSingleString(statpos, width, spacing, txtMrth('queNihuya'), 14);
                 scaleFont(18, 'Segoe UI', 'bold');
                 statpos = inspTextBlock(statpos, width, spacing, this.content.answers[this.content.correct], 2, 18);
                 // draw reward info
-                ctx.fillStyle = '#ffffff'; scaleFont(14, 'Segoe UI');
-                statpos = inspSingleString(statpos, width, spacing, `Вы получаете:`, 14);
-                scaleFont(18, 'Segoe UI', 'bold');
-                if(this.reward.type == 'point') {statpos = inspSingleString(statpos, width, spacing, `Монеты х${this.reward.default}`, 18)};
-                if(this.reward.type == 'spoiler'){statpos = inspSingleString(statpos, width, spacing, `Исследование клеток х${this.reward.content}`, 18)};
-                if(this.reward.type == 'item'){statpos = inspSingleString(statpos, width, spacing, mrthStuff.items[this.reward.content].name, 18)};
+                if(this.reward.type != 'item') {
+                    ctx.fillStyle = '#ffffff'; scaleFont(14, 'Segoe UI');
+                    statpos = inspSingleString(statpos, width, spacing, txtMrth('queResult'), 14);
+                    scaleFont(18, 'Segoe UI', 'bold');
+                    if(this.reward.type == 'point') {statpos = inspSingleString(statpos, width, spacing, txtMrth('queCoins') + this.reward.default, 18)};
+                    if(this.reward.type == 'spoiler'){statpos = inspSingleString(statpos, width, spacing, txtMrth('queExplore') + this.reward.content, 18)};
+                } else {
+                    ctx.fillStyle = '#ffffff'; scaleFont(14, 'Segoe UI');
+                    statpos = inspSingleString(statpos, width, spacing, txtMrth('queResult'), 14);
+                    scaleFont(18, 'Segoe UI', 'bold');
+                    statpos = inspTextBlock(statpos, width, spacing, this.comment, 5, 18)
+                }
             } else {
                 ctx.fillStyle = '#f44';
-                statpos = inspSingleString(statpos, width, spacing, 'Неверно.', 14);
-                statpos = inspTextBlock(statpos, width, spacing, 'Правильным ответом было: ' + this.content.answers[this.content.correct], 2, 14)
+                statpos = inspSingleString(statpos, width, spacing, txtMrth('queEbanat'), 14);
+                statpos = inspTextBlock(statpos, width, spacing, txtMrth('queRightAnswer') + this.content.answers[this.content.correct], 2, 14)
             }
         }
         //
@@ -9203,6 +9275,7 @@ class inspMeeting {
         this.result = '';
         // string revealer
         this.string = '';
+        this.extra = false;
         this.strprog = 0;
         this.stringspeed = 70;
     }
@@ -9212,13 +9285,11 @@ class inspMeeting {
     update() {}
     inspector(pos, width, spacing) {
         // ui
-        inspDefHeader(pos, width, spacing, this.content == 'easy' ? 'Хорошая встреча' : 'Случайная встреча');
+        inspDefHeader(pos, width, spacing, this.content == 'easy' ? txtMrth('metHeadGood') : txtMrth('metHeadNorm'));
         // quest info
         ctx.fillStyle = '#cccccc'; ctx.textAlign = 'start';
         scaleFont(14, 'Segoe UI');
-        var about = this.content != 'easy' 
-        ? `Здесь можно поучавствовать во встречах со случайными странниками или исследовать интересные места. На каждом таком секторе есть что-то для Вас, остаётся только исследовать его и выяснить, это что-то хорошее или что-то плохое...`
-        : `Здесь можно поучавствовать во встречах на гарантированно хороших секторах. На каждом таком секторе есть что-то хорошее для Вас, остаётся только исследовать его и выяснить, что же это...`;
+        var about = this.content != 'easy' ? txtMrth('metAboutNorm') : txtMrth('metAboutGood');
         var statpos = inspTextBlock(pos.sumxy(0, spacing*2), width, spacing, about, 3, 14);
         // line && states
         fillRect(new Vector2(width, 3*_scaleDynamic), statpos, '#ffffff');
@@ -9229,8 +9300,9 @@ class inspMeeting {
             if(mapMeta.pos.condAND(this.pos)) {
                 ctx.textAlign = 'center';
                 buttonRollAnime.insp = this;
-                buttonRollAnime.text = 'Начать встречу';
+                buttonRollAnime.text = txtMrth('metStart');
                 buttonRollAnime.onclick = () => {
+                    playSound(sound['player']);
                     buttonRollAnime.insp.state = 'init';
                     // collect by content type
                     if(this.content == 'easy') {this.scenario = mrthMeetingsEasy[Math.floor(Math.random() * (mrthMeetingsEasy.length - 0.001))]}
@@ -9246,9 +9318,9 @@ class inspMeeting {
                 statpos = inspWideButton(statpos, width, spacing, buttonRollAnime).sumxy(0, spacing);
                 // info about black metka
                 ctx.fillStyle = '#ff5555';
-                if(mrthGetItem('black') !== false) {statpos = inspTextBlock(statpos, width, spacing, `Активен негативный эффект "Черная метка". Во время генерации встречи есть шанс 50% что вместо записанной заранее встречи будет плохая.`, 3, 14)}
+                if(mrthGetItem('black') !== false) {statpos = inspTextBlock(statpos, width, spacing, txtMrth('metBlack'), 3, 14)}
             } else {
-                statpos = inspTextBlock(statpos, width, spacing, `Встаньте на клетку, чтобы можно было взаимодействовать!`, 3, 14);
+                statpos = inspTextBlock(statpos, width, spacing, txtMrth('stepOnRect'), 3, 14);
             }
         } else if(this.state == 'init') {
             // load values from scenario
@@ -9280,10 +9352,14 @@ class inspMeeting {
                         buttonMeetRoot3.state = result[2] !== undefined ? result[2] ? `idle` : `unaval` : `idle`;
                     }
                 };
-                // checking end root & new root
+                // checking end root & new root, else getting text
                 if(this.root == 'end') {this.readstate = 'end'}
                 else if(this.readstate == 'newroot') {this.readstate = 'callback'} 
-                else {this.readstate = 'gettext'; this.textprog = 0}
+                else {
+                    this.readstate = 'gettext'; this.textprog = 0;
+                    // checking extrastring
+                    this.extra = sc[this.root].extrastring === undefined;
+                }
             //
             } else if(this.readstate == 'gettext') {
                 // check text
@@ -9294,12 +9370,19 @@ class inspMeeting {
                         this.strprog = 0;
                         this.story[this.story.length] = ['s', ''];
                         this.readstate = 'reveal';
+                    } else if(this.extra === false) {
+                        // if have callback for show string with interpolated values
+                        this.string = sc[this.root].extrastring(this);
+                        this.strprog = 0;
+                        this.extra = true;
+                        this.story[this.story.length] = ['sb', ''];
+                        this.readstate = 'reveal';
                     } else {
                         // do not have unreaded text, go to buttons
                         this.readstate = 'buttons';
                     }
                 } else {
-                    // do not have any text, end root
+                    // do not have any text -> end root
                     this.root = 'end';
                     this.readstate = 'callback';
                 }
@@ -9314,8 +9397,8 @@ class inspMeeting {
                     // text fully revealed, checking continue
                     this.story[this.story.length-1][1] = String(this.string);
                     this.textprog++;
-                    if(sc[this.root].text.length > this.textprog) {
-                        this.readstate = 'continue'; // if has more text, wait for continue button
+                    if(sc[this.root].text.length > this.textprog || this.extra === false) {
+                        this.readstate = 'continue'; // if has more text OR has extrastring, wait for continue button
                     } else {
                         this.readstate = 'buttons'; // if has no more text - buttons
                     }
@@ -9329,6 +9412,7 @@ class inspMeeting {
                     if(sc[this.root].choice[0] !== undefined) {
                         buttonMeetRoot1.text = String(sc[this.root].choice[0].name);
                         buttonMeetRoot1.onclick = () => {
+                            playSound(sound['button']);
                             mapGetRect(mapMeta.pos).object.readstate = 'callback';
                             mapGetRect(mapMeta.pos).object.story.push(['h', String(sc[this.root].choice[0].name)]);
                             mapGetRect(mapMeta.pos).object.root = String(sc[this.root].choice[0].root)
@@ -9337,6 +9421,7 @@ class inspMeeting {
                     if(sc[this.root].choice[1] !== undefined) {
                         buttonMeetRoot2.text = String(sc[this.root].choice[1].name);
                         buttonMeetRoot2.onclick = () => {
+                            playSound(sound['button']);
                             mapGetRect(mapMeta.pos).object.readstate = 'callback';
                             mapGetRect(mapMeta.pos).object.story.push(['h', String(sc[this.root].choice[1].name)]);
                             mapGetRect(mapMeta.pos).object.root = String(sc[this.root].choice[1].root)
@@ -9345,6 +9430,7 @@ class inspMeeting {
                     if(sc[this.root].choice[2] !== undefined) {
                         buttonMeetRoot3.text = String(sc[this.root].choice[2].name);
                         buttonMeetRoot3.onclick = () => {
+                            playSound(sound['button']);
                             mapGetRect(mapMeta.pos).object.readstate = 'callback';
                             mapGetRect(mapMeta.pos).object.story.push(['h', String(sc[this.root].choice[2].name)]);
                             mapGetRect(mapMeta.pos).object.root = String(sc[this.root].choice[2].root)
@@ -9355,7 +9441,7 @@ class inspMeeting {
                 }
             } else if(this.readstate == 'end') {
                 // add end string and close meeting, free player moving
-                this.story.push(['h', 'Встреча закончена.']);
+                this.story.push(['h', txtMrth('metEnded')]);
                 mapMeta.cutscene = false;
                 this.readstate = 'closed';
                 setTimeout(() => {
@@ -9363,6 +9449,7 @@ class inspMeeting {
                     this.completed = true;
                     this.state = 'ended';
                     this.story = [];
+                    missionMoving('meeting');
                     marathonSave()
                 }, 2000);
             };
@@ -9375,7 +9462,11 @@ class inspMeeting {
                 if(this.story[i][0] == 's') { // text blocks
                     scaleFont(14, 'Segoe UI'); ctx.fillStyle = `#dddddd`; ctx.textAlign = 'start';
                     statpos = inspTextBlock(statpos, width, spacing, this.story[i][1], 30, 14);
-                }
+                };
+                if(this.story[i][0] == 'sb') { // text blocks with extrastring
+                    scaleFont(14, 'Segoe UI', 'italic'); ctx.fillStyle = `#eeeeee`; ctx.textAlign = 'start';
+                    statpos = inspTextBlock(statpos, width, spacing, this.story[i][1], 30, 14);
+                };
             }
             // drawing continue button OR root buttons
             ctx.textAlign = 'center'; ctx.fillStyle = `#ffffff`; scaleFont(18, 'Segoe UI');
@@ -9387,12 +9478,12 @@ class inspMeeting {
                 sc[this.root].choice[2] !== undefined ? statpos = inspWideButton(statpos, width, spacing, buttonMeetRoot3) : false;
             };
             // add some free space in bottom for easy-to-read
-            statpos.y += 250 / _scaleDynamic;
+            statpos.y += 250 * _scaleDynamic;
         } else if(this.state == 'ended') {
             scaleFont(14, 'Segoe UI'); ctx.fillStyle = `#ffffff`; ctx.textAlign = 'center';
-            statpos = inspSingleString(statpos, width, spacing, `Встреча окончена`, 14);
+            statpos = inspSingleString(statpos, width, spacing, txtMrth('metEnded'), 14);
             scaleFont(20, 'Segoe UI', 'bold');
-            statpos = inspSingleString(statpos, width, spacing, this.result, 20);
+            statpos = inspTextBlock(statpos, width, spacing, this.result, 3, 20);
         }
         return statpos.y
     }
@@ -9409,25 +9500,31 @@ class inspTreasure {
         this.array = [];
         this.progress = 0;
         this.speed = new Vector1(2);
-        this.offset = 6;
+        this.offset = 9;
         this.winner = '';
+        this.comment = '';
+        this.positives = 0;
     }
     collect(content='medium') {
         this.content = content;
         // get array
-        var items = content == 'easy' ? _itemsPositive : _itemsAll;
+        var chance = content == 'easy' ? .8 : .55;
         for(let i = 0; i<25; i++) {
-            this.array[i] = items[Math.floor(Math.random() * (items.length - 0.001))]
+            if(Math.random() < chance) {
+                this.positives++;
+                this.array[i] = _itemsPositive[Math.floor(Math.random() * (_itemsPositive.length - 0.001))]
+            } else {
+                this.array[i] = _itemsNegative[Math.floor(Math.random() * (_itemsNegative.length - 0.001))]
+            }
         };
     }
     update() {}
     inspector(pos, width, spacing) {
-        inspDefHeader(pos, width, spacing, this.content == 'easy' ? 'Хорошее сокровище' : 'Случайное сокровище');
+        inspDefHeader(pos, width, spacing, this.content == 'easy' ? txtMrth('treHeadGood') : txtMrth('treHeadNorm'));
         // quest info
         ctx.fillStyle = '#cccccc'; ctx.textAlign = 'start';
         scaleFont(14, 'Segoe UI');
-        var about = this.content == 'easy' ? `Получите случайный предмет из списка хороших.` : `Получите случайный предмет из общего списка.` ;
-        var statpos = inspSingleString(pos.sumxy(0, spacing*2), width, spacing, about, 14);
+        var statpos = inspSingleString(pos.sumxy(0, spacing*2), width, spacing, txtMrth('treAboutNorm'), 14);
         // collect speed vector from save
         if(!(this.speed instanceof Vector1)) {this.speed = new Vector1(2)};
         // line && states
@@ -9438,8 +9535,13 @@ class inspTreasure {
         if(this.progress > this.array.length-1) {this.progress -= this.array.length};
         this.progress += this.speed.get() * (deltaTime/1000);
         if(this.state != 'winner') {
+            // chances
+            ctx.textAlign = 'center'; scaleFont(18, 'Segoe UI');
+            var chances = this.positives/this.array.length;
+            if(chances < 0.35) {ctx.fillStyle = '#f33'} else if(chances >= 0.35 && chances < 0.65) {ctx.fillStyle = '#ff3'} else {ctx.fillStyle = '#3f3'};
+            statpos = inspSingleString(statpos, width, spacing, txtMrth('treChances') + floatNumber(chances*100, 1) + '%', 14).sumxy(0, spacing*2);
             // draw roulette
-            scaleFont(20, 'Segoe UI'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffffff';
+            scaleFont(20, 'Segoe UI'); ctx.textBaseline = 'middle'; ctx.fillStyle = '#ffffff';
             for(let i = -this.offset; i<this.array.length+this.offset-1; i++) {
                 if(i < this.progress - this.offset) {continue};
                 if(i > this.progress + this.offset) {break};
@@ -9455,8 +9557,7 @@ class inspTreasure {
             //
             statpos = statpos.sumxy(0, (this.offset*2 + 1)*(20 * _scaleDynamic));
             ctx.textBaseline = 'alphabetic';
-        }
-        //
+        };
         if(this.state == 'idle') {
             // start button
             ctx.fillStyle = '#ffffff'; scaleFont(14, 'Segoe UI');
@@ -9465,29 +9566,38 @@ class inspTreasure {
                 if(mrthInventoryFreeSpace()) {
                     ctx.textAlign = 'center';
                     buttonRollAnime.insp = this;
-                    buttonRollAnime.text = 'Крутить список';
+                    buttonRollAnime.text = txtMrth('treStart');
                     buttonRollAnime.onclick = () => {
+                        playSound(sound['player']);
                         buttonRollAnime.insp.state = 'speed';
                         mapMeta.cutscene = true;
                         // apply black metka
-                        if(mrthGetItem('black') !== false) {
+                        if(black !== false) {
+                            this.positives = 0;
                             // 50% chance of rewrite 50% of items to bad items
-                            if(Math.random() > 0.5) {
+                            if(Math.random() >= 0.5) {
                                 for(let i = 0; i<25; i+=2) {
-                                    this.array[i] = _itemsNegative[Math.floor(Math.random() * (_itemsNegative.length - 0.001))]
+                                    if(Math.random() < 0.75) {
+                                        this.array[i] = _itemsNegative[Math.floor(Math.random() * (_itemsNegative.length - 0.001))]
+                                    } else {
+                                        this.positives++;
+                                        this.array[i] = _itemsPositive[Math.floor(Math.random() * (_itemsPositive.length - 0.001))]
+                                    }
                                 }
-                            }; mrthDeleteItem('black') // delete in any case
+                            };
+                            spartMrthBadIssue(); 
+                            mrthDeleteItem('black') // delete in any case
                         }
                     };
                     statpos = inspWideButton(statpos, width, spacing, buttonRollAnime).sumxy(0, spacing);
                     // info about metka
                     ctx.fillStyle = '#ff5555';
-                    if(mrthGetItem('black') !== false) {statpos = inspTextBlock(statpos, width, spacing, `Активен негативный эффект "Черная метка". В начале прокрута есть шанс 50% что половина записанных заранее предметов в рулетке будет переписана на плохие.`, 3, 14)}    
+                    if(black !== false) {statpos = inspTextBlock(statpos, width, spacing, txtMrth('treBlack'), 3, 14)}    
                 } else {
-                    statpos = inspTextBlock(statpos, width, spacing, `В Вашем инвентаре нет свободного места!`, 3, 14);
+                    statpos = inspTextBlock(statpos, width, spacing, txtMrth('treNoItems'), 3, 14);
                 }
             } else {
-                statpos = inspTextBlock(statpos, width, spacing, `Встаньте на клетку, чтобы можно было взаимодействовать!`, 3, 14);
+                statpos = inspTextBlock(statpos, width, spacing, txtMrth('stepOnRect'), 3, 14);
             }
         //
         } else if(this.state == 'speed') {
@@ -9501,26 +9611,90 @@ class inspTreasure {
                 this.winner = this.array[Math.round(this.progress)];
                 this.array = [];
                 //
+                if(mrthIsPositiveItem(this.winner)) {spartMrthGoodIssue()} else {spartMrthBadIssue()};
+                //
                 this.completed = true;
                 mapMeta.cutscene = false;
-                mrthInventoryAddItem(this.winner);
+                this.comment = mrthInventoryComment(mrthInventoryAddItem(this.winner));
                 // check permanent items (azart)
                 var item = mrthGetItem('azart');
-                if(item !== false) {mapMeta.points -= Math.round(mapMeta.points * 0.25); mrthDeleteItem('azart')};
-                // save
+                if(item !== false) {
+                    mapMeta.points -= Math.round(mapMeta.points * 0.25);
+                    mrthDeleteItem('azart');
+                    // this.comment = txtMrth('treLudoman');
+                };
+                // mission & save
+                missionMoving('treasure');
                 marathonSave()
             }
         //
         } else if(this.state == 'winner') {
-            ctx.fillStyle = '#ffffff'; scaleFont(14, 'Segoe UI'); ctx.textAlign = 'center';
-            statpos = inspSingleString(statpos, width, spacing, `Получен предмет:`, 14);
-            scaleFont(20, 'Segoe UI', 'bold');
-            statpos = inspSingleString(statpos, width, spacing, mrthStuff.items[this.winner].name, 20);
+            ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; scaleFont(18, 'Segoe UI', 'bold');
+            statpos = inspTextBlock(statpos, width, spacing, this.comment, 5, 18);
             // desc
             ctx.fillStyle = '#cccccc'; scaleFont(14, 'Segoe UI'); ctx.textAlign = 'start';
             statpos = inspTextBlock(statpos, width, spacing, mrthStuff.items[this.winner].desc, 5, 14)
         }
         return statpos.y
+    }
+};
+//
+class inspMission {
+    constructor(pos) {
+        this.pos = pos;
+        this.color = '#c400f588';
+        this.completed = false;
+        //
+        this.state = 'idle';
+        this.pool = [];
+        this.mission = '';
+    }
+    update() {}
+    collect(content) {
+        for(let i=0; i<3; i++) {
+            this.pool[i] = missionGenerateRandom();
+            if(this.pool[i].nobar !== undefined) {this.pool[i].nobar = 'yes'} else {this.pool[i].nobar = 'no'}
+        }
+    }
+    inspector(pos, width, spacing) {
+        inspDefHeader(pos, width, spacing, txtMrth('misName'));
+        // head
+        ctx.fillStyle = '#cccccc'; ctx.textAlign = 'start';
+        scaleFont(14, 'Segoe UI');
+        var statpos = inspTextBlock(pos.sumxy(0, spacing*2), width, spacing, txtMrth('misAbout'), 3, 14);
+        // line && states
+        fillRect(new Vector2(width, 3*_scaleDynamic), statpos, '#ffffff');
+        statpos = statpos.sumxy(0, spacing/2 + 3*_scaleDynamic);
+        // draw missions
+        if(this.state == 'idle' || this.state == 'pick') {
+            statpos = inspMissionsList(statpos, width, spacing, this.pool);
+            scaleFont(16, 'Segoe UI');
+            if(!mapMeta.pos.condAND(this.pos)) {
+                ctx.fillStyle = '#ff3333'; ctx.textAlign = 'center';
+                inspSingleString(statpos, width, spacing, txtMrth('stepOnRect'), 14);
+            } else if(missionHaveSlots()) {
+                ctx.textAlign = 'center'; ctx.fillStyle = '#ffffff';
+                statpos = inspSingleString(statpos.sumxy(0, spacing*2), width, spacing, txtMrth('misChoice'), 16);
+                // draw buttons
+                buttonsMissionSelect[0].insp = this;
+                statpos = inspThreeButtons(statpos, width, spacing, 24, buttonsMissionSelect);
+            } else {
+                ctx.fillStyle = '#ff3333'; ctx.textAlign = 'center';
+                inspSingleString(statpos, width, spacing, txtMrth('misMax'), 14);
+            };
+            // if mission picked
+            if(this.state == 'pick') {
+                this.completed = true;
+                this.pool = [];
+                this.state = 'end';
+                marathonSave() // save after picking mission
+            }
+        } else {
+            ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center';
+            statpos = inspSingleString(statpos, width, spacing, txtMrth('misChoiced'), 14);
+            ctx.fillStyle = '#ffff00'; scaleFont(18, 'Segoe UI', 'bold');
+            inspSingleString(statpos, width, spacing, this.mission, 18);
+        }
     }
 };
 //
@@ -9533,6 +9707,8 @@ let mrthMeta = {
     line: 3,
     //
     typesWeight: 0,
+    //
+    visuals: false, // false, 'half', 'full'
     //
     scroll: new Vector1(0),
     sensivity: 100,
@@ -9563,47 +9739,57 @@ let mapMeta = {
     //
     cutstate: 'none',
     spoilers: [],
-    //
+    // stats (some stats used for missions)
     points: 50,
     total: 0,
     animes: 0,
     episodes: 0,
     rerolls: 0,
+    explored: 0,
+    missCompleted: 0,
+    days: 0,
     // спермачи
     permPoints: 1, // монеты и очки
     permExplore: 3,   // исследования, будет уменьшаться
     permSeries: 10,  // очки и монеты за каждую серию
-    permQuota: 0, // выплата долгов ?????
+    permQuota: 50, // минималка серий (в процентах)
     //
     map: {},
     neighbors: {},
     //
     inventory: {"1": false, "2": false, "3": false, "4": false,},
     effects: {'1': false, '2': false,},
-    missions: {'1': false, '2': false,},
+    missions: {'1': false, '2': false, 'daily': false},
+    //
+    date: '',
+    startedAt: '',
 };
 //
 let mrthRectTypes = {
     // all
     'empty': {
-        weight: 90, // default 90
+        weight: 1000, // default 1000
         class: inspEmpty
     },
     'anime': {
-        weight: 3, // default 3
+        weight: 15, // default 15
         class: inspAnime
     },
     'quest': {
-        weight: 7, // default 7
+        weight: 50, // default 50
         class: inspQuestion
     },
     'meeting': {
-        weight: 6, // default 6
+        weight: 60, // default 60
         class: inspMeeting
     },
     'treasure': {
-        weight: 2, // default 2
+        weight: 10, // default 10
         class: inspTreasure
+    },
+    'mission': {
+        weight: 8, // default 8
+        class: inspMission
     },
 };
 //
@@ -9612,12 +9798,14 @@ let mrthBadgeWatched = invokeNewImage('images/watched.png');
 let mrthRectQuestion = invokeNewImage('images/questions.png');
 let mrthRectMeeting = invokeNewImage('images/meeting.png');
 let mrthRectTreasure = invokeNewImage('images/treasure.png');
+let mrthRectMission = invokeNewImage('images/mission.png');
 //
 let mrthTypedLogos = {
     'anime': mrthBadgeWatched,
     'quest': mrthRectQuestion,
     'meeting': mrthRectMeeting,
     'treasure': mrthRectTreasure,
+    'mission':mrthRectMission,
 };
 // rebalance
 let mrthRectRebalance = {};
@@ -9654,6 +9842,7 @@ class mrthRect {
             ctx.fillStyle = '#555555aa';
             fillRectFast(size.multxy(0.9), pos.sumv(size.multxy(0.05)));
             if(this.type != 'empty') {
+                _mrthDrawedLogos++;
                 ctx.globalAlpha = 0.4;
                 drawImageSized(mrthTypedLogos[this.type], pos.sumv(size.multxy(0.25)), size.multxy(0.5));
                 ctx.globalAlpha = 1;
@@ -9673,6 +9862,7 @@ class mrthRect {
             fillRectFast(size, pos);
             //
             if(this.type != 'empty') {
+                _mrthDrawedLogos++;
                 this.object.completed ? ctx.globalAlpha = 0.4 : false;
                 drawImageSized(mrthTypedLogos[this.type], pos.sumv(size.multxy(0.25)), size.multxy(0.5));
                 ctx.globalAlpha = 1;
@@ -9682,6 +9872,7 @@ class mrthRect {
     open(content='medium') {
         this.object = new mrthRectTypes[this.type].class(this.pos);
         this.object.collect(content);
+        spartMrthLogos(this); // visuals
         this.opened = true
     }
     color() {
@@ -9692,6 +9883,7 @@ class mrthRect {
 function mrthNewRect(pos, type=mrthRectTypeRandom()) {
     var r = new mrthRect(pos, type);
     r.object.explore = mrthGetExploreCost(pos);
+    mapMeta.explored++;
     return r
 };
 //
@@ -9711,6 +9903,7 @@ function mrthRectTypeRandom() {
 //
 function mapPosStringify(pos) {return `${pos.x},${pos.y}`};
 function mapPosParse(str) {var values = str.split(','); return new Vector2(values[0], values[1])};
+function mapRectCenter(rect) {return rect.pos.multxy(mrthMeta.rectSize+mrthMeta.rectSpacing).sumxy(mrthMeta.rectSize/2)};
 //
 function mapGetRect(pos) {
     var spos = mapPosStringify(pos);
@@ -9796,7 +9989,6 @@ function mapMovePlayer(movement) {
         // check exploration & pay
         var rect = mapGetRect(mapMeta.pos.sumv(movement));
         if(!rect.opened) {
-            mapMeta.overlayState = 'main';
             // using radar for exploration
             var radar = mrthGetItem('radar');
             if(radar !== false) {mrthReduceItem(radar)}
@@ -9816,8 +10008,12 @@ function mapMovePlayer(movement) {
             rect.open();
             opens = true;
             mapMeta.selected = rect;
-            mapOverlayMover(true)
-        };
+            if(rect.type != 'empty') {
+                mapMeta.overlayState = 'main'; 
+                mapOverlayMover(true);
+                playSound(sound['opener'], 0.9 + 0.2*Math.random())
+            } else {playSound(sound['steps'], 0.85 + 0.3*Math.random())}
+        } else {playSound(sound['steps'], 0.85 + 0.3*Math.random())};
         // update neighbors & selected
         mapMeta.neighbors = mapGetNeighbors(mapMeta.pos);
         // generate null map rects
@@ -9900,26 +10096,29 @@ function mapCutsceneUpdater() {
 };
 //
 function mapGenerateSpoilers(count) {
-    var c = count > 4 ? 4 : count; c = c < 1 ? 1 : c; //minmax [1;4]
+    var c = count > 4 ? 4 : count; c = c < 1 ? 1 : c; // minmax [1;4]
     // hide overlay & enable cutscene
     mapOverlayMover(false);
     mapMeta.cutscene = true;
     // setup spoilers
     mapMeta.spoilers = mapGetSpoilerRects(c);
-    // mapMeta.spoilers[0].type = 'anime'; // first - anime. if count > 3 = good preset
-    // c >= 3 ? mapMeta.spoilers[0].content = 'easy' : mapMeta.spoilers[0].content = 'medium';
-    // if(mapMeta.spoilers[1] !== undefined) {mapMeta.spoilers[1].type = 'quest'; mapMeta.spoilers[1].content = 'easy'};
-    // if(mapMeta.spoilers[2] !== undefined) {mapMeta.spoilers[2].type = 'meeting'; mapMeta.spoilers[2].content = 'easy'};
-    // if(mapMeta.spoilers[3] !== undefined) {mapMeta.spoilers[3].type = 'treasure'; mapMeta.spoilers[3].content = 'easy'};
     for(var s in mapMeta.spoilers) {
         var rand = Math.random();
-        if(rand <= 0.2) {mapMeta.spoilers[s].type = 'anime'; mapMeta.spoilers[s].content = 'easy'}
-        else if(rand >= 0.2 && rand < 0.5) {mapMeta.spoilers[s].type = 'quest'; mapMeta.spoilers[s].content = 'easy'}
-        else if(rand >= 0.5 && rand < 0.8) {mapMeta.spoilers[s].type = 'meeting'; mapMeta.spoilers[s].content = 'easy'}
-        else {mapMeta.spoilers[s].type = 'treasure'; mapMeta.spoilers[s].content = 'easy'};
+        var type = Math.random() > 0.6 ? 'medium' : 'easy'; // 40% chance of "easy" rect content type
+        if(rand <= 0.16) {mapMeta.spoilers[s].type = 'anime'; mapMeta.spoilers[s].content = type}
+        else if(rand >= 0.16 && rand < 0.32) {mapMeta.spoilers[s].type = 'mission'; mapMeta.spoilers[s].content = type}
+        else if(rand >= 0.32 && rand < 0.48) {mapMeta.spoilers[s].type = 'treasure'; mapMeta.spoilers[s].content = type}
+        else if(rand >= 0.48 && rand < 0.74) {mapMeta.spoilers[s].type = 'meeting'; mapMeta.spoilers[s].content = type}
+        else {mapMeta.spoilers[s].type = 'quest'; mapMeta.spoilers[s].content = type};
     };
     // start cutscene
     setTimeout(() => {mapMeta.cutstate = 'get'}, 500);
+};
+function getSpoilerCount(watched, type) {
+    if(watched >= 20) {return 3}
+    else if(watched >= 11) {return 2}
+    else if(watched >= 6 || (watched >= 1 && type == 'MOVIE')) {return 1}
+    else return 0
 };
 //
 function mapHaveUnusedRect(type) {
@@ -9954,23 +10153,20 @@ function mapCheckAvalaibleAnimes() {
 // @EAG MARATHON MISC
 //
 // @ TEST-NEED
-//      кнопки с внешними источниками могут ссылаться не на то аниме
+//      
 // @TODO
-//      звуки (блять)
-//      штрафы за реролл
-//      кнопка для удаления всего прогресса и кнопка для ручного сохранения
-//      сделать экспортер всей истории просмотров
-//      вкладка с историей - всеми действиями на карте
-//      перманентные множители для очков, серий и исследований
-// @TEST
-//      просмотр аниме должен удалять использованные предметы !!! (уже пофикшено???)
-//      дальше хардкор, чисто на радарах топаешь
+//
+// @TEST-RES
+//      
 // @ИДЕИ
-//      благие вести - положительный эффект после просмотра аниме. В клетке встреч даёт выбор встречи, например выбрать встречу где можно купить/продать итем
+//      добавить возможность в Вопросах сделать ставку и мб увеличить её, при неправильном проебать (мб реализовать это тока на хороших клетках вопросов)
+//      идея для геймплея - разбросать по карте пазлики и заставить их собирать (чтобы взять пазлик нужно отдать монеты/предмет/эффект)
+//      сделать экспортер всей истории просмотров
+//      придумать 1-2 негативных предмета, ухудшающих значения пермачей сразу, или в каком-то случае
+//      перм переменная - удача. Например, эсли удача 10%, то хороших предметов в рулетке будет на 10% больше
 //      клетка с интерактивом
 //      клетка с аниме списками
 //      а нужно ли давать возможность удалять предметы из инвентаря ????
-//      перечень активных предметов и эффектов снизу в области карты, с подсказками
 //      клетки-стены, которые нельзя пересечь без некоторых предметов
 //      предметы взаимодействия с картой, по типу "телепортации", "исследования 24 соседних клеток",
 //      размещаемые предметы/объекты на пустых клетках
@@ -9986,7 +10182,8 @@ mapMeta.map = { // set default starter map
 // open start rect, open easy anime rect, add intro flag & save all as default
 mapMeta.map['0,0'].open(); mapMeta.map['0,1'].open('easy');
 mapMeta.map['0,0'].object.intro = true;
-let mapMetaDefault = marathonSave(true);
+let mapMetaDefault = JSON.stringify(marathonSave(true));
+mrthMeta.visuals = 'full'; // add visuals after setup default map
 // save & load functions
 function marathonSave(copied=false) {
     var copy = mapMeta;
@@ -10043,7 +10240,7 @@ function marathonLoad(from=false) {
             if(copy[r]._datatype_ == `Vector1`) {copy[r] = new Vector1(copy[r].value)};
             if(copy[r]._datatype_ == `Vector2`) {copy[r] = new Vector2(copy[r].x, copy[r].y)};
         };
-        // resets the overlay && selected with random rect object class !!!
+        // resets the overlay && selected contains random rect object class !!!
         copy.selected = null;
         copy.overlay = false;
         copy.overlayOffset = new Vector1(-600);
@@ -10054,22 +10251,27 @@ function marathonLoad(from=false) {
 };
 // try to load saved map meta
 marathonLoad();
+// update daily mission
+missionDaily();
+// if not started - set date
+if(!mapMeta.started) {mapMeta.started = true; mapMeta.startedAt = (new Date()).toLocaleDateString()};
 //
 function marathonEnd() {
     if(activeScreen == screenMarathonMap) {
         fileManager.downloadJSON('ayaya_marathon', marathonSave(true));
-        requestScreen(screenRoulette);
+        requestScreen(screenRoulette, false);
         setTimeout(() => {
-            marathonLoad(mapMetaDefault);
-            // mapMeta = JSON.parse(mapMetaDefault);
+            marathonLoad(JSON.parse(mapMetaDefault));
             marathonSave();
-        }, tss.fulltime * 1000);
+        }, tss.fulltime * 1100);
     }
 };
-function marathonDeleteForce() {
-    // mapMeta = JSON.parse(mapMetaDefault);
-    marathonLoad(mapMetaDefault);
-    marathonSave();
+function marathonDeleteForce(backscreen=true) {
+    if(backscreen) {requestScreen(screenRoulette, false)};
+    setTimeout(() => {
+        marathonLoad(JSON.parse(mapMetaDefault));
+        marathonSave();
+    }, tss.fulltime * 1100);
 };
 //
 function mapEaseScroll(time=0.25, rectpos=mapMeta.pos, cuts=false) {
@@ -10137,6 +10339,7 @@ function mapSelectRect(rect) {
         mapMeta.scroll.movev(p, 0.25, easeOutCirc);
         // set selected
         mapMeta.selected = rect;
+        playSound(sound['insp'], 0.8 + 0.4*Math.random())
         mapOverlayMover(true)
     }
 };
@@ -10164,19 +10367,22 @@ function drawMarathonHeader() {
     pointer.x -= drawStatsBadge(pointer, unit, mrthBadgeWatched, mapMeta.episodes, '#44ff4466', '#ccffcc');
     pointer.x -= drawStatsBadge(pointer, unit, mrthBadgeCoins, mapMeta.points, '#ffff4466', '#ffffcc');
     // buttons
-    pointer.setxy((fullsize.x - musicLite.size.x)/4 - (2*unit + h*0.15), h*0.1); // draw to center of free space of header from left to musicLite
+    pointer.setxy((fullsize.x - musicLite.size.x)/4 - (2.5*unit + h*0.2), h*0.1); // draw to center of free space of header from left to musicLite
     buttonInspectorBack.pos.setv(pointer); pointer.x += unit + h*0.1;
     buttonInspectorMain.pos.setv(pointer); pointer.x += unit + h*0.1;
     buttonInspectorInventory.pos.setv(pointer); pointer.x += unit + h*0.1;
+    buttonInspectorStats.pos.setv(pointer); pointer.x += unit + h*0.1;
     buttonInspectorPref.pos.setv(pointer);
     var bsize = new Vector2(unit);
     buttonInspectorBack.sizedZoom(bsize); buttonInspectorBack.draw();
     buttonInspectorMain.sizedZoom(bsize); buttonInspectorMain.draw();
     buttonInspectorInventory.sizedZoom(bsize); buttonInspectorInventory.draw();
+    buttonInspectorStats.sizedZoom(bsize); buttonInspectorStats.draw();
     buttonInspectorPref.sizedZoom(bsize); buttonInspectorPref.draw();
 };
 // inpector head buttons
 let marathonInventoryLogo = invokeNewImage(`images/inventory.png`);
+let marathonStatsLogo = invokeNewImage(`images/stats.png`);
 //
 let buttonInspectorBack = new ImageButtonShaped(shapeRectRounded, filterImageBackward, new Vector2(4),
     colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.3)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
@@ -10184,19 +10390,23 @@ let buttonInspectorMain = new ImageButtonShaped(shapeRectRounded, filterImageArr
     colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.3)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
 let buttonInspectorInventory = new ImageButtonShaped(shapeRectRounded, marathonInventoryLogo, new Vector2(4),
     colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.3)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
+let buttonInspectorStats = new ImageButtonShaped(shapeRectRounded, marathonStatsLogo, new Vector2(4),
+    colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.3)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
 let buttonInspectorPref = new ImageButtonShaped(shapeRectRounded, imagePrefMenu, new Vector2(4),
     colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.3)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
-buttonInspectorBack.waitanim = false;       buttonInspectorBack.height = 0;
-buttonInspectorMain.waitanim = false;       buttonInspectorMain.height = 0;
-buttonInspectorInventory.waitanim = false;  buttonInspectorInventory.height = 0;
-buttonInspectorPref.waitanim = false;       buttonInspectorPref.height = 0;
+buttonInspectorBack.waitanim = false;       buttonInspectorBack.height = 4;
+buttonInspectorMain.waitanim = false;       buttonInspectorMain.height = 4;
+buttonInspectorInventory.waitanim = false;  buttonInspectorInventory.height = 4;
+buttonInspectorStats.waitanim = false;      buttonInspectorStats.height = 4;
+buttonInspectorPref.waitanim = false;       buttonInspectorPref.height = 4;
 //
-buttonInspectorBack.onclick = () => {requestScreen(screenRoulette)};
+buttonInspectorBack.onclick = () => {requestScreen(screenRoulette, false); playSound(sound['player']);};
 buttonInspectorMain.onclick = () => {
     if(!mapMeta.cutscene) {
         mrthMeta.scroll.set(0);
-        if(mapMeta.selected == null) {mapSelectRect(mapGetRect(mapMeta.pos))} 
+        if(mapMeta.selected == null) {mapSelectRect(mapGetRect(mapMeta.pos)); playSound(sound['button'])} 
         else {mapSelectRect(mapMeta.selected)};
+        if(mapMeta.overlayState != 'main') {playSound(sound['button'])};
         mapMeta.overlayState = 'main'
     }
 };
@@ -10204,6 +10414,7 @@ buttonInspectorInventory.onclick = () => {
     if(!mapMeta.cutscene) {
         mrthMeta.scroll.set(0);
         if(mapMeta.overlayState != 'inv') {
+            playSound(sound['button']);
             if(!mapMeta.overlay) {mapOverlayMover(true)};
             mapMeta.overlayState = 'inv'
         }
@@ -10213,25 +10424,40 @@ buttonInspectorPref.onclick = () => {
     if(!mapMeta.cutscene) {
         mrthMeta.scroll.set(0);
         if(mapMeta.overlayState != 'pref') {
+            playSound(sound['button']);
             if(!mapMeta.overlay) {mapOverlayMover(true)};
             mapMeta.overlayState = 'pref'
         }
     }
 };
+buttonInspectorStats.onclick = () => {
+    if(!mapMeta.cutscene) {
+        mrthMeta.scroll.set(0);
+        if(mapMeta.overlayState != 'stats') {
+            playSound(sound['button']);
+            if(!mapMeta.overlay) {mapOverlayMover(true)};
+            mapMeta.overlayState = 'stats';
+            // collect watched anime data
+            marcsWatched();
+        }
+    }
+};
 // pref buttons
-let buttonMrthDownloadBackup = new TextButtonShaped(shapeRectRounded, `Скачать сохранение [JSON]`, new Vector2(),
+let buttonMrthDownloadBackup = new TextButtonShaped(shapeRectRounded, txtMrth('prefJSONdown'), new Vector2(),
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
     colorMapMatrix(`rgba(128,128,32,1)#rgba(180,180,48,1)#rgba(255,255,64,1)#rgba(200,200,47,0.1)`));
-let buttonMrthUploadBackup = new TextButtonShaped(shapeRectRounded, `Загрузить сохранение [JSON]`, new Vector2(),
+let buttonMrthUploadBackup = new TextButtonShaped(shapeRectRounded, txtMrth('prefJSONup'), new Vector2(),
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
     colorMapMatrix(`rgba(128,128,32,1)#rgba(180,180,48,1)#rgba(255,255,64,1)#rgba(200,200,47,0.1)`));
 buttonMrthDownloadBackup.waitanim = false; buttonMrthUploadBackup.waitanim = false;
 buttonMrthDownloadBackup.height = 0; buttonMrthUploadBackup.height = 0;
 //
 buttonMrthDownloadBackup.onclick = () => {
-    fileManager.downloadJSON('marathon_backup', marathonSave(true))
+    fileManager.downloadJSON('marathon_backup', marathonSave(true));
+    playSound(sound['button']);
 };
 buttonMrthUploadBackup.onclick = () => {
+    playSound(sound['button']);
     fileManager.uploadJSON();
     fileManager.onupload = () => {
         var file = JSON.parse(JSON.stringify(fileManager.result));
@@ -10239,7 +10465,7 @@ buttonMrthUploadBackup.onclick = () => {
         if(file.map === undefined) {return};
         if(file.map['0,0'] === undefined) {return};
         // load from file
-        requestScreen(screenRoulette);
+        requestScreen(screenRoulette, false);
         buttonOpenMarathon.state = 'unaval';
         setTimeout(() => {
             marathonLoad(file);
@@ -10247,6 +10473,11 @@ buttonMrthUploadBackup.onclick = () => {
         }, tss.fulltime * 2000);
     }
 };
+//
+let buttonMrthResetAll = new ShapedHoldButton(shapeRectRounded, new Vector2(),
+    colorMapMatrix(`rgba(128,32,32,1)#rgba(180,48,48,1)#rgba(255,64,64,1)#rgba(200,200,47,0.1)`));
+buttonMrthResetAll.needshadow = false; buttonMrthResetAll.height = 0;
+buttonMrthResetAll.onact = () => {marathonDeleteForce(); setTimeout(() => {buttonMrthResetAll.unblock()}, 5000)};
 //
 function getAllWatchedAnime() {
     var all = [];
@@ -10266,14 +10497,37 @@ function getAllWatchedAnime() {
     };
     return all
 }
+// statistics
+let mrthStats = {
+    // watch finder
+    watched: [],
+};
+function marcsWatched() {
+    mrthStats.watched = [];
+    // collect
+    for(var m in mapMeta.map) {
+        if(mapMeta.map[m].type == 'anime' && mapMeta.map[m].opened) {
+            if(mapMeta.map[m].object.history.length > 0) {
+                mrthStats.watched = mrthStats.watched.concat(mapMeta.map[m].object.history)
+            }
+        }
+    };
+    // sort by index
+    mrthStats.watched.sort((a,b) => {return a.index - b.index})
+};
 //
 // @EAG SCREEN MARATHON
 //
-let _drawedRects = 0;
+let _mrthAllRects = 0;
+let _mrthDrawedRects = 0;
+let _mrthDrawedLogos = 0;
+let _mrthDrawedHistory = 0;
+//
 function screenMarathonMap() {
     // update & bg
     mapMeta.scroll.update();
     mapMeta.zoom.update();
+    srv.hideProgress.update(); // update this for show delayed musicBar.show task
     ctx.fillStyle = `rgba(0,0,15,${pref.bgalpha})`;
     fillRectFast(fullsize, new Vector2());
     // scaling
@@ -10318,8 +10572,11 @@ function screenMarathonMap() {
     };
     var scroll = mapMeta.scroll.get().sumv(anchor.multxy(0.5, 1));
     // draw all map
-    _drawedRects = 0;
+    _mrthDrawedRects = 0;
+    _mrthDrawedLogos = 0;
+    _mrthAllRects = 0;
     for(var i in mapMeta.map) {
+        _mrthAllRects++;
         // relative
         var pos = mapMeta.map[i].pos.multv(rectSpacing).sumv(scroll); // pos on screen
         var selected = mapMeta.selected == null ? false : mapMeta.map[i].pos.condAND(mapMeta.selected.pos); // false if no select OR if not selected
@@ -10331,7 +10588,7 @@ function screenMarathonMap() {
         };
         // if rect in window
         if(pos.overAND(rectSize.multxy(-1)) && pos.lessAND(fullsize)) {
-            _drawedRects++;
+            _mrthDrawedRects++;
             // if mouse on map
             if(mouse.pos.overAND(anchor) && !mapMeta.cutscene) {
                 // if hovered
@@ -10362,16 +10619,23 @@ function screenMarathonMap() {
             };
         }
     };
+    // visuals
+    visual.mrthLayer(scroll, zoom, zoom);
     // player
     mapMeta.player.update();
     drawImageSized(mapCurrentLocationLogo, mapMeta.player, player);
     // overlay background
-    ctx.fillStyle = `#000016aa`;
+    ctx.fillStyle = `#000016bb`;
     fillRectFast(new Vector2(fullsize.x, anchor.y), new Vector2()); // overlay header
+    // draw debug
+    ctx.fillStyle = '#ffffffaa'; ctx.textAlign = 'start'; scaleFont(14, 'Consolas');
+    fillTextFast(anchor.sumxy(5, 15), `A ${_mrthAllRects} DR ${_mrthDrawedRects} DL ${_mrthDrawedLogos}`);
+    fillTextFast(anchor.sumxy(5, 30), `P ${visual.counters.mrth}/${visual.mrth.length}`);
     // inspector draw
     if(mapMeta.overlay) {
         clipCanvas(new Vector2(anchor.x, fullsize.x-anchor.y), new Vector2(0, anchor.y));
         // inspector bg
+        ctx.fillStyle = `#000016bb`;
         fillRectFast(new Vector2(anchor.x, fullsize.x-anchor.y), new Vector2(0, anchor.y));
         var width = mapMeta.overlaySizing.x * _scaleDynamic - spacing*2;
         // if mouse in inspector
@@ -10398,8 +10662,9 @@ function screenMarathonMap() {
             mrthMeta.height += mapMeta.selected.object.inspector(inspPos, width, spacing)
         //
         } else if(mapMeta.overlayState == 'inv') {
-            inspDefHeader(inspPos, width, spacing, 'Предметы');
-            var statpos = inspPos.sumxy(0, spacing*3);
+            // items header
+            inspDefHeader(inspPos, width, spacing, txtMrth('charItems'));
+            var statpos = inspPos.sumxy(0, spacing*2);
             // draw positive
             scaleFont(16, 'Segoe UI'); 
             for(var i in mapMeta.inventory) {
@@ -10407,24 +10672,82 @@ function screenMarathonMap() {
             };
             // negative header
             ctx.fillStyle = '#ffffff';
-            inspDefHeader(statpos.sumxy(0, spacing*2), width, spacing, 'Негативные эффекты');
-            statpos = statpos.sumxy(0, spacing*5);
+            inspDefHeader(statpos.sumxy(0, spacing*2), width, spacing, txtMrth('charNegs'));
+            statpos = statpos.sumxy(0, spacing*4);
             // negatives
             scaleFont(16, 'Segoe UI'); 
             for(var i in mapMeta.effects) {
                 statpos = inspInventorySlot(statpos, width, spacing, mapMeta.effects[i])
             };
-            mrthMeta.height += statpos.y;
+            // missions
+            missionProcessor(); // здесь, чтобы миссии обновлялись ток в этой вкладке
+            ctx.fillStyle = '#ffffff';
+            // daily
+            inspDefHeader(statpos.sumxy(0, spacing*2), width, spacing, txtMrth('charMissionDaily'));
+            statpos = statpos.sumxy(0, spacing*4);
+            statpos = inspMissionsList(statpos, width, spacing, {'d': mapMeta.missions.daily});
+            // picked
+            inspDefHeader(statpos.sumxy(0, spacing*2), width, spacing, txtMrth('charMissions'));
+            statpos = statpos.sumxy(0, spacing*4);
+            statpos = inspMissionsList(statpos, width, spacing);
+            // end
+            mrthMeta.height += statpos.y + 150*_scaleDynamic; //for easy-to-read
+        //
+        } else if(mapMeta.overlayState == 'stats') {
+            inspDefHeader(inspPos, width, spacing, txtMrth('charPerms'));
+            var statpos = inspPos.sumxy(0, spacing*2);
+            // multipliers
+            statpos = inspDoubleStringCentered(statpos, width, spacing, 0.6, mrthStuff.perms['points'].name, floatNumber(mapMeta.permPoints, 2), defaultDSS.multPoints);
+            statpos = inspDoubleStringCentered(statpos, width, spacing, 0.6, mrthStuff.perms['explore'].name, floatNumber(mapMeta.permExplore, 2), defaultDSS.multExplore);
+            statpos = inspDoubleStringCentered(statpos, width, spacing, 0.6, mrthStuff.perms['series'].name, floatNumber(mapMeta.permSeries, 2), defaultDSS.multSeries);
+            statpos = inspDoubleStringCentered(statpos, width, spacing, 0.6, mrthStuff.perms['quota'].name, floatNumber(mapMeta.permQuota, 1) + '%', defaultDSS.multExplore);
+            // stats header
+            inspDefHeader(statpos.sumxy(0, spacing*2), width, spacing, txtMrth('prefStats'));
+            statpos = statpos.sumxy(0, spacing*4);
+            // some stats
+            statpos = inspDoubleStringCentered(statpos, width, spacing, 0.5, txtMrth('statsStartedAt'), mapMeta.startedAt, defaultDSS.multPoints); // yellow
+            statpos = inspDoubleStringCentered(statpos, width, spacing, 0.57, txtMrth('statsDays'), mapMeta.days, defaultDSS.stats);
+            statpos = inspDoubleStringCentered(statpos, width, spacing, 0.57, txtMrth('statsTotal'), mapMeta.total, defaultDSS.multSeries); // green
+            statpos = inspDoubleStringCentered(statpos, width, spacing, 0.57, txtMrth('statsAnimes'), mapMeta.animes, defaultDSS.stats);
+            statpos = inspDoubleStringCentered(statpos, width, spacing, 0.57, txtMrth('statsEpisodes'), mapMeta.episodes, defaultDSS.stats);
+            statpos = inspDoubleStringCentered(statpos, width, spacing, 0.57, txtMrth('statsRerolls'), mapMeta.rerolls, defaultDSS.multExplore); // red
+            statpos = inspDoubleStringCentered(statpos, width, spacing, 0.57, txtMrth('statsExplored'), mapMeta.explored, defaultDSS.stats);
+            statpos = inspDoubleStringCentered(statpos, width, spacing, 0.57, txtMrth('statsMissions'), mapMeta.missCompleted, defaultDSS.stats);
+            // history header
+            inspDefHeader(statpos.sumxy(0, spacing*2), width, spacing, txtMrth('prefHistory'));
+            statpos = statpos.sumxy(0, spacing*4);
+            fillRect(new Vector2(width, 3*_scaleDynamic), statpos, '#ffffff');
+            statpos = statpos.sumxy(0, spacing/2 + 3*_scaleDynamic);
+            // view history
+            _mrthDrawedHistory = 0;
+            for(var an in mrthStats.watched) {
+                if(statpos.y > fullsize.y) {break}
+                else {
+                    var draw = !(statpos.y + fullsize.y/2 < 0);
+                    draw ? _mrthDrawedHistory++ : false;
+                    statpos = inspAnimeWatched(statpos, width, spacing, mrthStats.watched[an], draw)
+                }
+            };
+            mrthMeta.height += statpos.y + 150*_scaleDynamic; // for easy-to-read
         //
         } else if(mapMeta.overlayState == 'pref') {
-            inspDefHeader(inspPos, width, spacing, 'Настройки');
+            inspDefHeader(inspPos, width, spacing, txtMrth('prefHead'));
             var statpos = inspPos.sumxy(0, spacing*3);
             // json backups
-            scaleFont(16, 'Segoe UI'); 
-            ctx.textAlign = 'center'; ctx.fillStyle = '#ffffff';
-            statpos = inspSingleString(statpos, width, spacing, 'Резервное сохранение (JSON-файлом)', 16);
+            ctx.fillStyle = '#ffffff'; scaleFont(16, 'Segoe UI');
+            statpos = inspSingleString(statpos, width, spacing, txtMrth('prefJSONsave'), 16);
             statpos = inspWideButton(statpos, width, spacing, buttonMrthDownloadBackup);
             statpos = inspWideButton(statpos, width, spacing, buttonMrthUploadBackup);
+            // saves disclaimer
+            scaleFont(14, 'Segoe UI');  ctx.textAlign = 'center'; ctx.fillStyle = '#ffaaaa';
+            statpos = inspTextBlock(statpos, width, spacing, txtMrth('prefSaveDisc'), 3, 12);
+            // delete all button
+            inspDefHeader(statpos.sumxy(0, spacing*2), width, spacing, txtMrth('prefReset'));
+            statpos = statpos.sumxy(0, spacing*4);
+            statpos = inspWideButton(statpos, width, spacing, buttonMrthResetAll);
+            scaleFont(14, 'Segoe UI'); ctx.fillStyle = '#ffaaaa';
+            statpos = inspTextBlock(statpos, width, spacing, txtMrth('prefResetDisc'), 3, 12);
+
             //
             mrthMeta.height += statpos.y;
         }; 
@@ -10465,7 +10788,7 @@ const prefTabsColors = {
 // header buttons
 let buttonPrefApply = new ImageButtonShaped(shapeRectRounded, imagePrefApply, new Vector2(prefButtonSpacing), 
     colorMapMatrix(`rgba(24,110,24,0)#rgba(40,160,40,0.35)#rgba(63,255,63,1)#rgba(47,200,47,0.8)`));
-buttonPrefApply.onclick = () => {requestScreen(screenRoulette, false)};
+buttonPrefApply.onclick = () => {requestScreen(screenRoulette, false); playSound(sound['player'])};
 buttonPrefApply.waitanim = false; buttonPrefApply.needshadow = false;
 // tab buttons
 let buttonPrefTabMain = new ImageButtonShaped(shapeRectRounded, imagesPrefTabs.main, new Vector2(prefButtonSpacing),
@@ -10488,6 +10811,7 @@ function prefOnAllTabs() {
     buttonPrefTabMain.state = buttonPrefTabAudio.state = buttonPrefTabDraw.state 
     = buttonPrefTabOther.state = buttonPrefTabAbout.state = 'idle';
     spref.line.set(255,255,255,1); spref.scroll.reset(); mouse.click = false;
+    playSound(sound['button'])
 };
 buttonPrefTabMain.state = 'unaval';
 //
@@ -10687,8 +11011,8 @@ buttonFilterAttempts.onset = (value) => {var fa = Math.round(value); filterAttem
 buttonFilterAttempts.visAlias = true;
 let buttonFilterAttTags = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
 buttonFilterAttTags.isSwitcher = true; buttonFilterAttTags.needshadow = false; buttonFilterAttTags.height = 0;
-buttonFilterAttTags.onclick = () => {filterAttemptTags = true; lsSaveValue('filterAttemptTags', true); filterPrecount.request()};
-buttonFilterAttTags.ondeact = () => {filterAttemptTags = false; lsSaveValue('filterAttemptTags', false); filterPrecount.request()};
+buttonFilterAttTags.onclick = () => {filterAttemptTags = true; lsSaveValue('filterAttemptTags', true); filterPrecount.request(); spartTopClicks(particleImages.apply)};
+buttonFilterAttTags.ondeact = () => {filterAttemptTags = false; lsSaveValue('filterAttemptTags', false); filterPrecount.request(); spartTopClicks(particleImages.remove)};
 //
 function setRenderQuality(value) {
     if(value === 0) {
@@ -11082,6 +11406,10 @@ let rollWinner = {
             scaleFont(rollWinner.fsize * rollWinner.zoom.get(), rollWinner.font, 'bold');
             fillTextArray(pos, rollWinner.str, 5 * _scaleDynamic);
             ctx.letterSpacing = '0px';
+            // particles
+            if(rollWinner.blink.isMoving()) {
+                spartWinnerDrop(normalAlign(new Vector2(0.25 + 0.5 * rollWinner.blink.get(), 0.45)), 1, 3);
+            };
             //
             if(rollWinner.state === 'dark') {
                 rollWinner.bg.fadeTo(new Color(0,0,0,0.5), 0.5);
@@ -11093,8 +11421,10 @@ let rollWinner = {
             } else if(rollWinner.state === 'blink'){
                 rollWinner.state = 'wait';
                 playSound(sound['winner']);
+                // spartWinnerDrop(normalAlign(new Vector2(0.5, 0.45)), 90);
                 rollWinner.text.getColor = rollWinner.effect;
                 rollWinner.effvec.move(1, rollWinner.waiter, easeInOutSine);
+                rollWinner.blink.move(1, 1);
                 setTimeout(() => {rollWinner.state = 'hide'}, rollWinner.waiter*1000);
             //
             } else if(rollWinner.state === 'hide') {
@@ -11109,125 +11439,6 @@ let rollWinner = {
                     rollWinner.state = 'none'
                 }, 1100)
             }
-        }
-    },
-};
-//
-// @EAG VISUAL EFFECTS
-//
-const winnerLightRing = invokeNewImage('images/light.png');
-// с новой годой, с новой снегой, это к НГ крч эффект снега
-const novyigodSanta = invokeNewImage('images/chibi_santa.png');
-const novyigodElka = invokeNewImage('images/christmas_tree.png');
-const noviygodSize = new Vector2(160);
-const noviygodOffset = new Vector2(200, 0);
-//
-let snowflake = {
-    image: invokeNewImage('images/snowflake.png'),
-    depth: range(0.3, 1),
-    sizeMax: 40,
-    velX: range(-40, 40),
-    velY: range(40, 150),
-    rotate: range(-180, 180),
-    flow: range(0.15, 0.4),
-    flowX: range(50, 150),
-    //
-    count: 200,
-    array: [],
-};
-class Snowflake {
-    constructor() {
-        this.pos = fullsize.multxy(Math.random(), -Math.random()).minxy(snowflake.sizeMax);
-        var depth = Math.random()*(snowflake.depth.max-snowflake.depth.min)+snowflake.depth.min;
-        this.depth = depth;
-        this.size = new Vector2(snowflake.sizeMax * depth);
-        this.velocity = new Vector2();
-        this.velocity.x = (snowflake.velX.max-snowflake.velX.min)*Math.random()+snowflake.velX.min;
-        this.velocity.y = (snowflake.velY.max-snowflake.velY.min)*Math.random()+snowflake.velY.min;
-        this.alpha = 0.5 + 0.5*depth;
-        this.rotate = Math.random()*360;
-        this.rotatespeed = Math.random()*(snowflake.rotate.max-snowflake.rotate.min)+snowflake.rotate.min;
-        this.parallax = new Vector2();
-        this.flow = 2*Math.random();
-        this.flowspeed = Math.random()*(snowflake.flow.max-snowflake.flow.min)+snowflake.flow.min;
-        this.flowX = Math.random()*(snowflake.flowX.max-snowflake.flowX.min)+snowflake.flowX.min;
-        this.wave = 0;
-    }
-    draw() {
-        // flow (такого замороченного снега нет нигде нихуя, агада)
-        var dt = deltaTime/1000;
-        if(this.flow >= 2) {this.flow = 0} else {this.flow += this.flowspeed*dt};
-        this.wave = Math.sin(Math.PI*this.flow) * this.flowX;
-        // parallax
-        if(pref.parallax) {
-            this.parallax.setv(parallaxOffsW.multxy(this.depth - (snowflake.depth.max+snowflake.depth.min)/2))
-        };
-        // transform
-        this.pos = this.pos.sumv(this.velocity.multxy(dt*_scaleDynamic)).sumxy(-roulette.speed.get()/1.5, 0);
-        this.rotate += this.rotatespeed*dt;
-        this.rotate >= 360 ? this.rotate -= 360 : this.rotate < 0 ? this.rotate += 360 : null;
-        // draw
-        setRotation(this.pos.sumxy(this.wave, 0), this.rotate);
-        ctx.globalAlpha = this.alpha;
-        drawImageSized(snowflake.image, this.pos.sumxy(this.wave, 0).minv(this.size.multxy(_scaleDynamic/2)).sumv(this.parallax), this.size.multxy(_scaleDynamic));
-        ctx.globalAlpha = 1;
-        ctx.resetTransform();
-    }
-    getPos() {return this.pos.sumxy(this.wave, 0).minv(this.size.multxy(_scaleDynamic/2)).sumv(this.parallax)}
-};
-let resetSnowflakes = () => {snowflake.array=[];for(var i=0; i<snowflake.count; i++) {snowflake.array[i] = new Snowflake()}};
-function novyigodSnowflakes() {
-    // приколы
-    if(firstMouseEvent) {
-        noviygodOffset.update();
-        var ngsize = noviygodSize.multxy(_scaleDynamic);
-        drawImageSized(novyigodSanta, new Vector2(-noviygodOffset.get().x, fullsize.y-ngsize.y), ngsize);
-        drawImageSized(novyigodElka, new Vector2(fullsize.x-ngsize.x+noviygodOffset.get().x, fullsize.y-ngsize.y), ngsize)
-    } else {
-        noviygodOffset.movexy(0, 0, 1.5, easeOutCirc)
-    };
-    // снежинки
-    var sfs = snowflake.sizeMax * _scaleDynamic, sfp = new Vector2();
-    if(snowflake.image.complete) {
-        for(var sf in snowflake.array) {
-            snowflake.array[sf].draw();
-            sfp = snowflake.array[sf].getPos();
-            // bottom portal
-            if(sfp.y - sfs > fullsize.y) {
-                snowflake.array[sf].pos = new Vector2(Math.random()*fullsize.x, 0).minxy(sfs);
-            };
-            // side portals
-            if(sfp.x < -sfs) {snowflake.array[sf].pos.x += fullsize.x+sfs}
-            else if(sfp.x > fullsize.x) {snowflake.array[sf].pos.x -= fullsize.x+sfs};
-        }
-    }
-};
-//
-let visual = {
-    // caching
-    stars: [],
-    // light ring
-    lightAngle1: 0,
-    lightAngle2: 180,
-    lightDiam: new Vector1(fitFrameSize.y*1.6),
-    lightRing: (center, radius) => {
-        visual.lightDiam.update();
-        setRotation(center, visual.lightAngle1);
-        drawImageSized(winnerLightRing, center.minxy(radius/2), new Vector2(radius));
-        ctx.resetTransform();
-        setRotation(center, visual.lightAngle2);
-        drawImageSized(winnerLightRing, center.minxy(radius/2), new Vector2(radius));
-        ctx.resetTransform();
-    },
-    // layers
-    backgroundLayer: () => {
-        if(pref.snowflakes) {
-            novyigodSnowflakes()
-        };
-        if(pref.visual) {
-            // соме щит
-            musicAnalysis.update();
-            musicEqualizer.draw()
         }
     },
 };
@@ -11489,6 +11700,7 @@ function render() {
     wallpaperImage();
     visual.backgroundLayer();
     activeScreen();
+    visual.topLayer();
     transitionScreen();
     hoverHint.draw();
     ctx.textAlign = 'start';
