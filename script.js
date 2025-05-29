@@ -9748,7 +9748,7 @@ let mapMeta = {
     missions: {'1': false, '2': false, 'daily': false},
     //
     date: '',
-    startedAt: '',
+    startedAt: (new Date()).toLocaleDateString(),
 };
 //
 let mrthRectTypes = {
@@ -10068,6 +10068,7 @@ function mapCutsceneUpdater() {
             var rect = mrthNewRect(mapMeta.spoilers[0], mapMeta.spoilers[0].type);
             rect.open(mapMeta.spoilers[0].content);
             mapMeta.map[mapPosStringify(mapMeta.spoilers[0])] = rect;
+            playSound(sound['opener'])
             //
             mapMeta.spoilers.splice(0, 1);
             mapMeta.cutstate = 'wait';
@@ -10240,7 +10241,7 @@ marathonLoad();
 // update daily mission
 missionDaily();
 // if not started - set date
-if(!mapMeta.started) {mapMeta.started = true; mapMeta.startedAt = (new Date()).toLocaleDateString()};
+// if(!mapMeta.started) {mapMeta.started = true; mapMeta.startedAt = (new Date()).toLocaleDateString()};
 //
 function marathonEnd() {
     if(activeScreen == screenMarathonMap) {
@@ -11225,7 +11226,7 @@ function screenPreferences() {
         spref.height += sbTextHeader('API', new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
         scaleFont(18, 'Segoe UI Light');
         spref.height += sbTitleObject(_preftitles.jikan, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-        spref.height += sbTitleObject(_preftitles.translator, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        // spref.height += sbTitleObject(_preftitles.translator, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
         //
         spref.height += spacing*3;
         scaleFont(20, 'Segoe UI', 'bold');
