@@ -14,10 +14,21 @@
 /*===============================================================================================*/
 
 /*============================================ TODO ===============================================
+[+] отображение "серий/рейтинг/год" под постерами (или под названием) в рулетке под конец прокрута
+[+] инфу про битрейт/оффсет/тайминги для каждого трека (для анимаций, ритм-игры в марафоне)
+[+] кнопка в фильтре, включающая `skipSpecial` (добавить перевод)
+[+] кнопка для настройки кол-ва частиц
+[+] возможность настроить типы клипов (вкл/откл пупов)
+[?] мб добавить новую инфу из дб на табло с инфой (студия, прода, длительность)
+[+] добавить влияние длительности серии на кол-во очков за просмотр
+[$] улучшить пресеты (контроль над сезонами, типами, игнорированием условий и скипы)
 ============================================= CHANGES =============================================
-for version - 1.3.x
+for version - 1.3.2
     === NEW FILES ===
     === CHANGES ===
+script.js
+translations.js
+changelog.js
 =================================================================================================*/
 var cvs = document.getElementById("ayayaxdd");
 var ctx = cvs.getContext("2d");
@@ -32,7 +43,7 @@ window.onfocus = window.onpageshow = () => {
 window.onpagehide = window.onblur = () => {
     windowVisibility = false; fpsFocusSwitch = true
 };
-/** Работает с `adb` : добавляет `score` и `fake_dbid` каждому элементу и удаляет все неиспользуемые данные. */
+/** Работает с `adb` : формирует `score` и `fake_dbid` каждому элементу и удаляет все неиспользуемые данные. */
 function databaseShorter() {
     adb_information.scored = 0;
     for(var a in adb) {
@@ -43,6 +54,9 @@ function databaseShorter() {
         delete adb[a].relations;
         delete adb[a].relatedAnime;
         delete adb[a].thumbnail;
+        delete adb[a].studios;
+        delete adb[a].producers;
+        // delete adb[a].duration;
         // shorted score info
         if(adb[a].score !== undefined) {adb_information.scored += 1; adb[a].score = floatNumber(adb[a].score.arithmeticMean, 2)}
         else {adb[a].score = null} // arithmeticMean - там значения ближе к реальности, ещё есть arithmeticGeometricMean и median
@@ -51,10 +65,11 @@ function databaseShorter() {
 //
 // @EAG SUMMARY
 //
+/** Содержит некоторую информацию о приложении. */
 let $appInfo = {
     // main @rel
-    version: '1.3.1a beta',
-    date: '28-05-2025',
+    version: '1.3.2 beta',
+    date: '15-06-2025',
     name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
     fullname: 'AYAYA - Anime Roulette',
     author: 'potapello',
@@ -62,7 +77,7 @@ let $appInfo = {
     licenseURL: 'https://github.com/potapello/ayayaxdd/blob/main/LICENSE',
     // other
     codename: 'ayayaxdd', // EAG? в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
-    comment: 'ayayaxdd 1.3.1a beta',
+    comment: 'ayayaxdd 1.3.2 beta',
 };
 console.log(`\n${$appInfo.fullname}\n${$appInfo.comment} (${$appInfo.date})\nby ${$appInfo.author}\n `);
 //
@@ -2799,7 +2814,8 @@ function calcDataEntries(root, database=adb) {
     var l = database.length;
     console.info(`Start entry calculating..."${root}".`);
     for(var i in database) {
-        piece = eval(`database[i]${root}`);
+        try {piece = eval(`database[${i}]${root}`)}
+        catch {console.warn(`title has no "${root}" data`); continue};
         getArrayWorkProgress(i, l, 5);
         if(piece instanceof Array) {data = objectAddEntry(data, piece)}
         else {data = objectAddEntry(data, [piece])}
@@ -2844,6 +2860,12 @@ function searchByMALPage(url) {
         if(malAnimeID(adb[a].sources) == malid) {return Number(a)}
     };
     return false
+};
+//
+function getAnimeDuration(title) {
+    if(title.duration === undefined) {return false};
+    if(title.duration.unit == 'SECONDS') {return title.duration.value}
+    else {return false}
 };
 //
 // @EAG RESIZE WINDOW
@@ -3925,6 +3947,10 @@ class TextBox {
         this.text = ``;
         this.settext = ``;
     }
+    setupText(string) {
+        this.clear();
+        this.text = String(string)
+    }
     draw() {
         var pointer = 0, iters = 0;
         // update all
@@ -4484,8 +4510,8 @@ let tInfo = {
     updateTitle: (title) => {
         tInfo.updater = tinfTime;
         tInfo.title = title;
-        tInfo.episodes.move(title['episodes'], tinfTime, easeInOutCubic);
-        tInfo.year.move(Number(title['animeSeason']['year']), tinfTime, easeInOutCubic);
+        if(String(Number(title['episodes'])) != 'NaN') {tInfo.episodes.move(title['episodes'], tinfTime, easeInOutCubic)};
+        if(String(Number(title['animeSeason']['year'])) != 'NaN') {tInfo.year.move(Number(title['animeSeason']['year']), tinfTime, easeInOutCubic)};
         tInfo.season = txt([seasonsDataMap[title['animeSeason']['season']][1]]);
         tInfo.type = txt([typesDataMap[title['type']]]);
         tInfo.status = txt([typesDataMap[title['status']]]);
@@ -4765,7 +4791,7 @@ let tDesc = {
                 decsrTranslate.state = 'idle';
                 tDesc.request = false
             }
-            else if(roulette.progress.isMoving() || roulette.speed.get() !== 0) {
+            else if(roulette.progress.isMoving() || roulette.speed.get() !== 0 || roulette.scrAnimate) {
                 tDesc.desc = [txt('descRoll')]
             } else {
                 if(tDesc.waiting > 0) {
@@ -4908,6 +4934,7 @@ let buttonDoRoll = new TextButtonShaped(shapeRectRounded, txt('rbRoll'), new Vec
     colorMapMatrix(colorMapForeDefault),
     colorMapMatrix(`rgba(0,0,0,0)#rgba(63,63,255,0.25)#rgba(63,63,255,1)#rgba(0,0,0,0)`));
 buttonDoRoll.onclick = () => {
+    if(roulette.anime.length == 1 && roulette.marathon) {roulette.marathonAnime()}; // if only 1 title, throw to marathon
     if(!roulette.hidemap && !rollBar.rollStarted) {
         rollBar.rollStarted = true;
         rollBar.state = 'hide';
@@ -5272,7 +5299,9 @@ let roulette = {
     picsCount: 0,
     complete: false,
     initsound: true,
-    timeout: 10,
+    //
+    timeout: 30,
+    loaded: 0,
     notfoundplaced: false,
     //
     dragged: 100,
@@ -5290,8 +5319,11 @@ let roulette = {
     nameboxdef: new Color(255, 255, 255, 1),
     //
     progress: new Vector1(0),
+    scrTarget: 0,
+    scrAnimate: 'initlock',
+    //
     picsGet: (array) => {
-        roulette.timeout = 10; // timeout for poster loading
+        roulette.timeout = 15; // timeout for poster loading
         roulette.notfoundplaced = false;
         roulette.anime = array;
         lsSaveObject('roulette.anime', optimizeAnimeArray(roulette.anime));
@@ -5299,13 +5331,13 @@ let roulette = {
         //
         for(var i=0; i<roulette.picsCount; i++) {
             roulette.pics[i] = new Image();
-            roulette.pics[i].onerror = () => {roulette.pics[i].src = 'images/notfound.png'};
+            eval(`roulette.pics[${i}].onerror = () => {roulette.pics[${i}].src = 'images/notfound.png'}`);
             if(array[i]['picture'] !== undefined) {
                 roulette.pics[i].src = array[i]['picture'];
                 // roulette.pics[i].lowsrc = array[i]['thumbnail'];
             } else {
                 roulette.pics[i].src = 'images/notfound.png';
-                console.warn(`roulette.picsGet -> argument -> array[${i}]['picture'] is undefined!`);
+                console.warn(`roulette.picsGet -> title "${array[i].title}" has no picture url in DB!`, array[i]);
             }
         }
     },
@@ -5322,20 +5354,19 @@ let roulette = {
     },
     picsComplete: () => {
         roulette.timeout -= deltaTime/1000;
-        var progress = 0;
+        roulette.loaded = 0;
         for(var pic in roulette.pics) {
-            if(roulette.pics[pic].complete) {progress++}
+            if(roulette.pics[pic].complete) {roulette.loaded++}
         };
         if(roulette.timeout < 0 && !roulette.notfoundplaced) {
             roulette.notfoundplaced = true;
             for(var pic in roulette.pics) {
                 if(!roulette.pics[pic].complete) {
-                    console.warn('anime poster not loaded (timeout 10s.) -> ' + roulette.pics[pic].src);
+                    console.warn('anime poster not loaded (timeout 15s.) -> ' + roulette.pics[pic].src);
                     roulette.pics[pic].src = 'images/notfound.png'
                 }
-            };
+            }
         }
-        return progress
     },
     centerItem: () => {
         if(roulette.picsCount > 1) {
@@ -5426,33 +5457,18 @@ let roulette = {
                 rollWinner.invoke(roulette.centerAnime.title);
                 lsSaveObject('roulette.winner', [roulette.winnerPos, roulette.catchWinner]);
                 // marathon work
-                if(roulette.marathon) {
-                    // update anime rect
-                    mapGetRect(mapMeta.pos).object.animedata = roulette.centerItem();
-                    mapGetRect(mapMeta.pos).object.state = 'jikan_wait';
-                    // delete key if have
-                    if(mrthGetItem('marathon_key') !== false) {mrthDeleteItem('marathon_key')};
-                    setTimeout(() => {
-                        mapMeta.cutscene = false;
-                        roulette.marathon = false;
-                        buttonChangeFilter.state = 'idle';
-                        buttonOpenPref.state = 'idle';
-                        //
-                        mapMeta.watching = true;
-                        showScreenMarathon()
-                    }, 2500);
-                }
+                roulette.marathonAnime()
             }
         };
         // звучим и обновляем ссылки
-        if(roulette.oldCenter !== roulette.centerAnime) {
+        if(roulette.oldCenter !== roulette.centerAnime && roulette.anime.length > 1) {
             if(roulette.catchWinner || roulette.dragged || roulette.initsound) {playSound(sound['scroll'], roulette.pitch)};
             roulette.anime[roulette.winnerPos] === roulette.centerAnime
             ? roulette.nameboxcolor = roulette.winnerStyle
             : roulette.nameboxcolor = roulette.nameboxdef;
             //
             if(roulette.picsCount > 0 && roulette.pics.length > 0) {
-                namebox.text = roulette.centerAnime['title'];
+                namebox.setupText(roulette.centerAnime['title']);
                 sites.updateSources();
                 tInfo.updateTitle(roulette.centerAnime);
                 tDesc.release(); tDesc.newDesc();
@@ -5460,18 +5476,48 @@ let roulette = {
             //
             roulette.oldCenter = roulette.centerAnime
         };
+        // debug for case if 1 anime on roulette
+        if(roulette.anime.length == 1 && namebox.text != roulette.centerAnime['title']) {
+            namebox.setupText(roulette.centerAnime['title']);
+            roulette.nameboxcolor = roulette.nameboxdef;
+            sites.updateSources();
+            tInfo.updateTitle(roulette.centerAnime);
+            tDesc.release(); tDesc.newDesc();
+        };
         // крутим мышкой
-        if(roulette.catchWinner !== true && roulette.complete) {
+        if(roulette.catchWinner !== true && roulette.complete && roulette.anime.length > 1) {
             if(mouse.pos.lessAND(cvssize.dividexy(1, 2))) {
-                if(wheelState !== 'idle') {
+                if(wheelState !== 'idle' && roulette.scrAnimate != 'initlock') {
                     roulette.speed.set(0);
                     roulette.dragged = 5000;
+                    // if(wheelState == 'btm') {
+                    //     roulette.progress.move(Math.round(roulette.progress.getFixed())+1, 0.5, easeOutCirc)
+                    // } else if (wheelState == 'top') {
+                    //     roulette.progress.move(Math.round(roulette.progress.getFixed())-1, 0.5, easeOutCirc)
+                    // };
                     if(wheelState == 'btm') {
-                        roulette.progress.move(Math.round(roulette.progress.getFixed())+1, 0.5, easeOutCirc)
-                    } else if (wheelState == 'top') {
-                        roulette.progress.move(Math.round(roulette.progress.getFixed())-1, 0.5, easeOutCirc)
+                        roulette.scrTarget += 1;
+                        roulette.scrAnimate = true;
+                    } else if(wheelState == 'top') {
+                        roulette.scrTarget -= 1;
+                        roulette.scrAnimate = true;
                     };
+                    // roulette.scrTarget >= roulette.picsCount ? roulette.scrTarget -= roulette.picsCount : roulette.scrTarget < 0 ? roulette.scrTarget += roulette.picsCount-1 : 0;
                 };
+            };
+            // скроллим плавно
+            if(roulette.scrAnimate === true) {
+                var scrAccur = deltaTime/150;
+                scrAccur > 1 ? scrAccur = 1 :false;
+                if(roulette.scrTarget !== roulette.progress.value) {
+                    roulette.progress.value += (roulette.scrTarget - roulette.progress.value) * scrAccur;
+                };
+                if(Math.abs(roulette.scrTarget - roulette.progress.value) < 0.1) {
+                    roulette.progress.move(roulette.scrTarget, 0.2);
+                    roulette.scrAnimate = false
+                }
+            } else {
+                roulette.scrTarget = Math.round(roulette.progress.value)
             };
             // отслеживаем кручения
             if(typeof roulette.dragged === 'number') {
@@ -5498,15 +5544,17 @@ let roulette = {
         if(!windowVisibility) {roulette.pause(3000)};
         // циклируем
         if(srv.state !== 'show_roulette') {
-            if(roulette.progress.get() >= roulette.picsCount) {
-                roulette.progress.value -= Math.floor(roulette.progress.value / roulette.picsCount) * roulette.picsCount;
+            if(roulette.progress.get() >= roulette.picsCount) { // Math.floor(roulette.progress.value / roulette.picsCount)
+                roulette.progress.value -= roulette.picsCount;
+                if(roulette.scrTarget >= roulette.picsCount) {roulette.scrTarget -= roulette.picsCount};
                 if(roulette.picsCount === 1) {
-                    playSound(sound['scroll'])
+                    // playSound(sound['scroll'], roulette.pitch)
                 };
             } else if(roulette.progress.get() <= -1) {
-                roulette.progress.value -= Math.floor(roulette.progress.value / roulette.picsCount) * roulette.picsCount;
+                roulette.progress.value += roulette.picsCount;
+                if(roulette.scrTarget <= -1) {roulette.scrTarget += roulette.picsCount};
                 if(roulette.picsCount === 1) {
-                    playSound(sound['scroll'])
+                    // playSound(sound['scroll'], roulette.pitch)
                 }
             }
         };
@@ -5561,6 +5609,24 @@ let roulette = {
             for(var a in roulette.sorted) {
                 roulette.sorted[a].draw()
             }
+        }
+    },
+    marathonAnime: () => {
+        if(roulette.marathon) {
+            // update anime rect
+            mapGetRect(mapMeta.pos).object.animedata = roulette.centerAnime;
+            mapGetRect(mapMeta.pos).object.state = 'jikan_wait';
+            // delete key if have
+            if(mrthGetItem('marathon_key') !== false) {mrthDeleteItem('marathon_key')};
+            roulette.marathon = false;
+            setTimeout(() => {
+                mapMeta.cutscene = false;
+                buttonChangeFilter.state = 'idle';
+                buttonOpenPref.state = 'idle';
+                //
+                mapMeta.watching = true;
+                showScreenMarathon()
+            }, 2500);
         }
     },
 };
@@ -5991,7 +6057,7 @@ let sload = {
     head: txt('eagName'),
     headsize: 50,
     //
-    dbSize: 40*1024*1024,
+    dbSize: 70*1024*1024,
     dbProgress: 0,
 };
 // downloading database
@@ -6151,16 +6217,18 @@ function screenLoading() {
         roulette.addAlign = new Vector2(0),
         roulette.addAlign = srv.rhAlign.get();
         //
-        imageLoadProgress.text = txt('loadPics') + ` (${roulette.picsComplete()}/${roulette.pics.length})`;
+        roulette.picsComplete();
+        imageLoadProgress.text = txt('loadPics') + ` (${roulette.loaded}/${roulette.pics.length})`;
         shapeProgressBar(normalAlign(new Vector2(0.5, 0), spbsize), spbsize, 0, colorMapMatrix(loadImagesBar));
         sload.state = 'loadstart'
 
     // 
     } else if(sload.state === 'loadstart') {
-        imageLoadProgress.text = txt('loadPics') + ` (${roulette.picsComplete()}/${roulette.pics.length})`;
-        shapeProgressBar(normalAlign(new Vector2(0.5, 0), spbsize), spbsize, roulette.picsComplete()/roulette.pics.length, colorMapMatrix(loadImagesBar));
+        roulette.picsComplete();
+        imageLoadProgress.text = txt('loadPics') + ` (${roulette.loaded}/${roulette.pics.length})`;
+        shapeProgressBar(normalAlign(new Vector2(0.5, 0), spbsize), spbsize, roulette.loaded/roulette.pics.length, colorMapMatrix(loadImagesBar));
         //
-        if(roulette.picsComplete() == roulette.pics.length) {
+        if(roulette.loaded == roulette.pics.length) {
             if(firstMouseEvent) {playSound(sound['loaded'])};
             imageLoadProgress.text = txt('loadDone');
             srv.hideProgress.set(1);
@@ -6177,14 +6245,18 @@ function screenLoading() {
         };
         if(roulette.complete) {
             if((mouse.click && mouse.pos.overSAND(new Vector2()) && mouse.pos.lessSAND(cvssize)) || firstMouseEvent) {
-                roulette.progress.set(-20);
                 roulette.speed.reset();
+                roulette.scrAnimate = 'initlock'; // lock scroll
                 if(!lsItemUndefined('roulette.winner') && !roulette.marathon) {
                     [roulette.winnerPos, roulette.catchWinner] = lsLoadObject('roulette.winner', [roulette.winnerPos, roulette.catchWinner]);
+                    roulette.progress.set(+roulette.winnerPos-20);
                     roulette.progress.move(roulette.winnerPos, 3, easeOutQuint);
-                    setTimeout(() => {setTimeout(() => {playSound(sound['winner'])}, 100)}, 3*1000)
+                    roulette.scrTarget = +roulette.winnerPos;
+                    setTimeout(() => {playSound(sound['winner']); roulette.scrAnimate = false}, 3100) // unlock scrolling here
                 } else {
+                    roulette.progress.set(-20);
                     roulette.progress.move(0, 3, easeOutQuint)
+                    setTimeout(() => {roulette.scrAnimate = false}, 3100) // unlock scrolling here
                 };
                 setTimeout(() => {roulette.initsound = false}, 3000);
                 //
@@ -6928,6 +7000,7 @@ function rescaleFilterButtons() {
     buttonFilterScoreMax.size = s[0];
     buttonFilterAttempts.size = new Vector2(300, 16).multxy(_scaleDynamic);
     buttonFilterAttTags.size = s[0];
+    buttonFilterSkipSpecial.size = s[0];
     // main
     buttonFilterLeave.size = s[1];
     buttonFilterApply.size = s[1];
@@ -6957,6 +7030,7 @@ function actualizeFilterButtons() {
     buttonFilterScoreMax.text = filterDefault['scoreMax'];
     buttonScoreAllow.active = filterDefault['scoreAllow'];
     buttonFilterAttTags.active = filterAttemptTags;
+    buttonFilterSkipSpecial.active = true === filterDefault.skipSpecial;
 };
 //
 let filterMainThreePal = `rgba(24,110,24,1)#rgba(40,160,40,1)#rgba(63,255,63,1)#rgba(200,200,47,0.1)`;
@@ -7365,8 +7439,11 @@ function animeSStateFilter(header, fbSpacing, swidth, xanchor) {
     saf.height += sbSelectbarPrefix(txt('filterAttempts'), Math.round(buttonFilterAttempts.point()), buttonFilterAttempts, new Vector2(saf.xanchor+fbSpacing*2, saf.height), saf.width-fbSpacing*2, prefButtonSpacing*_scaleDynamic, saf.scroll.get());
     sbBlockHint.text = txt('hintAttTags');
     saf.height += sbButtonPrefix(txt('filterAttTags'), buttonFilterAttTags, new Vector2(saf.xanchor+fbSpacing*2, saf.height), saf.width-fbSpacing*2, prefButtonSpacing*_scaleDynamic, saf.scroll.get());
-    saf.pointer3 = saf.height;
+    // skip special
+    sbBlockHint.text = txt('hintSkipSpecial'); // buttonFilterSkipSpecial
+    saf.height += sbButtonPrefix(txt('filterSkipSpecial'), buttonFilterSkipSpecial, new Vector2(saf.xanchor+fbSpacing*2, saf.height), saf.width-fbSpacing*2, prefButtonSpacing*_scaleDynamic, saf.scroll.get());
     // предупреждение перед применением
+    saf.pointer3 = saf.height;
     saf.height += fbSpacing;
     scaleFont(16, 'Segoe UI Light'); ctx.textAlign = 'center';
     saf.height += sbTextFit(txt('filterWarn'), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get(), 16, '#f44')
@@ -7894,15 +7971,22 @@ let mrthStuff = {
             value: 'permExplore',
             name: txtMrth('permExploreName'),
             desc: txtMrth('permExploreDesc'),
-            limits: [1, 5], // normal is 3
+            limits: [.5, 5], // normal is 3
             buff: [-.05, -.1], debuff: [.04, .09],
         },
         quota: {
             value: 'permQuota',
             name: txtMrth('permQuotaName'),
             desc: txtMrth('permQuotaDesc'),
-            limits: [10, 90], // normal is 50
+            limits: [10, 80], // normal is 50
             buff: [-.05, -.12], debuff: [.04, .11],
+        },
+        luck: {
+            value: 'permLuck',
+            name: txtMrth('permLuckName'),
+            desc: txtMrth('permLuckDesc'),
+            limits: [5, 95], // normal is 50, =x-50 [-45%; 45%]
+            buff: [-.05, -.1], debuff: [-.05, -.1],
         },
     },
     missions: {
@@ -7945,7 +8029,7 @@ let mrthStuff = {
 let _itemsPositive = ['glasses', 'bribery', 'radar', 'chocolate', 'recycler', 'marathon_key', 'universal_key', 'joker', 'monitor'];
 let _itemsNegative = ['poop', 'black', 'tax', 'salad', 'azart', 'azart', 'order', 'handcuffs']; // азарт 2 раза потому что лудики ыеееееее
 let _itemsAll = [].concat(_itemsPositive, _itemsNegative);
-let _permsAll = ['points', 'explore', 'series', 'quota',];
+let _permsAll = ['points', 'explore', 'series', 'quota',]; // need add LUCK
 let _missionsAll = ['question', 'meeting', 'treasure', 'anime', 'points', 'series', 'explore',];
 //
 function mrthInventoryAddItem(tag='') {
@@ -8948,8 +9032,10 @@ class inspAnime {
         // checking map, if map do not have any anime rect - generating opened anime rect on random empty rect
         mapCheckAvalaibleAnimes();
         // rect spoiler cutscene
-        var spoiler = getSpoilerCount(buttonApplyWatch.insp.watched, buttonApplyWatch.insp.animedata.type);
+        var spoiler = getSpoilerCount(buttonApplyWatch.insp.watched + buttonApplyWatch.insp.watchplus, buttonApplyWatch.insp.animedata.type);
         if(spoiler > 0) {setTimeout(() => {mapMeta.cutscene = true; mapGenerateSpoilers(spoiler)}, 1500)};
+        // delete watchplus bonus
+        buttonApplyWatch.insp.watchplus = 0;
         // save all
         marathonSave()
     }
@@ -9048,6 +9134,7 @@ class inspQuestion {
                 // parse animes, get random one and send request for chars
                 this.animes = JSON.parse(JSON.stringify(jikan._result));
                 // if(typeof this.animes != 'object') {this.state = 'start'; return}; // if request throw error in data
+                if(this.animes.length === undefined) {this.state = 'start'; return}; // if response have single title OR error data
                 this.title = Math.floor(Math.random() * (this.animes.data.length - 0.001));
                 jikan.custom(`https://api.jikan.moe/v4/anime/${this.animes.data[this.title].mal_id}/characters`);
                 this.state = 'jikan_chars'
@@ -9518,7 +9605,7 @@ class inspTreasure {
         statpos = statpos.sumxy(0, spacing*1.5 + 3*_scaleDynamic);
         // update roulette
         this.speed.update();
-        if(this.progress > this.array.length-1) {this.progress -= this.array.length};
+        if(this.progress > this.array.length) {this.progress -= this.array.length};
         this.progress += this.speed.get() * (deltaTime/1000);
         if(this.state != 'winner') {
             // chances
@@ -9594,6 +9681,8 @@ class inspTreasure {
         } else if(this.state == 'wait') {
             if(!this.speed.isMoving()) {
                 this.state = 'winner';
+                this.progress += this.progress < 0 ? +24 : 0; // prevent negative number
+                this.progress -= this.progress > 24.5 ? 24.5 : 0; // prevent negative number
                 this.winner = this.array[Math.round(this.progress)];
                 this.array = [];
                 //
@@ -9622,6 +9711,12 @@ class inspTreasure {
             statpos = inspTextBlock(statpos, width, spacing, mrthStuff.items[this.winner].desc, 5, 14)
         }
         return statpos.y
+    }
+    winnerDebug() {
+        var prog = +this.progress;
+        prog += prog < 0 ? +24 : 0; // prevent negative number
+        prog -= prog > 24.5 ? 24.5 : 0; // prevent negative number
+        return this.array[Math.round(prog)];
     }
 };
 //
@@ -9745,7 +9840,7 @@ let mapMeta = {
     //
     inventory: {"1": false, "2": false, "3": false, "4": false,},
     effects: {'1': false, '2': false,},
-    missions: {'1': false, '2': false, 'daily': false},
+    missions: {'daily': false, '1': false, '2': false},
     //
     date: '',
     startedAt: (new Date()).toLocaleDateString(),
@@ -10142,10 +10237,15 @@ function mapCheckAvalaibleAnimes() {
 // @ TEST-NEED
 //      
 // @TODO
+//      пара предметов (поз/нег), влияющие на лимиты по сериям (максимум 13 серий // минимум 20, максимума нет)
+//      клетка с ритм-игрой (должна разбавить вопросы и немного встречи)
+//      переделать ключ от марафона - он позволяет просто взять любое аниме с рулетки
 //
 // @TEST-RES
+//      миссий немного маловато
 //      
 // @ИДЕИ
+//      улучшения для аниме-клеток (предметы, применив которые можно навсегда изменить какие-то параметры) (либо один предмет-улучшение, который позволит предметам не удаляться после просмотра)
 //      добавить возможность в Вопросах сделать ставку и мб увеличить её, при неправильном проебать (мб реализовать это тока на хороших клетках вопросов)
 //      идея для геймплея - разбросать по карте пазлики и заставить их собирать (чтобы взять пазлик нужно отдать монеты/предмет/эффект)
 //      сделать экспортер всей истории просмотров
@@ -11000,6 +11100,11 @@ let buttonFilterAttTags = new TextButtonShaped(shapeRectRounded, '', new Vector2
 buttonFilterAttTags.isSwitcher = true; buttonFilterAttTags.needshadow = false; buttonFilterAttTags.height = 0;
 buttonFilterAttTags.onclick = () => {filterAttemptTags = true; lsSaveValue('filterAttemptTags', true); filterPrecount.request(); spartTopClicks(particleImages.apply)};
 buttonFilterAttTags.ondeact = () => {filterAttemptTags = false; lsSaveValue('filterAttemptTags', false); filterPrecount.request(); spartTopClicks(particleImages.remove)};
+//
+let buttonFilterSkipSpecial = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
+buttonFilterSkipSpecial.isSwitcher = true; buttonFilterSkipSpecial.needshadow = false; buttonFilterSkipSpecial.height = 0;
+buttonFilterSkipSpecial.onclick = () => {filterDefault.skipSpecial = true; lsSaveObject('filterDefault', filterDefault); filterPrecount.request()};
+buttonFilterSkipSpecial.ondeact = () => {filterDefault.skipSpecial = false; lsSaveObject('filterDefault', filterDefault); filterPrecount.request()};
 //
 function setRenderQuality(value) {
     if(value === 0) {

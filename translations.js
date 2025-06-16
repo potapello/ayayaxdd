@@ -448,7 +448,7 @@ const _TextTranslations = {
             statsEpisodes: 'Просмотрено серий',
             statsRerolls: 'Сделано рероллов',
             statsExplored: 'Изучено клеток',
-            statsMissions: 'Выполено миссий',
+            statsMissions: 'Выполнено миссий',
         },
     },
     'en': {
