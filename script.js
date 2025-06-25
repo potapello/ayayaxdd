@@ -11296,8 +11296,8 @@ function screenPreferences() {
         sbBlockHint.text = txt('hintNewTrack');
         spref.height += sbButtonPrefix(txt('prefANew'), prefAudioNewTrack, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
         spref.height += sbButtonPrefix(txt('prefAShow'), prefAudioShowPlayer, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-        sbBlockHint.text = txt('hintAudioVisual');
-        spref.height += sbButtonPrefix(txt('prefVisual'), prefRenderVisual, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        // sbBlockHint.text = txt('hintAudioVisual'); @rel не даёт анализировать музыку с DP (((
+        // spref.height += sbButtonPrefix(txt('prefVisual'), prefRenderVisual, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     // НАСТРОЙКИ ОТРИСОВКИ
     } else if(spref.tab === 'draw') {
         actualPrefRender();
