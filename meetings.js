@@ -1,3 +1,20 @@
+//          ---GUIDE---
+//
+// 1. Define lang
+//      `_allMeetings[X] = {};`
+//      X = lang code (string)
+// 2. Define translated variants
+//      `_allMeetings[X][Y] = { * meeting script * };`
+//      X = lang code (string)
+//      Y = meeting code (string) (do not change!)
+// 3. What exactly needs to be translated (WRITTEN IN CAPS)
+//      meta: {name: 'MEETING_NAME', ...} (only `name`)
+//      text: ['STRING_1', 'STRING_2', ...] (all string in `text`)
+//      choice: {name: 'CHOICE_NAME', ...} (only `name`)
+//      callback: () => {...; obj.result = `SOME_TEXT ${value} SOME_TEXT2`; ...} (interpolated text parts, only in -> ``)
+//      extrastring: () => {return `SOME_TEXT ${value} SOME_TEXT_2`} (interpolated text parts, only in -> ``)
+// 4. Main Rule !!!
+//      All meeting variants must be defined and translated.
 let _allMeetings = {};
 //
 _allMeetings['ru'] = {};
