@@ -73,8 +73,8 @@ function databaseShorter() {
 /** Содержит некоторую информацию о приложении. */
 let $appInfo = {
     // main @rel
-    version: '1.4.0 beta',
-    date: '23-06-2025',
+    version: '1.4 beta',
+    date: '25-06-2025',
     name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
     fullname: 'AYAYA - Anime Roulette',
     author: 'potapello',
@@ -82,7 +82,7 @@ let $appInfo = {
     licenseURL: 'https://github.com/potapello/ayayaxdd/blob/main/LICENSE',
     // other
     codename: 'ayayaxdd', // EAG? в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
-    comment: 'ayayaxdd 1.4.0 beta',
+    comment: 'ayayaxdd 1.4 beta',
 };
 console.log(`\n${$appInfo.fullname}\n${$appInfo.comment} (${$appInfo.date})\nby ${$appInfo.author}\n `);
 //
@@ -5325,7 +5325,7 @@ let roulette = {
     scrAnimate: 'initlock',
     //
     picsGet: (array) => {
-        roulette.timeout = 3; // timeout for poster loading @rel должно быть 10-15
+        roulette.timeout = 12; // timeout for poster loading @rel должно быть 10-15
         roulette.notfoundplaced = false;
         roulette.anime = array;
         lsSaveObject('roulette.anime', optimizeAnimeArray(roulette.anime));
@@ -11767,7 +11767,7 @@ function developInfo() {
         var total = bytesStringify(performance.memory.totalJSHeapSize);
         var usage = bytesStringify(performance.memory.usedJSHeapSize);
         var ftnorm = Math.norma(_ft / 16.6);
-        // @RELEASE (убрать, если чет добавлял для себя)
+        // EASE (убрать, если чет добавлял для себя)
         fillRectRounded(new Vector2(devinfoValues.width, devinfoValues.height), new Vector2(devinfoValues.xanchor, devinfoValues.offset), '#0029', devinfoValues.margin);
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(1)), 'FPS: '+FPS, '#fff', 'bold 16px Consolas');
         fillText(new Vector2(devinfoValues.text + devinfoValues.width*0.4, devinfoValues.texty(1)), 'frame: '+_ft+' ms', `rgba(${255*ftnorm}, ${255-255*ftnorm}, 0, 0.8)`, 'bold 12px Consolas');
