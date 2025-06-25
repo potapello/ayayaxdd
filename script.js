@@ -2,7 +2,7 @@
 //  AYAYA - Anime Roulette (WIP)
 //      An application for getting random anime from a list randomly generated 
 //      or manually assembled.
-//  Copyright (C) 2025  Ilya 'potapello' Potapov
+//  Copyright (C) 2025 Ilya 'potapello'
 //  Repository -> https://github.com/potapello/ayayaxdd
 //  License -> GNU General Public License v3.0
 //  License URL -> https://github.com/potapello/ayayaxdd/blob/main/LICENSE
@@ -21,14 +21,19 @@
 [+] возможность настроить типы клипов (вкл/откл пупов)
 [?] мб добавить новую инфу из дб на табло с инфой (студия, прода, длительность)
 [+] добавить влияние длительности серии на кол-во очков за просмотр
-[$] улучшить пресеты (контроль над сезонами, типами, игнорированием условий и скипы)
+[$] улучшить пресеты (контроль над сезонами, типами; игнорирование условий и скипы)
 ============================================= CHANGES =============================================
-for version - 1.3.2
+for version - 1.4.0
+    === PERM CHANGES ===
+    script.js
+    changelog.txt
+
     === NEW FILES ===
+    media.js
+
     === CHANGES ===
-script.js
-translations.js
-changelog.js
+    translations.js
+    !!! DELETE FOLDER WITH MUSIC
 =================================================================================================*/
 var cvs = document.getElementById("ayayaxdd");
 var ctx = cvs.getContext("2d");
@@ -68,8 +73,8 @@ function databaseShorter() {
 /** Содержит некоторую информацию о приложении. */
 let $appInfo = {
     // main @rel
-    version: '1.3.2 beta',
-    date: '15-06-2025',
+    version: '1.4.0 beta',
+    date: '23-06-2025',
     name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
     fullname: 'AYAYA - Anime Roulette',
     author: 'potapello',
@@ -77,7 +82,7 @@ let $appInfo = {
     licenseURL: 'https://github.com/potapello/ayayaxdd/blob/main/LICENSE',
     // other
     codename: 'ayayaxdd', // EAG? в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
-    comment: 'ayayaxdd 1.3.2 beta',
+    comment: 'ayayaxdd 1.4.0 beta',
 };
 console.log(`\n${$appInfo.fullname}\n${$appInfo.comment} (${$appInfo.date})\nby ${$appInfo.author}\n `);
 //
@@ -885,25 +890,6 @@ let _cheats = {
         window.open(window.location.href);
         window.close()
     },
-    'botagiri': () => {
-        pref.playClip = true;
-        musicNormalVolume.move(0, 1, easeInOutSine);
-        setTimeout(() => {musicNormal.pause()}, 1000);
-        clipmainOnCanPlay = () => {
-            videoClipPlay();
-            roulette.doRoll(clipmainTime, pref.rollSpeed, false);
-            srv.hideProgress.value = 0;
-            srv.hideProgress.move(1, srv.hideTime, easeInQuad);
-            srv.state = 'roll_start';
-            tInfo.hidereq = true;
-            buttonDoRoll.state = 'unaval';
-            musicNormalVolume.reset();
-            visual.lightDiam.move(0, 0.25, easeInCirc);
-            //
-            setTimeout(() => {buttonDoRoll.text = txt('rbRoll')}, 2000)
-        };
-        videoClipSet(new videoClip(['audio/clip1.ogg', 0, 'Shikitashi - Botagiri (YTPMV)'], 0, 63.1,   'w0i5vrvg2qat8mawfjy2i/video1.webm?rlkey=vc7tda62c9s0kfcznxnm02240'))
-    },
     'clip': (args) => {
         if(args[1] === undefined) {return};
         if(String(Number(args[1])) == 'NaN') {return};
@@ -915,8 +901,15 @@ let _cheats = {
                 musicNormal.currentTime = 0;
                 musicNormalVolume.reset();
                 musicNormalVolume.move(1, 1, easeInOutSine);
-                musicNormal.src = cliponly[number][0];
-                musicLite.name = cliponly[number][2];
+                if(cliponly[number].length == 2) {
+                    musicNormal.src = cliponly[number][0][0];
+                    musicLite.name = cliponly[number][0][2];
+                    beatmap.setup(cliponly[number][0])
+                } else {
+                    musicNormal.src = cliponly[number][0];
+                    musicLite.name = cliponly[number][2];
+                    beatmap.setup(cliponly[number])
+                }
                 if(pref.bgmusic > 0) {musicNormal.play()}
             }
         } else {
@@ -935,7 +928,28 @@ let _cheats = {
         if(args[1] === undefined) {return};
         enabledVsyncRAF(eval(args[1]))
     },
-    'mrt': (args) => {setTimeout(() => {showScreenMarathon()}, 500)},
+    'allow-cmv': () => {
+        prefSetValue('allowCMV', pref.allowCMV ? false : true);
+        playSound(sound['taginc'])
+    },
+    // 'dlm': (args) => { // no legit ))
+    //     if(args[1] === undefined) {return};
+    //     if(args[2] === undefined) {return};
+    //     if(args[1] == 'music') {
+    //         if(args[2] === 'current') {window.open(music[getCurrentMusic()][0]); return};
+    //         if(String(Number(args[2])) == 'NaN') {return};
+    //         var id = Number(args[2]);
+    //         if(id >= 0 && id < music.length) {
+    //             window.open(music[id][0]);
+    //         }
+    //     } else if(args[1] == 'clip') {
+    //         if(String(Number(args[2])) == 'NaN') {return};
+    //         var id = Number(args[2]);
+    //         if(id >= 0 && id < clips.length) {
+    //             window.open(clips[id].v[0]);
+    //         }
+    //     }
+    // },
 };
 //
 // @EAG MATH FUNCTIONS
@@ -982,25 +996,11 @@ function bytesStringify(bytes) {
     }
 };
 //
-// @EAG VIDEO CLIP CLASS
-//
-const _dropboxAffix = ['https://www.dropbox.com/scl/fi/','&raw=1'];
-function _dropboxURL(key) {
-    return  String(_dropboxAffix[0] + key + _dropboxAffix[1])
-};
-//
-class videoClip {
-    constructor(music, video_anchor, time, video_url, custom=false) {
-        this.m = music;
-        this.v = [_dropboxURL(video_url), video_anchor];
-        this.time = time;
-        this.custom = custom;
-    }
-};
+// @EAG VIDEO CLIPS
 //
 let _musictimestamp = 0;
 let _cliptimestamp = 0;
-function videoClipPlay(time = 1) {
+function videoClipPlay(clip, time = 1) {
     clipmainPlay = true;
     clipmainAlpha.set(0);
     clipmainAlpha.move(1, time, easeInOutSine);
@@ -1010,10 +1010,20 @@ function videoClipPlay(time = 1) {
     musicRollVolume.set(0);
     musicRollVolume.move(1, time, easeInOutSine);
     musicRoll.play();
-    //
+    // stopping normal music
     setTimeout(() => {
         musicNormal.pause();
     }, 1000*time);
+    // setup muted normal music for preload (gap -2 second for fadings)
+    setTimeout(() => {
+        if(clip.m.length == 2) {
+            musicNormal.src = clip.m[0][0];
+            musicNormal.currentTime = clip.m[1] + clip.time - 2;
+        } else {
+            musicNormal.src = clip.m[0];
+            musicNormal.currentTime = clip.m[1] + clip.time - 2;
+        }
+    }, 5000);
     // initial sync
     setTimeout(videoClipSync, _videoclipsyncrate);
     _videoclipsyncattempts = 8; _videoclipsyncdl = 0.08
@@ -1038,11 +1048,20 @@ function videoClipSync() {
     } else {console.info(`Clip sync success.`)}
 };
 function videoClipSet(clip) {
-    //
+    // [music_data[url, timing, name, beatmap], timing_for_clip] OR only `music_data[x]`
     musicrollLoaded = false;
-    musicRoll.src = clip.m[0];
+    // get music data & custom timing for roll music
+    if(clip.m.length == 2) {
+        musicRoll.src = clip.m[0][0];
+        clipmainName = clip.m[0][2];
+        beatmap.setup(clip.m[0], false);
+    } else {
+        // if custom timing not provided
+        musicRoll.src = clip.m[0];
+        clipmainName = clip.m[2];
+        beatmap.setup(clip.m, false);
+    };
     _musictimestamp = musicRoll.currentTime = clip.m[1];
-    clipmainName = clip.m[2];
     musicRoll.oncanplay = () => {musicrollLoaded = true};
     //
     clipmainLoaded = false;
@@ -1063,8 +1082,8 @@ function videoClipEnd(time = 1) {
     clipmainPlay = false;
     musicLite.name = clipmainName;
     musicNormal.pause();
-    musicNormal.src = String(musicRoll.src);
-    if(pref.bgmusic > 0) {musicNormal.play()};
+    // musicNormal.src = String(musicRoll.src);
+    if(pref.bgmusic > 0) {musicNormal.play(); beatmap.listen = 'normal'};
     musicNormal.currentTime = Number(String(musicRoll.currentTime));
     musicRollVolume.move(0, time, easeInOutSine);
     clipmainAlpha.move(0, time, easeInOutSine);
@@ -1083,7 +1102,7 @@ function videoClipUnload(time = 1) {
     clipmainPlay = false;
     clipmainOnCanPlay = null;
     musicNormal.pause();
-    if(pref.bgmusic > 0) {musicNormal.play()};
+    if(pref.bgmusic > 0) {musicNormal.play(); beatmap.listen = 'normal'};
     musicRoll.oncanplay = () => {};
     clipmain.oncanplay = () => {};
     musicRollVolume.set(0);
@@ -1119,135 +1138,9 @@ let clipmainOnCanPlay = null;
 let clipWaiting = 20;
 let musicWaiting = 20;
 const clipTimeout = 20;
-//
-// @EAG ALL AUDIO DATA
-//
-const sound = {
-    'scroll': new Audio('sounds/scroll.ogg'),
-    'button': new Audio('sounds/button.ogg'),
-    'tagnone': new Audio('sounds/tagnone.ogg'),
-    'taginc': new Audio('sounds/taginc.ogg'),
-    'tagexc': new Audio('sounds/tagexc.ogg'),
-    'loaded': new Audio('sounds/loaded.mp3'),
-    'screen': new Audio('sounds/screen.wav'),
-    'winner': new Audio('sounds/winner.ogg'),
-    'roll': new Audio('sounds/roll.ogg'),
-    'prompt': new Audio('sounds/prompt.wav'),
-    'player': new Audio('sounds/player.wav'),
-    // new in 1.3.1 (for marathon)
-    'teleport': new Audio('sounds/teleport.wav'),
-    'warn': new Audio('sounds/warn.wav'),
-    'coins': new Audio('sounds/coins.wav'),
-    'opener': new Audio('sounds/opener.mp3'),
-    'steps': new Audio('sounds/steps.wav'),
-    'success': new Audio('sounds/success.wav'),
-    'insp': new Audio('sounds/insp.wav'),
-};
-//
-const music = [
-    //['src', rolltime, 'name'],
-    // music
-    ['audio/music1.ogg', 61, 'Kuhaku Gokko - Lil\'b'],
-    ['audio/music2.ogg', 49, 'Miku Sawai - Gomen ne, Iiko ja Irarenai'],
-    ['audio/music3.ogg', 17, 'DUSTCELL - Narazumono'],
-    ['audio/music4.ogg', 0, 'Cagayake! - GIRLS'],
-    ['audio/music5.weba', 60, 'Sachika Misawa - Links'], // 
-    ['audio/music6.ogg', 0, 'Aoi Yuki - Los! Los! Los!'],
-    ['audio/music7.ogg', 41, 'Ado - AntiSystem\'s'],
-    ['audio/music8.ogg', 44, 'Kenshi Yonezu - KICK BACK'],
-    ['audio/music9.ogg', 34, 'BABYMETAL - Divine Attack'],
-    ['audio/music10.ogg', 0, 'Uesaka Sumire - Inner Urge'],
-    ['audio/music11.ogg', 47.5, 'Kanako Itou - Fatima'],
-    ['audio/music12.ogg', 36, 'Kanako Itou - Hacking to the Gate'],
-    ['audio/music13.ogg', 0, 'ZOE, Jododo - Lighting'], // мб поискать нарезочку из игры
-    ['audio/music14.ogg', 0, 'Ikimono Gakari - Blue Bird'],
-    ['audio/music15.ogg', 46, 'Uverworld - Touch off'],
-    ['audio/music16.ogg', 55, 'Masayuki Suzuki - Love Dramatic'],
-    ['audio/music17.ogg', 0, 'Takuma Terashima - Nameless story'], // мб оп
-    ['audio/music18.ogg', 42, 'Konomi Suzuki - Redo'],
-    ['audio/music19.ogg', 34, 'Huwie Ishizaki - Wasuregataki'],
-    ['audio/music20.ogg', 49, 'yama - Shikisai'],
-    ['audio/music21.ogg', 27, 'Kessoku Band - Seishun Complex'],
-    ['audio/music22.ogg', 51, 'Perfume - Pick Me Up'], // поискать надо
-    ['audio/music23.ogg', 23, 'Nightcore - Everytime We Touch'], // искать надо
-    ['audio/music24.ogg', 11, 'beatMARIO - Night of Nights'], // искать надо
-    ['audio/music25.ogg', 48, 'FELT - Summer Fever'],
-    ['audio/music26.ogg', 20.5, 'SEREBRO - Мало тебя (speed up)'],
-    ['audio/music27.ogg', 50, 'Touhou - Bad Apple!!'],
-    ['audio/music28.weba', 42, 'ZUTOMAYO - TAIDADA'],
-    ['audio/music29.weba', 35, 'Kuhaku Gokko - Pikaro'],
-    // bloody stream        clip
-    // guren no yumiya      clip
-    // shikanoko            clip
-    // domekano op1
-    // oshi no ko op1       clip
-    // call of the night    clip
-    // bakemonogatari op4
-    // apothecary diar op1  clip
-    // parasyte
-    // deja vu
-    // black catcher        clip?
-    // hell paradise op     clip
-    // neverland            onlyclip
-    // kaguya op1           onyclip?
-    // bocchi               onlyclip
-    // ghoul tot samyy      clip
-    // frieren op
-    // solo level op2
-    // yt vAKBZeQklQw 
-    // blue lock op2
-    // April lie op     
-    // naruto ship op1
-    // overlord op1
-    // date a live op4
-    // Food Wars s3op2
-];
-// 
-const cliponly = [
-    ['audio/clip1.ogg', 31, 'Shikitashi - Botagiri (YTPMV)'],
-    ['audio/clip2.ogg', 55, 'skwd - Aquarius (YTPMV)'],
-    music[26], // тайминг прост 1 и тот же, нхй ещ рз не буд писать, и так NASRAL
-    ['audio/clip3.ogg', 35, 'skwd - Point of no return (YTPMV)'],
-    ['audio/clip4.ogg', 78, 'beoh - Yuyushiki Factory (YTPMV)'],
-    ['audio/music4.ogg', 53.7, 'Cagayake! - GIRLS'],
-    ['audio/music7.ogg', 51.2, 'Ado - AntiSystem\'s'],
-    ['audio/music10.ogg', 10.85, 'Uesaka Sumire - Inner Urge'],
-    ['audio/music8.ogg', 38.05, 'Kenshi Yonezu - KICK BACK'],
-    ['audio/music11.ogg', 0.2, 'Kanako Itou - Fatima'],
-    ['audio/music12.ogg', 48.5, 'Kanako Itou - Hacking to the Gate'],
-    ['audio/clip5.weba', 0, 'aku rin - INTR (YTPMV)'],
-    ['audio/clip6.weba', 0, 'aku rin - HTDN (YTPMV)'],
-    ['audio/clip7.weba', 0, 'beoh - Old Castle Baby (YTPMV)'],
-    ['audio/clip8.weba', 0, 'Kyoro - Survive (YTPMV)'],
-    ['audio/clip9.weba', 0, 'beoh - hpes-shiki (YTPMV)'],
-    ['audio/clip10.weba', 62, 'nanodot - It\'s just your fault (YTPMV)'],
-    ['audio/music5.weba', 76, 'Sachika Misawa - Links'],
-    ['audio/music28.weba', 42, 'ZUTOMAYO - TAIDADA'],
-];
-//
 let _clipSelected = null;
-const clips = [
-    // new videoClip(music[x], rolltime, lifetime, 'key'), (* = ytpmv)
-    new videoClip(cliponly[0], 31, 32.1,    'w0i5vrvg2qat8mawfjy2i/video1.webm?rlkey=vc7tda62c9s0kfcznxnm02240', true), // botagiri *
-    new videoClip(cliponly[1], 55, 37,      'ieofoxdaqm4jmumczph92/video2.webm?rlkey=mss80z4v2rcjl0qq3mvz0qwky', true), // aquarius *
-    new videoClip(cliponly[2], 21.35, 35.4, '4f2z5ksu6bxu0l68vhslf/video3.webm?rlkey=sli7839jj0sn7dtndkqdr9vdb'), // bad apple
-    new videoClip(cliponly[3], 35, 43.2,    'drhq7vy4mcb32jcq9jtot/video4.webm?rlkey=69155pksd9z5gbn80zm0ungku', true), // point of no k-on *
-    new videoClip(cliponly[4], 78, 38.8,    'xvdt3he159lduqixpffk0/video5.webm?rlkey=zbe9w4z7kkslnggz67mw3pf2h', true), // yuyushiki factory *
-    new videoClip(cliponly[5], 48, 36,      '9snur9h8l5cftf47n3ln1/video6.webm?rlkey=2qv31z6q5gf98sy01emowo8ct'), // k-on op
-    new videoClip(cliponly[6], 51, 37,      'a4bfdi4hnbzj1t8l4f39q/video7.webm?rlkey=7zolbpa1ptyizc4vgub9e2dwe'), // ado antisystem
-    new videoClip(cliponly[7], 6, 28.5,     'cujxc4en713r25f20iz4a/video8.webm?rlkey=0qpxdx4fwwtwg74szmbhs4vc0'), // shimoneta ed
-    new videoClip(cliponly[8], 38, 34,      'upfai6wav5gy5dq4nogoy/video9.webm?rlkey=fs8dhy9djvp64tukntarhbto6'), // kick back
-    new videoClip(cliponly[9], 0, 69.5,     'b5tlu916tcn3r5f9ezau2/video10.webm?rlkey=bgfoiorex4sirmn898rqcfx4p'), // fatima
-    new videoClip(cliponly[10], 48, 40,     'z5pq4uemtopjii80yeh1k/video11.webm?rlkey=godc4mzev23jxezdu99o5of29'), // gate 1
-    new videoClip(cliponly[11], 0, 26.5,    '41z7s482j3wqgk3ua1ugs/video12.webm?rlkey=3wqgbwn2phyifv0egj3aoms9c', true), // INTR *
-    new videoClip(cliponly[12], 0, 37,      '0g4hye7mc3iv3vp783qfj/video13.webm?rlkey=6m5rc64tmuht2rq4nsm0tdpzs', true), // HTDN *
-    new videoClip(cliponly[13], 0, 46.4,    'rtk3o32aoe9xy5tzur21x/video14.webm?rlkey=0jc0tz7r1fz9lvnennj12wvpf', true), // old castle baby *
-    new videoClip(cliponly[14], 0, 49.5,    '322csul3wvt4gt9wy2co5/video15.webm?rlkey=kk1i0webz34xsisd4b97g3xj6', true), // eshatos survive *
-    new videoClip(cliponly[15], 0, 56,      'p7dct166v6ekx2obnceft/video16.webm?rlkey=vg2oym9jxs6r7as64qj8qhn5k', true), // hpes-shiki *
-    new videoClip(cliponly[16], 62, 36.7,   'rsa1cvk0tbf33gh8ogptn/video17.mp4?rlkey=mmqond1w63sbwpac8xkgocihe', true), // your fault *
-    new videoClip(cliponly[17], 0, 33,      'v0ak24ja4eyka6ai3vbji/video18.mp4?rlkey=fjzb9jjmfdfhklaudoo90nz1n'), // railgun s 2ed
-    new videoClip(cliponly[18], 42, 44.5,     'gww945yj83uklsof8hngw/video19.mp4?rlkey=nrdtuh9hi1venj5r8yshgpzyy'), // dandadan ed
-];
+//
+// @EAG MAIN AUDIO FUNCTIONS
 //
 let musicNormal = new Audio();
 let musicRoll = new Audio();
@@ -1264,6 +1157,7 @@ let musicRollPrefound = null;
 let musicNormalLoop = false;
 let musicNormalComplete = false;
 let musicBGVOld = -1;
+let musicRollWaiting = 0;
 //                                                                          METHODS
 function playSound(sound = new Audio(), rate=false) {
     sound.currentTime = 0;
@@ -1276,11 +1170,14 @@ function playSound(sound = new Audio(), rate=false) {
 };
 //
 function musicInitialize() {
+    // get startup normal track & play
     const track = musicRandomTrack();
     musicNormal.src = track[0];
     musicLite.name = track[2];
     musicNormalVolume.move(1, 2, easeInOutSine);
     if(pref.bgmusic > 0) {musicNormal.play()};
+    // provide beatmap info
+    beatmap.setup(track);
     // @RELEASE
     updateMusic = updateMusicCache;
     musicAnalysis.init();
@@ -1361,6 +1258,16 @@ function musicNormalSelect(id) {
     musicNormalVolume.move(1, 1, easeInOutSine);
     musicNormal.src = music[id][0];
     musicLite.name = music[id][2];
+    if(pref.bgmusic > 0) {musicNormal.play()};
+    beatmap.setup(music[id]);
+};
+function musicNormalSelectCustom(src, name='Unnamed') {
+    musicNormal.pause();
+    musicNormal.currentTime = 0;
+    musicNormalVolume.move(1, 1, easeInOutSine);
+    musicNormal.src = src;
+    musicLite.name = name;
+    beatmap.current = null; // disabling beatmap
     if(pref.bgmusic > 0) {musicNormal.play()}
 };
 //
@@ -1372,10 +1279,11 @@ function musicNormalNew() {
         musicNormal.pause();
         musicNormal.currentTime = 0;
         musicNormalVolume.move(1, 2, easeInOutSine);
-        const track = musicRandomTrack()
+        const track = musicRandomTrack();
         musicNormal.src = track[0];
         musicLite.name = track[2];
-        musicNormal.play()
+        musicNormal.play();
+        beatmap.setup(track)
     }
 };
 //
@@ -1392,20 +1300,32 @@ function musicNormalPause(time = 0.25) {
 }
 //
 function musicRollStart(time = 2) {
-    var trackname;
+    var trackname = '';
     musicRoll.pause();
-    //
-    if(pref.rollNewTrack) {
-        [musicRoll.src, musicRoll.currentTime, trackname] = musicRollPrefound === null
-        ? musicRandomTrack() : music[musicRollPrefound] === undefined
-        ? musicRandomTrack() : music[musicRollPrefound];
+    musicRollWaiting = 0;
+    // prefound
+    if(musicRollPrefound !== null) {
+        var track = music[musicRollPrefound];
         musicRollPrefound = null;
     } else {
-        [musicRoll.src, musicRoll.currentTime, trackname] = musicRollPrefound === null
-        ? music[getCurrentMusic()] : music[musicRollPrefound] === undefined
-        ? music[getCurrentMusic()] : music[musicRollPrefound];
+        // random or current
+        var track = pref.rollNewTrack ? musicRandomTrack() : getCurrentMusic();
     };
-    //
+    musicRoll.src = track[0];
+    musicRoll.currentTime = track[1];
+    trackname = track[2];
+    beatmap.setup(track, false);
+    // if(pref.rollNewTrack) {
+    //     var track = musicRandomTrack();
+    //     [musicRoll.src, musicRoll.currentTime, trackname] = musicRollPrefound === null
+    //     ? track : music[musicRollPrefound] === undefined
+    //     ? track : music[musicRollPrefound];
+    // } else {
+    //     var track = getCurrentMusic();
+    //     [musicRoll.src, musicRoll.currentTime, trackname] = musicRollPrefound === null
+    //     ? music[getCurrentMusic()] : music[musicRollPrefound] === undefined
+    //     ? music[getCurrentMusic()] : music[musicRollPrefound];
+    // };
     musicRoll.play();
     musicNormalVolume.move(0, time, easeInOutSine);
     setTimeout(() => {
@@ -1416,6 +1336,7 @@ function musicRollStart(time = 2) {
 };
 function musicRollEnd(time = 0.5) {
     if(pref.bgmusic > 0) {musicNormal.play()};
+    beatmap.listen = 'normal';
     musicNormal.currentTime = Number(String(musicRoll.currentTime));
     musicRollVolume.move(0, time, easeInOutSine);
     setTimeout(() => {
@@ -1424,7 +1345,7 @@ function musicRollEnd(time = 0.5) {
     }, time*1000)
 };
 //
-// @EAG MUSIC WORK
+// @EAG MUSIC LIST & ANALYSER
 //
 const musicMenuWidth = 420;
 function getCurrentMusic() {
@@ -1602,6 +1523,83 @@ let musicEqualizer = {
     },
 };
 //
+// @eag MUSIC BEATMAP
+//
+let beatmap = {
+    listen: 'normal',
+    current: null,
+    beat: 0,
+    oldbeat: 0,
+    //
+    chorus: false,
+    fade: 0.6, // pre-chorus & post-chorus silence time
+    silence: false,
+    //
+    hit: false, // every hit
+    oddhit: false, // every 2 hit
+    //
+    offset: 0, // for dev
+    //
+    update: () => {
+        if(beatmap.current != null) {
+            // getting track time
+            var time = beatmap.listen == 'normal'
+            ? String(musicNormal.currentTime) != 'NaN' && String(musicNormal.currentTime) != 'Infinity' ? musicNormal.currentTime : 0
+            : String(musicRoll.currentTime) != 'NaN' && String(musicRoll.currentTime) != 'Infinity' ? musicRoll.currentTime : 0;
+            // skip if time under offset
+            if(time + beatmap.offset + beatmap.current.offset < 0) {return};
+            // get chorus status & silence status
+            beatmap.chorus = false;
+            beatmap.silence = false;
+            for(var ch in beatmap.current.chorus) {
+                if(time > beatmap.current.chorus[ch][0] && time < beatmap.current.chorus[ch][1]) {beatmap.chorus = true; break};
+                // pre post silence
+                if(time > beatmap.current.chorus[ch][0] - beatmap.fade && time <= beatmap.current.chorus[ch][0]) {beatmap.silence = true; break};
+                if(time >= beatmap.current.chorus[ch][1] && time < beatmap.current.chorus[ch][1] + beatmap.fade) {beatmap.silence = true; break}
+            };
+            // get beat & hits
+            beatmap.beat = Math.floor((time - (beatmap.current.offset + beatmap.offset))/beatmap.current.beatl);
+            if(beatmap.beat != beatmap.oldbeat) {
+                beatmap.oldbeat = +beatmap.beat;
+                beatmap.hit = true;
+                if(beatmap.beat % 2 != 1) {beatmap.oddhit = true};
+                // for vedayu ya blyat (dev)
+                // beatmap.chorus ? spartTopClicks(particleImages.apply, 3) : spartTopClicks(particleImages.apply);
+            } else {
+                beatmap.hit = false;
+                beatmap.oddhit = false
+            }
+        }
+    },
+    //
+    setup: (track, isNormal=true) => {
+        beatmap.listen = isNormal ? 'normal' : 'roll';
+        beatmap.beat = 0;
+        beatmap.oldbeat = 0;
+        beatmap.offset = 0; // for dev!
+        // get beatmap
+        beatmap.current = null;
+        if(track[3] != undefined) {
+            if(music_beatmap[track[3]] !== undefined) {
+                beatmap.current = music_beatmap[track[3]]
+            } else {
+                console.warn(`beatmap for "${track[2]}" is defined, but not found!`, track)
+            }
+        }
+    },
+    seeInfo: (short=false) => {
+        // for dev huev
+        if(beatmap.current != null) {
+            var status = beatmap.chorus ? 'chorus' : beatmap.silence ? 'silence' : 'verse';
+            return short
+            ? `${beatmap.beat} | c ${beatmap.listen} | s ${status} | of ${beatmap.current.offset}`
+            : `${beatmap.current.bpm}bpm | ${beatmap.beat} | channel ${beatmap.listen} | status ${status} | offset ${beatmap.current.offset}`
+        } else {
+            return short ? 'no beatmap :(' : `no beatmap for playing track in "${beatmap.listen}" channel :(` // Smokerge
+        }
+    },
+};
+//
 // @EAG FILTER & PREFFERENCES
 //
 let filterAttempts = 0;
@@ -1681,6 +1679,7 @@ let pref = {
     visual: false,
     visualQuality: 128, // 2^n
     playClip: true,
+    allowCMV: false,
     snowflakes: false,
     // other
     language: 'en',
@@ -4960,8 +4959,19 @@ buttonDoRoll.onclick = () => {
             };
             musicRollStart()
         } else {
+            if(_clipSelected !== null && clips[_clipSelected] !== undefined) {
+                var clip = clips[_clipSelected];
+                _clipSelected = null
+            } else {
+                if(pref.allowCMV) {
+                    var clip = clips[Math.floor(Math.random()*(clips.length-0.001))]
+                } else {
+                    var clip = clips_legit[Math.floor(Math.random()*(clips_legit.length-0.001))]
+                }
+            };
+            //
             clipmainOnCanPlay = () => {
-                videoClipPlay();
+                videoClipPlay(clip);
                 playSound(sound['roll']);
                 roulette.doRoll(clipmainTime, pref.rollSpeed, false);
                 srv.hideProgress.value = 0;
@@ -4978,13 +4988,7 @@ buttonDoRoll.onclick = () => {
                     musicNormal.pause()
                 }, 2000)
             };
-            //
-            if(_clipSelected !== null && clips[_clipSelected] !== undefined) {
-                videoClipSet(clips[_clipSelected]);
-                _clipSelected = null
-            } else {
-                videoClipSet(clips[Math.floor(Math.random()*(clips.length-0.001))])
-            }
+            videoClipSet(clip)
         }
     }
 };
@@ -5022,9 +5026,6 @@ let rollBar = {
     spacing: 0,
     //
     light: 0,
-    lighttime: 1000,
-    lightrect: 0,
-    lightcolor: 0,
     //
     rollStarted: false,
     state: 'init',
@@ -5051,21 +5052,19 @@ let rollBar = {
             buttonDoRoll.pos.setv(rollBar.pos.sumxy(rollBar.spacing));
             buttonDoRoll.draw();
             // подсветка кнопки ролла, чтобы её выделить
-            if(roulette.winnerPos == -1 && roulette.catchWinner == false) {
-                rollBar.light += deltaTime;
-                if(rollBar.light > rollBar.lighttime) {
-                    rollBar.light = 0; 
-                    rollBar.lightrect = rollBar.lighttime;
-                    rollBar.lightcolor = Math.round(Math.random() * 360);
+            if(roulette.winnerPos == -1 && roulette.catchWinner == false && buttonDoRoll.state != 'hover') {
+                if(beatmap.current != null && String(musicNormal.duration) != 'NaN') {
+                    if(!beatmap.silence) {
+                        if(beatmap.chorus) {if(beatmap.hit) {particleApproachRect('top', buttonDoRoll.pos, buttonDoRoll.size, beatmap.current.beatl*1.4)}}
+                        else {if(beatmap.oddhit) {particleApproachRect('top', buttonDoRoll.pos, buttonDoRoll.size, beatmap.current.beatl*1.8)}}
+                    }
+                } else {
+                    rollBar.light += deltaTime;
+                    if(rollBar.light > 1000) {
+                        particleApproachRect('top', buttonDoRoll.pos, buttonDoRoll.size, 0.9)
+                        rollBar.light = 0
+                    }
                 }
-            };
-            if(rollBar.lightrect > 0) {
-                ctx.fillStyle = `hsla(${rollBar.lightcolor} 100% 80% / ${rollBar.lightrect/1500})`;
-                var mult = 1.4 - (rollBar.lightrect / rollBar.lighttime)/2;
-                fillRectRounded(buttonDoRoll.size.multxy(mult), 
-                    buttonDoRoll.pos.sumv(buttonDoRoll.size.dividexy(2)).minv(buttonDoRoll.size.multxy(mult/2)),
-                    `hsla(${rollBar.lightcolor} 100% 80% / ${rollBar.lightrect/2000})`, 10*_scaleDynamic);
-                rollBar.lightrect -= deltaTime
             };
             // карта
             drawMapRoulette(rollBar.size.x - (rbRollWidth*2 + rollBar.spacing*4), rollBar.pos.sumxy(rbRollWidth + rollBar.spacing*4, rollBar.size.y*0.75 - rmpBarHeight/2));
@@ -5202,23 +5201,26 @@ let musicLite = {
     draw: () => {
         // отрисовка плеера
         if(pref.playerShow && musicLite.active) {musicLite.drawfunc()};
-        // отрисовка ожидания
-        if(pref.playClip) {
-
-        };
         musicLite.walpha.update();
         if(musicLite.wait && musicLite.walpha.getFixed() == 0) {musicLite.walpha.move(1,1,easeInCirc)} 
         else if(!musicLite.wait && musicLite.walpha.getFixed() == 1) {musicLite.walpha.move(0,0.5,easeOutCirc)};
         //
         if(musicLite.walpha.get() > 0) {
             ctx.globalAlpha = musicLite.walpha.get();
-            //
+            // waiting for clip/music
             var wsize = new Vector2(400, 24).multxy(_scaleDynamic);
             fillRectRounded(wsize, normalAlign(new Vector2(0.5,0.95), wsize), `#000a`, 8*_scaleDynamic);
             scaleFont(16, 'Segoe UI');
             ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
-            fillTextFast(normalAlign(new Vector2(0.5,0.95), wsize).sumxy(wsize.x/2, wsize.y*0.8),
-            `${txt('hintAwaitingClip')} (${floatNumber(clipTimeout-clipWaiting, 1)} s.)`);
+            //
+            if(pref.playClip) { // clip & music
+                fillTextFast(normalAlign(new Vector2(0.5,0.95), wsize).sumxy(wsize.x/2, wsize.y*0.8),
+                `${txt('hintAwaitingClip')} (${floatNumber(clipTimeout-clipWaiting, 1)} s.)`)
+            } else { // only music
+                if(String(musicRoll.duration) == 'NaN') {musicRollWaiting += deltaTime/1000};
+                fillTextFast(normalAlign(new Vector2(0.5,0.95), wsize).sumxy(wsize.x/2, wsize.y*0.8),
+                `${txt('hintAwaitingMusic')} (${floatNumber(musicRollWaiting, 1)} s.)`)
+            };
             //
             ctx.globalAlpha = 1
         }
@@ -5323,7 +5325,7 @@ let roulette = {
     scrAnimate: 'initlock',
     //
     picsGet: (array) => {
-        roulette.timeout = 15; // timeout for poster loading
+        roulette.timeout = 3; // timeout for poster loading @rel должно быть 10-15
         roulette.notfoundplaced = false;
         roulette.anime = array;
         lsSaveObject('roulette.anime', optimizeAnimeArray(roulette.anime));
@@ -5817,8 +5819,11 @@ class visualParticle {
         this.size = new Vector2();
         this.rotate = 0; // 360
         this.angVelocity = new Vector1();
-        // picture
+        // modes
+        this.mode = 'pic'; // 'pic', 'shape'
         this.pic = new Image();
+        this.color = `#fff`;
+        this.shapefunc = () => {};
         this.alpha = new Vector1(1);
         // meta
         this.lifetime = 0;
@@ -5842,10 +5847,17 @@ class visualParticle {
         // draw
         setRotation(pos, this.rotate);
         ctx.globalAlpha = this.alpha.get();
-        drawImageSized(this.pic, pos.minv(size.multxy(0.5*_scaleDynamic)), size.multxy(_scaleDynamic));
+        this.mode == 'pic'
+        ? drawImageSized(this.pic, pos.minv(size.multxy(0.5*_scaleDynamic)), size.multxy(_scaleDynamic))
+        : this.shapefunc(this);
         ctx.globalAlpha = 1;
         ctx.resetTransform();
     }
+};
+//
+function particleMovePool(pool) {
+    visual.pointers[pool]++;
+    if(visual.pointers[pool] >= visual[pool].length) {visual.pointers[pool] = 0}
 };
 //      BASE FUNCTIONS
 //
@@ -5853,6 +5865,7 @@ function particleSplash(particle, pool, pos, count, time=1) {
     for(let i=0; i<count; i++) {
         var p = visual[pool][visual.pointers[pool]];
         var rtime = time + time * 0.2 * Math.random();
+        p.mode = 'pic';
         // setting
         p.lifetime = rtime;
         p.pos.setv(pos);
@@ -5870,14 +5883,14 @@ function particleSplash(particle, pool, pos, count, time=1) {
         p.angVelocity.move(0, rtime*0.8, easeOutCirc);
         p.alpha.move(0, rtime, easeInCirc);
         // pointer
-        visual.pointers[pool]++;
-        if(visual.pointers[pool] >= visual[pool].length) {visual.pointers[pool] = 0}
+        particleMovePool(pool)
     }
 };
 function particleDrop(particle, pool, pos, count, time=1) {
     for(let i=0; i<count; i++) {
         var p = visual[pool][visual.pointers[pool]];
         var rtime = time + time * 0.2 * Math.random();
+        p.mode = 'pic';
         // setting
         p.lifetime = rtime;
         p.pos.setv(pos);
@@ -5895,9 +5908,31 @@ function particleDrop(particle, pool, pos, count, time=1) {
         p.angVelocity.move(ang*0.25, rtime, easeOutCirc);
         p.alpha.move(0, rtime, easeInCirc);
         // pointers
-        visual.pointers[pool]++;
-        if(visual.pointers[pool] >= visual[pool].length) {visual.pointers[pool] = 0}
+        particleMovePool(pool)
     }
+};
+function particleApproachRect(pool, pos, size, time) {
+    var p = visual[pool][visual.pointers[pool]];
+    p.mode = 'shape';
+    p.pic = null;
+    //
+    p.lifetime = time;
+    p.pos.setv(pos);
+    p.size.setv(size);
+    p.color = `hsla(${Math.round(Math.random() * 360)} 100% 80% / 1)`;
+    // set
+    p.velocity = new Vector2();
+    p.angVelocity.set(0);
+    p.alpha.set(0.7);
+    p.rotate = 0;
+    // move
+    p.alpha.move(0, time);
+    // shape
+    p.shapefunc = (obj) => {
+        var mult = (0.9 + 0.35 * (obj.alpha.dtime / obj.alpha.time)) * _scaleDynamic;
+        fillRectRounded(obj.size.multxy(mult), obj.pos.sumv(obj.size.multxy(0.5)).minv(obj.size.multxy(mult/2)), obj.color, 10*_scaleDynamic)
+    };
+    particleMovePool(pool)
 };
 //      SPECIAL FUNCTIONS
 //
@@ -9134,10 +9169,11 @@ class inspQuestion {
                 // parse animes, get random one and send request for chars
                 this.animes = JSON.parse(JSON.stringify(jikan._result));
                 // if(typeof this.animes != 'object') {this.state = 'start'; return}; // if request throw error in data
-                if(this.animes.length === undefined) {this.state = 'start'; return}; // if response have single title OR error data
+                if(this.animes.data.length === undefined) {this.state = 'start'; return}; // if response have single title OR error data
                 this.title = Math.floor(Math.random() * (this.animes.data.length - 0.001));
-                jikan.custom(`https://api.jikan.moe/v4/anime/${this.animes.data[this.title].mal_id}/characters`);
-                this.state = 'jikan_chars'
+                jikan.custom(`https://api.jikan.moe/v4/anime/${this.animes.data[this.title].mal_id}/characters`); 
+                this.state = 'jikan_chars';
+                // this.state = 'forming' // на случай эсли надо скипать реквест на персов
             };
         } else if(this.state == 'jikan_chars') {
             if(jikan._result != 'wait') {
@@ -9149,6 +9185,7 @@ class inspQuestion {
             // get question type
             if(this.type == 'none') {
                 var types = ['pic', 'synop', 'charname', 'charanime'];
+                // var types = ['pic', 'synop']; // вопросы без персов
                 this.type = types[Math.floor(Math.random() * (types.length - 0.001))];
                 // get correct answer title
                 this.content.correct = Math.floor(Math.random() * 3.999);
@@ -9853,15 +9890,15 @@ let mrthRectTypes = {
         class: inspEmpty
     },
     'anime': {
-        weight: 15, // default 15
+        weight: 12, // default 12
         class: inspAnime
     },
     'quest': {
-        weight: 50, // default 50
+        weight: 35, // default 35
         class: inspQuestion
     },
     'meeting': {
-        weight: 60, // default 60
+        weight: 40, // default 40
         class: inspMeeting
     },
     'treasure': {
@@ -9869,7 +9906,7 @@ let mrthRectTypes = {
         class: inspTreasure
     },
     'mission': {
-        weight: 8, // default 8
+        weight: 12, // default 12
         class: inspMission
     },
 };
@@ -11709,7 +11746,7 @@ function enabledVsyncRAF(vsync=true) {
 //
 let devinfoValues = {
     width: 300,
-    height: 94,
+    height: 130,
     offset: 12,
     margin: 4,
     xanchor: 12,
@@ -11740,28 +11777,35 @@ function developInfo() {
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(5)), 'full: '+Math.floor(fullsize.x)+'x'+Math.floor(fullsize.y) + ', cvs: '+Math.floor(cvssize.x)+'x'+Math.floor(cvssize.y), '#ccf', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(6)), 'scale: '+floatNumber(_scaleDynamic, 2), '#cfc', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(7)), 'session: '+bytesStringify(getSessionSize())+ ` (${floatNumber(getSessionSize()/sessionLimit*100, 1)}%)`, '#fc7', 'bold 12px Consolas');
-        // хуй
-        //
-        graphFPS.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(8)), 3, 0);
+
+        // music normal/roll status, currentTime && beatmap info
+        var mNormalStatus = String(musicNormal.duration) == 'NaN' ? 'loading' : 'ready';
+        var mRollStatus = musicRoll.currentSrc == '' ? 'no src' : String(musicRoll.duration) == 'NaN' ? 'loading' : 'ready';
+        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(8)), `musicNormal -> ${mNormalStatus}, time: ${timeStringify(musicNormal.currentTime)}, lvol: ${floatNumber(musicNormalVolume.get(), 2)}`, '#ddf', 'bold 12px Consolas');
+        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(9)), `musicRoll -> ${mRollStatus}, time: ${timeStringify(musicRoll.currentTime)}, lvol: ${floatNumber(musicRollVolume.get(), 2)}`, '#ddf', 'bold 12px Consolas');
+        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(10)), 'beat: ' + beatmap.seeInfo(true), '#ffc', 'bold 12px Consolas');
+        // хуй (fps graph)
+        graphFPS.draw(new Vector2(devinfoValues.xanchor, devinfoValues.texty(11)), 3, 0);
+        // clip buffered range progressbars
         if(pref.playClip) {
             // buffered ranges
             videoClipBuffered();
             ctx.fillStyle = '#0008';
-            fillRectFast(new Vector2(devinfoValues.width, devinfoValues.spacing*(_clipmainBuffered.length+1)), new Vector2(devinfoValues.xanchor, devinfoValues.texty(8)+85));
+            fillRectFast(new Vector2(devinfoValues.width, devinfoValues.spacing*(_clipmainBuffered.length+1)), new Vector2(devinfoValues.xanchor, devinfoValues.texty(11)+85));
             ctx.fillStyle = '#fffd'; ctx.textAlign = 'start';
-            fillTextFast(new Vector2(devinfoValues.text, devinfoValues.texty(8)+85+devinfoValues.spacing), `videoClipBufferedRanges (${_clipmainBuffered.length})`);
+            fillTextFast(new Vector2(devinfoValues.text, devinfoValues.texty(11)+85+devinfoValues.spacing), `videoClipBufferedRanges (${_clipmainBuffered.length})`);
             ctx.textAlign = 'end';
             var dur = String(clipmain.duration) != 'Infinity' ? clipmain.duration : 300;
-            fillTextFast(new Vector2(devinfoValues.xanchor + devinfoValues.width, devinfoValues.texty(8)+85+devinfoValues.spacing), `${timeStringify(clipmain.currentTime)} - ${timeStringify(dur)}`);
+            fillTextFast(new Vector2(devinfoValues.xanchor + devinfoValues.width, devinfoValues.texty(11)+85+devinfoValues.spacing), `${timeStringify(clipmain.currentTime)} - ${timeStringify(dur)}`);
             for(var r in _clipmainBuffered) {
                 var w = (_clipmainBuffered[r][1] - _clipmainBuffered[r][0]) * devinfoValues.width;
                 var x = _clipmainBuffered[r][0] * devinfoValues.width;
                 ctx.fillStyle = `hsla(${Math.round(360*(r/_clipmainBuffered.length))} 80% 60% / 0.4)`;
-                fillRectFast(new Vector2(w, devinfoValues.spacing), new Vector2(devinfoValues.xanchor + x, devinfoValues.texty(8)+85+devinfoValues.spacing*(Number(r)+1)))
+                fillRectFast(new Vector2(w, devinfoValues.spacing), new Vector2(devinfoValues.xanchor + x, devinfoValues.texty(11)+85+devinfoValues.spacing*(Number(r)+1)))
             };
             ctx.fillStyle = '#fffa';
             var pos = (clipmain.currentTime/dur)*devinfoValues.width;
-            fillRectFast(new Vector2(3, devinfoValues.spacing*_clipmainBuffered.length), new Vector2(devinfoValues.xanchor + pos, devinfoValues.texty(8)+85+devinfoValues.spacing))
+            fillRectFast(new Vector2(3, devinfoValues.spacing*_clipmainBuffered.length), new Vector2(devinfoValues.xanchor + pos, devinfoValues.texty(11)+85+devinfoValues.spacing))
         };
         ctx.textAlign = 'start';
         // mouse pos
@@ -11787,6 +11831,7 @@ function render() {
     inputListener();
     updatePreferences();
     updateMusic();
+    beatmap.update();
     jikan._update();
     // draw
     wallpaperImage();
