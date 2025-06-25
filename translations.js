@@ -185,6 +185,8 @@ const _TextTranslations = {
         filterAttTags: 'Только для тэгов',
         filterMALPrompt: 'Поиск аниме с помощью сайта MyAnimeList. Писать запрос нужно на английском языке.',
         filterMALFind: 'MyAnimeList',
+        filterSkipSpecial: 'Пропуск всех "спецвыпусков"',
+        hintSkipSpecial: 'Фильтр пропустит все "OVA"/"ONA"/"Спешлы" с 1 серией. Фильмы не будут пропущены.',
         // browser, arrays
         browserEnter: 'Ввести', browserPage: 'Страница', browserNext: 'Вперёд', browserPrev: 'Назад',
         browserAddNote: 'Зажмите, чтобы добавить тайтл в редактируемый список',
@@ -448,7 +450,7 @@ const _TextTranslations = {
             statsEpisodes: 'Просмотрено серий',
             statsRerolls: 'Сделано рероллов',
             statsExplored: 'Изучено клеток',
-            statsMissions: 'Выполено миссий',
+            statsMissions: 'Выполнено миссий',
         },
     },
     'en': {
@@ -637,6 +639,8 @@ const _TextTranslations = {
         filterAttTags: 'Tags only',
         filterMALPrompt: 'Search for anime using the MyAnimeList site. You need to write the request in English.',
         filterMALFind: 'MyAnimeList',
+        filterSkipSpecial: 'Skip all "specials"',
+        hintSkipSpecial: 'The filter will skip all "OVA"/"ONA"/"Specials" with 1 episode. Movies will not be skipped.',
         // browser & arrays
         browserEnter: 'Enter', browserPage: 'Page', browserNext: 'Next', browserPrev: 'Prev',
         browserAddNote: 'Hold for add title to editable list',
