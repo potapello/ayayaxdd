@@ -1,6 +1,6 @@
 ![ayaya](https://github.com/user-attachments/assets/24209a94-16e0-4464-a20d-195dded20b9e)
 
-#AYAYA Anime Roulette
+# AYAYA Anime Roulette
 
 An application for getting random anime from a list randomly generated or manually assembled.
 
