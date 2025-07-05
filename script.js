@@ -5521,6 +5521,20 @@ let roulette = {
             } else {
                 roulette.scrTarget = Math.round(roulette.progress.value)
             };
+            // скроллим плавно
+            if(roulette.scrAnimate === true) {
+                var scrAccur = deltaTime/150;
+                scrAccur > 1 ? scrAccur = 1 :false;
+                if(roulette.scrTarget !== roulette.progress.value) {
+                    roulette.progress.value += (roulette.scrTarget - roulette.progress.value) * scrAccur;
+                };
+                if(Math.abs(roulette.scrTarget - roulette.progress.value) < 0.1) {
+                    roulette.progress.move(roulette.scrTarget, 0.2);
+                    roulette.scrAnimate = false
+                }
+            } else {
+                roulette.scrTarget = Math.round(roulette.progress.value)
+            };
             // отслеживаем кручения
             if(typeof roulette.dragged === 'number') {
                 if(roulette.dragged > 0) {
