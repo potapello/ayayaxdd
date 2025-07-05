@@ -1,3 +1,5 @@
+﻿/* need to translate
+*/
 const _TextTranslations = {
     'ru': {
         // global
@@ -124,6 +126,8 @@ const _TextTranslations = {
         infoList: 'Список',
         infoChangesCount: 'Изменений: ',
         infoNoChanges: 'Изменений нет',
+        infoDuration: 'Длительность: ',
+        infoDuration2: ' мин.',
         // MAL
         malHead: 'Средний рейтинг AODB',
         mal404: 'Нет данных...',
@@ -163,10 +167,13 @@ const _TextTranslations = {
         filterApplyPreset: 'Применить',
         filterWallpaper: 'Вставьте ссылку на изображение или нажмите "Отмена" для случайного изображения из заранее подготовленных...',
         filterDiap: 'Диапазоны',
-        filterYear: 'Год выхода (0 - 2023)',
+        filterYear: 'Год выхода (1900 - 2026)',
         filterEps: 'Кол-во серий (1 - 9999)',
         filterScore: 'Ср. оценка (0 - 10)',
         filterScoreAllow: 'Учитывать оценки',
+        filterDurationAllow: 'Учитывать длительность серий',
+        filterDuration: 'Длительность (1 - 999 минут)',
+        filterSupers: 'Особые возможности',
         filterSTS: 'Сезоны, типы и статусы',
         filterTags: 'Тэги',
         filterPresets: 'Пресеты',
@@ -217,7 +224,7 @@ const _TextTranslations = {
         loadRecon: `Пожалуйста, проверьте соединение с интернетом и перезагрузите страницу.`,
         // presetinfo
         prinIncludes: 'Включения:', prinExcludes: 'Исключения:', prinPreset: 'Пресет: ', prinEps: ' Серии: ',
-        prinYears: '. Года выхода: ', prinScore: '. Ср. оценка: ', prinMultiplier: '. Множитель:',
+        prinYears: '. Года выхода: ', prinScore: ' минут. Ср. оценка: ', prinMultiplier: '. Множитель:', prinDuration: '. Длительность: ',
         // pref
         prefHead: 'Настройки',
         prefRoll: 'Рулетка',
@@ -246,13 +253,18 @@ const _TextTranslations = {
         prefScaleSet: 'Размер интерфейса',
         prefVersion: 'Версия: ',
         prefAbout: 'О проекте',
-        prefVisual: 'Визуализация музыки',
-        prefPlayClip: 'Показывать видеоклип*',
+        prefPlayClip: 'Показывать видеоклип',
         prefLanguage: 'Язык',
         prefOthers: 'Прочее',
         prefRecovery: 'Восстановление',
         prefResetDefault: 'Настройки по умолчанию',
         prefResetStorage: 'Удалить все данные',
+        prefAllowCMV: 'Разрешить кастомные клипы',
+        prefVideo: 'Видео',
+        prefVisualHalfed: 'Меньше частиц',
+        prefVisual: 'Включить эффекты и частицы',
+        prefVisualHeader: 'Визуальные эффекты',
+        prefFramesUnfocused: 'Низкий FPS в расфокусе',
         // prefsets
         pstDisable: 'Выкл.', pstLow: 'Низко', pstMedium: 'Средне', pstHigh: 'Высоко', pstChange: 'Сменить',
         // hints
@@ -272,13 +284,18 @@ const _TextTranslations = {
         hintRoll: 'На низких значениях времени и скорости будет слабый рандом. Рекомендуемое время = 20-60, скорость не меньше 20.',
         hintPrefScale: 'Множитель размера всех элементов интерфейса. Можно настраивать кнопками "+" и "-".',
         hintAttempts: 'Количество условий, которые фильтр сможет проигнорировать.',
-        hintAudioClips: 'Экспериментальная функция (требует хорошего подключения к интернету). Воспроизводит ролик к треку вместо заднего фона во время прокрута. Настройка времени рулетки игнорируется.',
         hintAttTags: 'Опция "Игнорирование условий" будет использована только для тэгов.',
         hintResetStorage: 'Удалить все накопленные данные из localStorage. Это касается настроек, аниме на рулетке, фильтра, сохранённых списков и т.п.',
         hintClaimRoulette: 'Взять все тайтлы с рулетки',
         hintAwaitingClip: 'Грузим видео с музычкой ...',
         hintAwaitingMusic: 'Грузим музыку ...',
         hintOpenURL: 'Нажмите, чтобы открыть в новой вкладке: ',
+        hintAllowCMV: 'Вместе с обычными музыкальными видео будут показываться ещё и кастомные клипы. Например: EDIT, AMV, YTPMV и т.п.',
+        hintAudioClips: 'Воспроизводит ролик к треку вместо заднего фона во время прокрута. Типы роликов: опенинги, эндинги и оффициальные клипы. Настройка времени рулетки игнорируется.',
+        hintVisual: 'Включает отображение эффектов и частиц при нажатии на некоторые кнопки или при некоторых событиях.',
+        hintVisualHalfed: 'Сильно (в 2-3 раза) уменьшит количество появляющихся частиц там, где это возможно.',
+        hintFramesUnfocused: 'Максимальный FPS будет снижен до 10 при потере фокуса или когда активна другая вкладка.',
+        hintAllowDuration: 'Фильтр будет учитывать длительность серий у всех тайтлов, кроме фильмов. Важно: данные о длительности серии указаны не у всех тайтлов (примерно 7%), такие тайтлы не пройдут фильтрацию.',
         // marathon text
         mrth: {
             // items
@@ -562,7 +579,7 @@ const _TextTranslations = {
             'Страшно смешно': 'Terribly funny',
             'Супергероини': 'Superheroines',
             'Трава у дома': 'Grass at the house',
-            'Аниме \"5в1\"': 'Anime \"5in1\"',
+            'Аниме \"5в1\"': 'Anime \"5 in 1\"',
         },
         // status
         statusFinished: 'Finished', statusOngoing: 'Ongoing', statusUpcoming: 'Upcoming', statusUnknown: 'Unknown',
@@ -578,6 +595,8 @@ const _TextTranslations = {
         infoList: 'List: ',
         infoChangesCount: 'Change count: ',
         infoNoChanges: 'No changes',
+        infoDuration: 'Duration: ',
+        infoDuration2: ' min.',
         // MAL
         malHead: 'AODB Rating',
         mal404: 'No data...',
@@ -617,10 +636,13 @@ const _TextTranslations = {
         filterApplyPreset: 'Apply',
         filterWallpaper: 'Insert a URL link to the image or click "Cancel" for a random image from the pre-prepared ones...',
         filterDiap: 'Ranges',
-        filterYear: 'Year of release (0 - 2023)',
+        filterYear: 'Year of release (1900 - 2026)',
         filterEps: 'Episodes (1 - 9999)',
         filterScore: 'Avg. score (0 - 10)',
-        filterScoreAllow: 'Take into account the ratings',
+        filterScoreAllow: 'Take into account Score',
+        filterDurationAllow: 'Take into account Duration',
+        filterDuration: 'Duration (1 - 999 minutes)',
+        filterSupers: 'Special features',
         filterSTS: 'Seasons, types & statuses',
         filterTags: 'Tags',
         filterPresets: 'Presets',
@@ -671,7 +693,7 @@ const _TextTranslations = {
         loadRecon: `Please check your internet connection and reload the page.`,
         // presetinfo
         prinIncludes: 'Includes:', prinExcludes: 'Excludes:', prinPreset: 'Preset: ', prinEps: ' Episodes: ',
-        prinYears: '. Years: ', prinScore: '. Avg. score: ', prinMultiplier: '. Multiplier:',
+        prinYears: '. Years: ', prinScore: ' minutes. Avg. score: ', prinMultiplier: '. Multiplier:', prinDuration: '. Duration: ',
         // pref
         prefHead: 'Options',
         prefRoll: 'Roulette',
@@ -700,13 +722,18 @@ const _TextTranslations = {
         prefScaleSet: 'UI size',
         prefVersion: 'Version: ',
         prefAbout: 'About the project',
-        prefVisual: 'Music visualization',
-        prefPlayClip: 'Show Video clip*',
+        prefPlayClip: 'Show videoclip',
         prefLanguage: 'Language',
         prefOthers: 'Other',
         prefRecovery: 'Recovery',
         prefResetDefault: 'Default settings',
         prefResetStorage: 'Delete all data',
+        prefAllowCMV: 'Allow custom music videos',  
+        prefVideo: 'Video',
+        prefVisualHalfed: 'Reduced particles',
+        prefVisual: 'Enable effects and particles',
+        prefVisualHeader: 'Visual effects',
+        prefFramesUnfocused: 'Low FPS when unfocused',
         // prefsets
         pstDisable: 'Off', pstLow: 'Low', pstMedium: 'Medium', pstHigh: 'High', pstChange: 'Change',
         // hints
@@ -726,13 +753,18 @@ const _TextTranslations = {
         hintRoll: 'At low values of time and speed, there will be a weak random. Recommended time = 20-60, speed not less than 20.',
         hintPrefScale: 'Multiplier of the size of all interface elements. You can configure it using the "+" and "-" buttons.',
         hintAttempts: 'The number of conditions that the filter can ignore.',
-        hintAudioClips: 'Experimental feature (requires a good internet connection). Plays the video to the track instead of the background while the roulette is running. The roulette time setting is ignored.',
         hintAttTags: 'The "Ignore conditions" option will be used only for tags.',
         hintResetStorage: 'Delete all accumulated data from localStorage. This applies to settings, roulette anime, filter, saved lists, etc.',
         hintClaimRoulette: 'Take all titles from the roulette',
         hintAwaitingClip: 'Waiting for music & video ...',
         hintAwaitingMusic: 'Waiting for music ...',
         hintOpenURL: 'Click to open in a new tab: ',
+        hintAllowCMV: 'Along with regular music videos, custom clips will also be shown. Examples: EDIT, AMV, YTPMV, etc.',  
+        hintAudioClips: 'Plays a video for the track instead of the background during rolling. Types of videos: openings, endings, and official music videos. The roulette timing setting is ignored.',  
+        hintVisual: 'Enables the display of effects and particles when pressing certain buttons or during specific events.',
+        hintVisualHalfed: 'Significantly reduces (by 2-3 times) the number of spawned particles where possible.',
+        hintFramesUnfocused: 'The maximum FPS will be reduced to 10 when losing focus or when another tab is active.',
+        hintAllowDuration: 'The filter will take into account the duration of episodes for all titles, except movies. Important: not all titles have episode length data (approximately 7%), such titles will not pass the filter.',
         // marathon text
         mrth: {
             // items

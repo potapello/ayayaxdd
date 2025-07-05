@@ -13,29 +13,10 @@
 //  License URL -> https://github.com/manami-project/anime-offline-database/blob/master/LICENSE 
 /*===============================================================================================*/
 
-/*============================================ TODO ===============================================
-[+] отображение "серий/рейтинг/год" под постерами (или под названием) в рулетке под конец прокрута
-[+] инфу про битрейт/оффсет/тайминги для каждого трека (для анимаций, ритм-игры в марафоне)
-[+] кнопка в фильтре, включающая `skipSpecial` (добавить перевод)
-[+] кнопка для настройки кол-ва частиц
-[+] возможность настроить типы клипов (вкл/откл пупов)
-[?] мб добавить новую инфу из дб на табло с инфой (студия, прода, длительность)
-[+] добавить влияние длительности серии на кол-во очков за просмотр
-[$] улучшить пресеты (контроль над сезонами, типами; игнорирование условий и скипы)
-============================================= CHANGES =============================================
-for version - 1.4.0
-    === PERM CHANGES ===
-    script.js
-    changelog.txt
+/*=========================================== CHANGES =============================================
 
-    === NEW FILES ===
-    media.js
-
-    === CHANGES ===
-    translations.js
-    !!! DELETE FOLDER WITH MUSIC
 =================================================================================================*/
-var cvs = document.getElementById("ayayaxdd");
+var cvs = document.getElementById("ayayaxdd"); // @rel почистить тодо и чангес сверху)))
 var ctx = cvs.getContext("2d");
 // focus stopper
 let windowVisibility = false;
@@ -55,13 +36,11 @@ function databaseShorter() {
         // counter
         adb[a].fake_dbid = Number(a);
         // shorter
-        // delete adb[a].synonyms; (already used for searching)
         delete adb[a].relations;
         delete adb[a].relatedAnime;
         delete adb[a].thumbnail;
         delete adb[a].studios;
         delete adb[a].producers;
-        // delete adb[a].duration;
         // shorted score info
         if(adb[a].score !== undefined) {adb_information.scored += 1; adb[a].score = floatNumber(adb[a].score.arithmeticMean, 2)}
         else {adb[a].score = null} // arithmeticMean - там значения ближе к реальности, ещё есть arithmeticGeometricMean и median
@@ -73,16 +52,16 @@ function databaseShorter() {
 /** Содержит некоторую информацию о приложении. */
 let $appInfo = {
     // main @rel
-    version: '1.4 beta',
-    date: '25-06-2025',
+    version: '1.4.1 beta',
+    date: '06-07-2025',
     name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
     fullname: 'AYAYA - Anime Roulette',
     author: 'potapello',
     license: 'GNU General Public License v3.0',
     licenseURL: 'https://github.com/potapello/ayayaxdd/blob/main/LICENSE',
     // other
-    codename: 'ayayaxdd', // EAG? в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
-    comment: 'ayayaxdd 1.4 beta',
+    codename: 'ayayaxdd', // EAG? (когда то codename был EAG) в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
+    comment: 'ayayaxdd 1.4.1 beta',
 };
 console.log(`\n${$appInfo.fullname}\n${$appInfo.comment} (${$appInfo.date})\nby ${$appInfo.author}\n `);
 //
@@ -105,14 +84,14 @@ var FPS = 0, deltaTime = 0, oldTime = 0;
 let fpsFrames = 0, fpsSumm = 0;
 let timeMultiplier = 1;
 //
-const fpsFocusLimiter = 20;
+const fpsFocusLimiter = 10;
 let fpsFocusLast = Number();
 let fpsFocusSwitch = false;
 function workWithFPS() {
     // for drawtime calc
     if(pref.showDebugInfo || pref.showFPS) {_ft_start = performance.now()};
     // limit fps, if no focus @RELEASE
-    if(fpsFocusSwitch) {
+    if(fpsFocusSwitch && pref.fpsUnfocused) {
         fpsFocusSwitch = false;
         if(windowVisibility) {
             lockFpsSwitch(0, false)
@@ -235,7 +214,7 @@ function findMin(array, default_min) {
 };
 function findCent(array) {
     var summ = 0;
-    for(var i = 0; i < array.length; i++) {summ += Number(String(array[i])) !== NaN ? array[i] : 0};
+    for(var i = 0; i < array.length; i++) {summ += +array[i] !== NaN ? array[i] : 0};
     return Math.floor(summ/array.length*10)/10
 };
 //
@@ -257,7 +236,7 @@ class Vector1 {
         this.time = 0; this.dtime = 0;
         this.ease = false;
     }
-    set(value) {this.reset(); this.value = Number(String(value))}
+    set(value) {this.reset(); this.value = +value}
     get() {return this.value + this.Mod}
     getFixed() {return this.value + this.Diff}
     applyMod() {
@@ -333,8 +312,8 @@ class Vector2 {
     dividexy(dx, dy=dx) {return new Vector2(this.x / dx, this.y / dy)}
     multv(vec) {return new Vector2(this.x * vec.x, this.y * vec.y)}
     multxy(mx, my=mx) {return new Vector2(this.x * mx, this.y * my)}
-    setv(vec) {this.x = Number(String(vec.x)); this.y = Number(String(vec.y))}
-    setxy(newx, newy=newx) {this.x = Number(String(newx)); this.y = Number(String(newy))}
+    setv(vec) {this.x = +vec.x; this.y = +vec.y}
+    setxy(newx, newy=newx) {this.x = +newx; this.y = +newy}
     invert() {this.x = this.x*this.y; this.y = this.x/this.y; this.x = this.x/this.y}
     minus() {this.x *= -1; this.y *= -1}
     sign(sign) {
@@ -452,6 +431,8 @@ class Vector2 {
         this.ease = ease;
     }
 };
+const __ro_v1 = new Vector1();
+const __ro_v2 = new Vector2();
 //
 // @EAG EASINGS
 //
@@ -636,7 +617,7 @@ function inputListener() {
         };
         if(keyPressed('Backslash')) {pref.showDebugInfo = pref.showDebugInfo ? false : true};
         if(keyPressed('Backquote')) {
-            var prom = prompt('Write a command...', _cheats.last);
+            const prom = prompt('Write a command...', _cheats.last);
             if(prom !== null) {
                 _cheats.last = String(prom);
                 cheatPrompt = _cheats.last.split(' ');
@@ -742,7 +723,7 @@ let fileManager = {
         //
         fileManager.input.onchange = () => {
             //
-            var file = fileManager.input.files[0];
+            const file = fileManager.input.files[0];
             if(file.type === 'text/plain' && file.size <= maxsize) {
                 var reader = new FileReader();
                 reader.readAsText(file);
@@ -778,7 +759,7 @@ let fileManager = {
         //
         fileManager.input.onchange = () => {
             //
-            var file = fileManager.input.files[0];
+            const file = fileManager.input.files[0];
             if(file.type === 'application/json' && file.size <= maxsize) {
                 var reader = new FileReader();
                 reader.readAsText(file);
@@ -820,9 +801,9 @@ let fileManager = {
 * @param {number} actual => Текущее значение или значение по умолчанию. Возвращается функцией, если число введено некорректно или число не удовлетворяет условиям `min` `max`.
 */
 function promptNumber(text, min, max, actual) {
-    var p = String(Number(prompt(text, actual)));
+    var p = String(+prompt(text, actual));
     if(p === 'NaN' || p === 'null') {return actual}
-    else {p = Number(p)};
+    else {p = +p};
     return p < min ? min : p > max ? max : p
 };
 //
@@ -870,7 +851,7 @@ let _cheats = {
     },
     'delete-title': () => {
         if(!roulette.hidemap) {
-            var title = roulette.centerNumber();
+            const title = roulette.centerNumber();
             if(roulette.winnerPos == title) {
                 localStorage.removeItem(savePrefix+'roulette.winner');
                 roulette.catchWinner = false;
@@ -893,7 +874,7 @@ let _cheats = {
     'clip': (args) => {
         if(args[1] === undefined) {return};
         if(String(Number(args[1])) == 'NaN') {return};
-        var number = Number(args[1]);
+        const number = Number(args[1]);
         if(number < 0 || number >= clips.length) {return};
         if(args[2] !== undefined) {
             if(args[2] == 'pm') {
@@ -917,13 +898,6 @@ let _cheats = {
         playSound(sound['taginc'])
         }
     },
-    'snowflakes': (args) => {
-        if(args[1] === undefined) {return};
-        if(String(Number(args[1])) == 'NaN') {return};
-        var number = Number(args[1]);
-        snowflake.count = number < 0 ? 0 : number > 1024 ? 1024 : number;
-        resetSnowflakes()
-    },
     'vsync': (args) => {
         if(args[1] === undefined) {return};
         enabledVsyncRAF(eval(args[1]))
@@ -932,24 +906,6 @@ let _cheats = {
         prefSetValue('allowCMV', pref.allowCMV ? false : true);
         playSound(sound['taginc'])
     },
-    // 'dlm': (args) => { // no legit ))
-    //     if(args[1] === undefined) {return};
-    //     if(args[2] === undefined) {return};
-    //     if(args[1] == 'music') {
-    //         if(args[2] === 'current') {window.open(music[getCurrentMusic()][0]); return};
-    //         if(String(Number(args[2])) == 'NaN') {return};
-    //         var id = Number(args[2]);
-    //         if(id >= 0 && id < music.length) {
-    //             window.open(music[id][0]);
-    //         }
-    //     } else if(args[1] == 'clip') {
-    //         if(String(Number(args[2])) == 'NaN') {return};
-    //         var id = Number(args[2]);
-    //         if(id >= 0 && id < clips.length) {
-    //             window.open(clips[id].v[0]);
-    //         }
-    //     }
-    // },
 };
 //
 // @EAG MATH FUNCTIONS
@@ -1084,7 +1040,7 @@ function videoClipEnd(time = 1) {
     musicNormal.pause();
     // musicNormal.src = String(musicRoll.src);
     if(pref.bgmusic > 0) {musicNormal.play(); beatmap.listen = 'normal'};
-    musicNormal.currentTime = Number(String(musicRoll.currentTime));
+    musicNormal.currentTime = +musicRoll.currentTime;
     musicRollVolume.move(0, time, easeInOutSine);
     clipmainAlpha.move(0, time, easeInOutSine);
     setTimeout(() => {
@@ -1315,17 +1271,7 @@ function musicRollStart(time = 2) {
     musicRoll.currentTime = track[1];
     trackname = track[2];
     beatmap.setup(track, false);
-    // if(pref.rollNewTrack) {
-    //     var track = musicRandomTrack();
-    //     [musicRoll.src, musicRoll.currentTime, trackname] = musicRollPrefound === null
-    //     ? track : music[musicRollPrefound] === undefined
-    //     ? track : music[musicRollPrefound];
-    // } else {
-    //     var track = getCurrentMusic();
-    //     [musicRoll.src, musicRoll.currentTime, trackname] = musicRollPrefound === null
-    //     ? music[getCurrentMusic()] : music[musicRollPrefound] === undefined
-    //     ? music[getCurrentMusic()] : music[musicRollPrefound];
-    // };
+    //
     musicRoll.play();
     musicNormalVolume.move(0, time, easeInOutSine);
     setTimeout(() => {
@@ -1337,7 +1283,7 @@ function musicRollStart(time = 2) {
 function musicRollEnd(time = 0.5) {
     if(pref.bgmusic > 0) {musicNormal.play()};
     beatmap.listen = 'normal';
-    musicNormal.currentTime = Number(String(musicRoll.currentTime));
+    musicNormal.currentTime = +musicRoll.currentTime;
     musicRollVolume.move(0, time, easeInOutSine);
     setTimeout(() => {
         musicNormalVolume.move(1, time, easeInOutSine);
@@ -1384,7 +1330,7 @@ let mnMenu = {
     selector: (name) => {return `>>> ${name} <<<`},
     //
     active: (input) => {
-        if(srv.state === 'idle') {
+        if(srv.state === 'idle' && pref.playerShow) {
             if(mnMenu.alpha.get() <= 0) {
                 mnMenu.sel = getCurrentMusic();
                 mnMenu.alpha.move(1, 0.25, easeInOutSine);
@@ -1464,7 +1410,7 @@ let musicAnalysis = {
     equalCent: 0,
     // initialize
     init: () => {
-        if(pref.visual) {
+        if(pref.visualAudio) {
             musicAnalysis.ctx = new (window.AudioContext || window.webkitAudioContext)();
             musicAnalysis.srcNormal = musicAnalysis.ctx.createMediaElementSource(musicNormal);
             musicAnalysis.srcRoll = musicAnalysis.ctx.createMediaElementSource(musicRoll);
@@ -1481,7 +1427,7 @@ let musicAnalysis = {
     },
     // update
     update: () => {
-        if(musicAnalysis.ctx !== null && pref.visual) {
+        if(musicAnalysis.ctx !== null && pref.visualAudio) {
             if(srv.state !== 'idle') {
                 musicAnalysis.anRoll.getByteFrequencyData(musicAnalysis.freq);
                 musicAnalysis.anRoll.getByteTimeDomainData(musicAnalysis.domain)
@@ -1543,7 +1489,7 @@ let beatmap = {
     update: () => {
         if(beatmap.current != null) {
             // getting track time
-            var time = beatmap.listen == 'normal'
+            const time = beatmap.listen == 'normal'
             ? String(musicNormal.currentTime) != 'NaN' && String(musicNormal.currentTime) != 'Infinity' ? musicNormal.currentTime : 0
             : String(musicRoll.currentTime) != 'NaN' && String(musicRoll.currentTime) != 'Infinity' ? musicRoll.currentTime : 0;
             // skip if time under offset
@@ -1559,7 +1505,7 @@ let beatmap = {
             };
             // get beat & hits
             beatmap.beat = Math.floor((time - (beatmap.current.offset + beatmap.offset))/beatmap.current.beatl);
-            if(beatmap.beat != beatmap.oldbeat) {
+            if(beatmap.beat != beatmap.oldbeat && !musicNormal.paused) {
                 beatmap.oldbeat = +beatmap.beat;
                 beatmap.hit = true;
                 if(beatmap.beat % 2 != 1) {beatmap.oddhit = true};
@@ -1590,7 +1536,7 @@ let beatmap = {
     seeInfo: (short=false) => {
         // for dev huev
         if(beatmap.current != null) {
-            var status = beatmap.chorus ? 'chorus' : beatmap.silence ? 'silence' : 'verse';
+            const status = beatmap.chorus ? 'chorus' : beatmap.silence ? 'silence' : 'verse';
             return short
             ? `${beatmap.beat} | c ${beatmap.listen} | s ${status} | of ${beatmap.current.offset}`
             : `${beatmap.current.bpm}bpm | ${beatmap.beat} | channel ${beatmap.listen} | status ${status} | offset ${beatmap.current.offset}`
@@ -1606,10 +1552,10 @@ let filterAttempts = 0;
 let filterAttemptTags = false;
 let filterAttRange = range(0, 4);
 //
-let filterDefault = {
+let filterDefault = { //@rel
     //tags
     tagsIncluded: [],
-    tagsExcluded: [], // 'horror', 'mecha', 'yaoi'
+    tagsExcluded: [], // 'mecha', 'yaoi'
     tagsUndefined: false,
     NSFW: false,
     //episodes
@@ -1618,11 +1564,15 @@ let filterDefault = {
     skipSpecial: false,
     //year
     yearMin: 1970,
-    yearMax: 2023,
+    yearMax: 2026,
     // score
     scoreAllow: false,
     scoreMin: 0,
     scoreMax: 10,
+    // duration (minutes)
+    durationAllow: false,
+    durationMin: 1,
+    durationMax: 30,
     //status
     statusFinished: true,
     statusOngoing: false,
@@ -1676,16 +1626,18 @@ let pref = {
     playerShow: true,
     rollNewTrack: true,
     // visual
-    visual: false,
+    visual: true,
+    visualHalfed: false,
     visualQuality: 128, // 2^n
+    visualAudio: false,
     playClip: true,
     allowCMV: false,
-    snowflakes: false,
     // other
     language: 'en',
     parallax: true,
     showFPS: false,          // false
     showDebugInfo: false,
+    fpsUnfocused: true,
 };
 const prefDefault = JSON.stringify(pref);
 function prefSetValue(name, value) {
@@ -1731,23 +1683,22 @@ for(var key in pref) {
 };
 filterAttempts = lsLoadValue('filterAttempts', 0);
 filterAttemptTags = lsLoadValue('filterAttemptTags', false);
-// pref visual
-let _prefVisuals = pref.visual;
-function prefVisualSwitch() {
-    if(!pref.visual) {
-        prefSetValue('visual', true);
-        if(!_prefVisuals) {
+// pref audio visual
+let _prefVisualAudio = pref.visualAudio;
+function prefVisualAudioSwitch() {
+    if(!pref.visualAudio) {
+        prefSetValue('visualAudio', true);
+        if(!_prefVisualAudio) {
             musicAnalysis.init();
-            _prefVisuals = true
+            _prefVisualAudio = true
         }
     } else {
-        prefSetValue('visual', false)
+        prefSetValue('visualAudio', false)
     }
 };
 //                                                                                      SESSION
 let session = sessionStorage;
 const sessionLimit = (4 * 1024 * 1024) - 1;
-const sessionPref = 'eagsession_';
 //
 function sesWrite(key, value) {
     session.setItem(String(key), String(value))
@@ -1796,6 +1747,8 @@ function optimizeAnimeObject(object) {
     delete obj.thumbnail;
     delete obj.tags;
     delete obj.relatedAnime;
+    delete obj.studios;
+    delete obj.producers;
     return obj
 };
 function optimizeAnimeArray(array) {
@@ -1809,39 +1762,46 @@ function optimizeAnimeArray(array) {
 let lidb = {
     error: false,
     version: 1,
-    //
+    // for anime lists
     max: 100,
     saved: 0,
     //
     response: false,
     request: false,
-    lists: [],
+    lists: [], // for anime lists
+    //
+    storages: {
+        // 'name': 'unique_object_value' OR null, ( if null, keyPath = 'name')
+        'lists': null,
+        'lists_info': 'index',
+        'adb': null,
+    },
 };
 // startup func
 function setupLIDB() {
     lidb.openreq = indexedDB.open("db", lidb.version);
     lidb.openreq.onerror = () => {
         lidb.error = lidb.openreq.error;
-        console.error("ILDB error", lidb.openreq.error)
+        console.error("IDB error", lidb.openreq.error)
     };
     lidb.openreq.onsuccess = () => {
         lidb.db = lidb.openreq.result;
-        console.log('Connected to ILDB');
+        console.log('Connected to IDB');
     };
     lidb.openreq.onupgradeneeded = function(event) {
         lidb.db = lidb.openreq.result;
         switch(event.oldVersion) {
             case 0:
-                if(!lidb.db.objectStoreNames.contains('lists')) {
-                    console.log('Init ILDB "lists" store...');
-                    lidb.db.createObjectStore('lists', {keyPath: 'name'})
+                for(var store in lidb.storages) {
+                    if(!lidb.db.objectStoreNames.contains(store)) {
+                        console.log(`Init IDB "${store}" store...`);
+                        lidb.storages[store] !== null
+                        ? lidb.db.createObjectStore(store, {keyPath: lidb.storages[store]})
+                        : lidb.db.createObjectStore(store, {keyPath: 'name'})
+                    }
                 };
-                if(!lidb.db.objectStoreNames.contains('lists-info')) {
-                    console.log('Init ILDB "lists-info" store...');
-                    lidb.db.createObjectStore('lists-info', {keyPath: 'index'})
-                }
             case 1:
-                console.log('ILDB (v1.0)');
+                console.log('IDB v1');
             case 2:
                 // update
         }
@@ -1854,18 +1814,20 @@ function lidbUploadObject(obj, store) {
     //
     var req = s.add(obj);
     req.onerror = () => {
-      console.warn(`Error with uploading ${obj.name} to "${store}"\n`, req.error)
+        console.warn(`Error with uploading ${obj.name} to "${store}"\n`, req.error)
     }
 };
 function lidbDownloadObject(name, store) {
     lidb.request = true;
-    lidb.response = null;
+    lidb.response = false;
     var t = lidb.db.transaction(store, "readonly");
     var s = t.objectStore(store);
     //
     var req = s.get(name);
     req.onerror = () => {
-      console.warn(`Error with downloading ${name} from "${store}"\n`, req.error)
+        lidb.request = false;
+        lidb.response = undefined;
+        console.warn(`Error with downloading ${name} from "${store}"\n`, req.error)
     };
     req.onsuccess = () => {lidb.response = req.result; lidb.request = false}
 };
@@ -1875,7 +1837,7 @@ function lidbDeleteObject(name, store) {
     //
     var req = s.delete(name);
     req.onerror = () => {
-      console.warn(`Error with deleting ${name} from "${store}"\n`, req.error)
+        console.warn(`Error with deleting ${name} from "${store}"\n`, req.error)
     };
 };
 function fullResetLIDB() { // delete exists lidb and create new empty
@@ -1883,14 +1845,15 @@ function fullResetLIDB() { // delete exists lidb and create new empty
     setupLIDB();
 };
 // lidb get all lists
-function lidbGetKeys(store) {
+function lidbGetListsKeys() {
     lidb.request = true;
-    var t = lidb.db.transaction(store, "readonly");
-    var s = t.objectStore(store);
+    var t = lidb.db.transaction('lists_info', "readonly");
+    var s = t.objectStore('lists_info');
     //
     var req = s.getAllKeys();
     req.onerror = () => {
-      console.warn(`Error with getting all "${store} keys"\n`, req.error)
+        lidb.request = false;
+        console.warn(`Error with getting all "${'lists_info'} keys"\n`, req.error)
     };
     req.onsuccess = () => {lidb.lists = req.result; lidb.request = false} 
 };
@@ -1900,7 +1863,7 @@ function lidbGetKeys(store) {
 // getting lang object
 if(!pref.language in _TextTranslations) {pref.language = 'en'}; // debug for unknown langs
 let _Text = _TextTranslations[pref.language];
-delete _TextTranslations;
+for(var tr in _TextTranslations) {delete _TextTranslations[tr]};
 //
 function txt(key) {
     return _Text[key] === undefined ? key : _Text[key]
@@ -2007,12 +1970,13 @@ const tagbase = {
 // @EAG PRESET CLASS
 //
 class Preset {
-    constructor(name, includes=null, excludes=null, years=null, episodes=null, score=null, mult=1, others=null) {
+    constructor(name, includes=null, excludes=null, years=null, episodes=null, score=null, duration=null, mult=1, others=null) {
         this.name = txtPreset(name);
         this.tag = name;
         this.in = includes; this.ex = excludes;
         this.years = years; this.ep = episodes; 
         this.score = score;
+        this.duration = duration;
         this.scoreAllow = this.score.max < 10 || this.score.min > 0;
         this.mult = mult; this.others = others
     }
@@ -2024,6 +1988,7 @@ class Preset {
         adn['episodeMax'] = this.ep.max; adn['episodeMin'] = this.ep.min;
         adn['scoreAllow'] = this.scoreAllow;
         adn['scoreMax'] = this.score.max; adn['scoreMin'] = this.score.min;
+        adn['durationMax'] = this.duration.max; adn['durationMin'] = this.duration.min;
         if(this.others !== null) {adn = filterModify(adn, this.others)};
         return adn
     };
@@ -2039,109 +2004,111 @@ class Preset {
             for(var i in this.ex) {exi = exi + ' ' + tagbase[this.ex[i]].name + ','};
             exi = exi.substring(0, exi.length-1) + '.'
         };
-        return txt('prinPreset') + this.name + '.' + ini + exi + txt('prinEps') + this.ep.min + '-' + this.ep.max + txt('prinYears') + this.years.min+ '-' + this.years.max + txt('prinScore') + this.score.min + '-' + this.score.max + txt('prinMultiplier') + ' x'+String(this.mult + 0.001).substring(0,4)
+        return txt('prinPreset') + this.name + '.' + ini + exi + txt('prinEps') + this.ep.min + '-' + this.ep.max + txt('prinYears') + this.years.min+ '-' + this.years.max + txt('prinDuration') + this.duration.min + '-' + this.duration.max + txt('prinScore') + this.score.min + '-' + this.score.max + txt('prinMultiplier') + ' x'+String(this.mult + 0.001).substring(0,4)
     }
 };
 //
-const YEARS = range(1900, 2025);
+const YEARS = range(1900, 2026);
 const SCORES = range(5, 10);
+const DURATIONS = range(1, 999); // minutes
+//
 const presetbase = {
     //'Перерождение в 2007-й': new Preset(name, 
     // includes, excludes,years, episodes, score, mult, others)
     'Дефолтный': new Preset('Дефолтный',
     null, null, YEARS, range(1, 50), range(5, 10), 1, null),
     'Cтарая романтика': new Preset('Cтарая романтика',
-    ['romance'], null, range(YEARS.min, 2007), range(1, 50), range(6, 10), 1.1, null),
+    ['romance'], null, range(YEARS.min, 2007), range(1, 50), range(6, 10), DURATIONS, 1.1, null),
     'Перерождение в 2007-й': new Preset('Перерождение в 2007-й', 
-    ['isekai'], null, range(2005, 2009), range(1, 50), range(5, 10), 1.1, null),
+    ['isekai'], null, range(2005, 2009), range(1, 50), range(5, 10), DURATIONS, 1.1, null),
     'Современный кал': new Preset('Современный кал', 
-    null, null, range(2018, YEARS.max), range(1, 50), range(3, 7), 1.5, null),
+    null, null, range(2018, YEARS.max), range(1, 50), range(3, 7), DURATIONS, 1.5, null),
     'Хорошая ностальгия': new Preset('Хорошая ностальгия', 
-    null, null, range(YEARS.min, 2000), range(1, 50), range(7, 10), 1.1, null),
+    null, null, range(YEARS.min, 2000), range(1, 50), range(7, 10), DURATIONS, 1.1, null),
     'Мужская магия': new Preset('Мужская магия', 
-    ['seinen', 'magic'], null, YEARS, range(1, 50), range(6, 10), 1, null),
+    ['seinen', 'magic'], null, YEARS, range(1, 50), range(6, 10), DURATIONS, 1, null),
     'Сверхъестественная школа': new Preset('Сверхъестественная школа', 
-    ['supernatural', 'school'], null, YEARS, range(1, 50), range(5, 10), 1, null),
+    ['supernatural', 'school'], null, YEARS, range(1, 50), range(5, 10), DURATIONS, 1, null),
     'Девочки колдуют': new Preset('Девочки колдуют', 
-    ['female', 'magic'], null, range(YEARS.min, 2010), range(1, 50), range(5, 10), 1, null),
+    ['female', 'magic'], null, range(YEARS.min, 2010), range(1, 50), range(5, 10), DURATIONS, 1, null),
     'Женский исекай': new Preset('Женский исекай', 
-    ['female', 'isekai'], null, YEARS, range(1, 50), range(5, 10), 1, null),
+    ['female', 'isekai'], null, YEARS, range(1, 50), range(5, 10), DURATIONS, 1, null),
     'Можно короче?': new Preset('Можно короче?', 
-    null, null, range(2010, YEARS.max), range(1, 13), range(6, 10), 1, null),
+    null, null, range(2010, YEARS.max), range(1, 13), range(6, 10), DURATIONS, 1, null),
     'Лучшая эротика': new Preset('Лучшая эротика',  
-    ['ecchi'], null, range(2010, YEARS.max), range(1, 50), range(7, 10), 1, null),
+    ['ecchi'], null, range(2010, YEARS.max), range(1, 50), range(7, 10), DURATIONS, 1, null),
     'Бывалые гаремы': new Preset('Бывалые гаремы', 
-    ['harem'], null, range(YEARS.min, 2007), range(1, 50), range(5, 10), 1, null),
+    ['harem'], null, range(YEARS.min, 2007), range(1, 50), range(5, 10), DURATIONS, 1, null),
     'Девочки в танках': new Preset('Девочки в танках', 
-    ['female', 'military'], null, YEARS, range(1, 50), range(5, 10), 1, null),
+    ['female', 'military'], null, YEARS, range(1, 50), range(5, 10), DURATIONS, 1, null),
     'Новая психология': new Preset('Новая психология', 
-    ['psychological'], null, range(2016, YEARS.max), range(1, 50), range(6, 10), 1.1, null),
+    ['psychological'], null, range(2016, YEARS.max), range(1, 50), range(6, 10), DURATIONS, 1.1, null),
     'Повседневность нулевых': new Preset('Повседневность нулевых', 
-    ['slice of life'], null, range(2001, 2010), range(1, 50), range(5, 10), 1.1, null),
+    ['slice of life'], null, range(2001, 2010), range(1, 50), range(5, 10), DURATIONS, 1.1, null),
     '\"Сполт это фыфнь\".': new Preset('\"Сполт это фыфнь\".', 
-    ['sports'], null, YEARS, range(1, 50), range(4, 10), 1.25, null),
+    ['sports'], null, YEARS, range(1, 50), range(4, 10), DURATIONS, 1.25, null),
     'Игры десятых': new Preset('Игры десятых', 
-    ['game'], null, range(2011, 2020), range(1, 50), range(5, 10), 1, null),
+    ['game'], null, range(2011, 2020), range(1, 50), range(5, 10), DURATIONS, 1, null),
     'Пережитая история': new Preset('Пережитая история', 
-    ['historical'], null, range(YEARS.min, 2005), range(1, 50), range(5, 10), 1.3, null),
+    ['historical'], null, range(YEARS.min, 2005), range(1, 50), range(5, 10), DURATIONS, 1.3, null),
     'Лучшие приключения': new Preset('Лучшие приключения', 
-    ['adventure', 'action'], null, YEARS, range(20, 50), range(7, 10), 1.25, null),
+    ['adventure', 'action'], null, YEARS, range(20, 50), range(7, 10), DURATIONS, 1.25, null),
     'Когда плакать?': new Preset('Когда плакать?', 
-    ['drama'], null, range(2010, YEARS.max), range(1, 50), range(3, 7), 1.4, null),
+    ['drama'], null, range(2010, YEARS.max), range(1, 50), range(3, 7), DURATIONS, 1.4, null),
     'Пожилые слёзы': new Preset('Пожилые слёзы', 
-    ['drama'], null, range(YEARS.min, 2000), range(1, 50), range(7, 10), 1.2, null),
+    ['drama'], null, range(YEARS.min, 2000), range(1, 50), range(7, 10), DURATIONS, 1.2, null),
     'Что это было?': new Preset('Что это было?', 
-    ['mystery', 'psychological'], null, range(2007, YEARS.max), range(1, 50), range(5, 10), 1.1, null),
+    ['mystery', 'psychological'], null, range(2007, YEARS.max), range(1, 50), range(5, 10), DURATIONS, 1.1, null),
     'Новое приключение': new Preset('Новое приключение', 
-    ['adventure'], null, range(2020, YEARS.max), range(1, 50), range(6, 10), 1, null),
+    ['adventure'], null, range(2020, YEARS.max), range(1, 50), range(6, 10), DURATIONS, 1, null),
     'Фентезийная любовь': new Preset('Фентезийная любовь', 
-    ['fantasy', 'romance'], null, range(2007, YEARS.max), range(1, 50), range(5, 10), 1, null),
+    ['fantasy', 'romance'], null, range(2007, YEARS.max), range(1, 50), range(5, 10), DURATIONS, 1, null),
     'Плюс уши': new Preset('Плюс уши', 
-    ['music'], null, range(2000, YEARS.max), range(1, 50), range(7, 10), 1.2, null),
+    ['music'], null, range(2000, YEARS.max), range(1, 50), range(7, 10), DURATIONS, 1.2, null),
     'Плохие шутки': new Preset('Плохие шутки', 
-    ['comedy'], null, range(2010, YEARS.max), range(1, 50), range(3, 7), 1.35, null),
+    ['comedy'], null, range(2010, YEARS.max), range(1, 50), range(3, 7), DURATIONS, 1.35, null),
     'Новаторский юмор': new Preset('Новаторский юмор', 
-    ['comedy'], null, range(2018, YEARS.max), range(1, 50), range(6, 10), 1, null),
+    ['comedy'], null, range(2018, YEARS.max), range(1, 50), range(6, 10), DURATIONS, 1, null),
     'Грустно, но вкусно': new Preset('Грустно, но вкусно', 
-    ['drama', 'romance'], null, range(2016, YEARS.max), range(1, 50), range(6, 10), 1.1, null),
+    ['drama', 'romance'], null, range(2016, YEARS.max), range(1, 50), range(6, 10), DURATIONS, 1.1, null),
     'Бесится, но любит': new Preset('Бесится, но любит', 
-    ['tsundere', 'romance'], null, YEARS, range(1, 50), range(6, 10), 1, null),
+    ['tsundere', 'romance'], null, YEARS, range(1, 50), range(6, 10), DURATIONS, 1, null),
     'Влюбиться насмерть': new Preset('Влюбиться насмерть',
-    ['yandere'], null, YEARS, range(1, 50), range(6, 10), 1.1, null),
+    ['yandere'], null, YEARS, range(1, 50), range(6, 10), DURATIONS, 1.1, null),
     'Прохладная любовь': new Preset('Прохладная любовь',
-    ['kuudere'], null, range(2010, YEARS.max), range(1, 50), range(6, 10), 1, null),
+    ['kuudere'], null, range(2010, YEARS.max), range(1, 50), range(6, 10), DURATIONS, 1, null),
     'Бесконечное \"это\"': new Preset('Бесконечное \"это\"',
-    ['ecchi'], null, YEARS, range(1, 25), range(5, 10), 1, 
+    ['ecchi'], null, YEARS, range(1, 25), range(5, 10), DURATIONS, 1, 
     {seasonSpring: false, seasonFall: false, seasonWinter: false, seasonUndefined: false}),
     'Работать - круто!': new Preset('Работать - круто!', 
-    ['work'], null, YEARS, range(1, 50), range(6, 10), 1.1, null),
+    ['work'], null, YEARS, range(1, 50), range(6, 10), DURATIONS, 1.1, null),
     'Совсем не похоже': new Preset('Совсем не похоже', 
-    ['parody'], null, YEARS, range(1, 50), range(3, 7), 1.3, null),
+    ['parody'], null, YEARS, range(1, 50), range(3, 7), DURATIONS, 1.3, null),
     'Годная сатира': new Preset('Годная сатира', 
-    ['parody'], null, YEARS, range(1, 50), range(7, 10), 1, null),
+    ['parody'], null, YEARS, range(1, 50), range(7, 10), DURATIONS, 1, null),
     'Супер-романтика': new Preset('Супер-романтика', 
-    ['romance', 'supernatural'], null, YEARS, range(1, 50), range(5, 10), 1, null),
+    ['romance', 'supernatural'], null, YEARS, range(1, 50), range(5, 10), DURATIONS, 1, null),
     'Выключаем свет': new Preset('Выключаем свет', 
-    ['horror'], null, YEARS, range(1, 50), range(7, 10), 1.1, null),
+    ['horror'], null, YEARS, range(1, 50), range(7, 10), DURATIONS, 1.1, null),
     'Женский спорт': new Preset('Женский спорт', 
-    ['female', 'sports'], null, YEARS, range(1, 50), range(6, 10), 1, null),
+    ['female', 'sports'], null, YEARS, range(1, 50), range(6, 10), DURATIONS, 1, null),
     'Кухня, 7 сезон': new Preset('Кухня, 7 сезон', 
-    ['cooking', 'comedy'], null, YEARS, range(1, 50), range(6, 10), 1, null),
+    ['cooking', 'comedy'], null, YEARS, range(1, 50), range(6, 10), DURATIONS, 1, null),
     //
     'Кратко про гаремы': new Preset('Кратко про гаремы', 
-    ['harem'], null, range(2010, YEARS.max), range(1, 50), range(5, 10), 1.1, null),
+    ['harem'], null, range(2010, YEARS.max), range(1, 50), range(5, 10), DURATIONS, 1.1, null),
     'Дела семейные': new Preset('Дела семейные', 
-    ['family'], null, YEARS, range(1, 50), range(5, 10), 1.1, null),
+    ['family'], null, YEARS, range(1, 50), range(5, 10), DURATIONS, 1.1, null),
     'Cyberpunk 2077': new Preset('Cyberpunk 2077', 
-    ['future'], null, YEARS, range(1, 50), range(5, 10), 1.1, null),
+    ['future'], null, YEARS, range(1, 50), range(5, 10), DURATIONS, 1.1, null),
     'Страшно смешно': new Preset('Страшно смешно', 
-    ['horror', 'comedy'], null, YEARS, range(1, 50), range(6, 10), 1.1, null),
+    ['horror', 'comedy'], null, YEARS, range(1, 50), range(6, 10), DURATIONS, 1.1, null),
     'Супергероини': new Preset('Супергероини', 
-    ['female', 'supernatural'], null, range(2010, YEARS.max), range(1, 50), range(5, 10), 1, null),
+    ['female', 'supernatural'], null, range(2010, YEARS.max), range(1, 50), range(5, 10), DURATIONS, 1, null),
     'Трава у дома': new Preset('Трава у дома', 
-    ['space', 'drama'], null, range(2010, YEARS.max), range(1, 50), range(5, 10), 1.1, null),
+    ['space', 'drama'], null, range(2010, YEARS.max), range(1, 50), range(5, 10), DURATIONS, 1.1, null),
     'Аниме \"5в1\"': new Preset('Аниме \"5в1\"', 
-    ['adventure', 'action', 'comedy', 'drama', 'romance'], null, YEARS, range(1, 50), range(5, 10), 1.2, null),
+    ['adventure', 'action', 'comedy', 'drama', 'romance'], null, YEARS, range(1, 50), range(5, 10), DURATIONS, 1.2, null),
 };
 
 // кратко про гаремы
@@ -2260,18 +2227,17 @@ function filterAnimeTag(animetag, array) {
     }
     return false
 };
-function filterIncludeTags(included, array) {
+function filterTagsArray(tags_array, array, include=true) {
     var err = 0;
-    for(var i in included) {
-        if(!filterAnimeTag(included[i], array)) {err++} else {continue}
-    }
-    return err
-};
-function filterExcludeTags(excluded, array) {
-    var err = 0;
-    for(var i in excluded) {
-        if(filterAnimeTag(excluded[i], array)) {err++} else {continue}
-    }
+    if(include) {
+        for(var i in tags_array) {
+            if(!filterAnimeTag(tags_array[i], array)) {err++} else {continue}
+        }
+    } else {
+        for(var i in tags_array) {   
+            if(filterAnimeTag(tags_array[i], array)) {err++} else {continue}
+        }
+    };
     return err
 };
 // filter precounting by all changes
@@ -2337,26 +2303,23 @@ function getListFiltered(filter = filterDefault) {
         // sort by episodes
         if(anime['episodes'] < filter.episodeMin) {if(_attemptAny()){continue}};
         if(anime['episodes'] > filter.episodeMax) {if(_attemptAny()){continue}};
-        // skip if 1 episode & it not a film
+        // skip if 1 episode & it not a film (no attempts because is super option)
         if(filter.skipSpecial) {if(anime['episodes'] == 1 && anime['type'] != 'MOVIE') {continue}};
         // sort by score, if allowed
         if(filter.scoreAllow) {
-            // const anime_id = malAnimeID(anime.sources);
-            // if(anime_id == null) {continue}
-            // else {
-            //     if(adb_ratings[anime_id] === undefined) {continue};
-            //     const score = adb_ratings[anime_id]['score'];
-            //     if(score == 'None' || score == undefined) {continue}
-            //     else {
-            //         if(score < floatNumber(filter.scoreMin, 2)) {if(_attemptAny()){continue}};               // OLD PART WITH USING DOWNLOADED INFO ABOUT ALL mal ANIME RATINGS
-            //         if(score > floatNumber(filter.scoreMax, 2)) {if(_attemptAny()){continue}};
-            //     }
-            // }
             // check if aodb have score info & sort by limits
-            if(adb[i].score === null) {if(_attemptAny(2)){continue}} // 2 points by ignoring max & min score limits
+            if(anime.score === null) {if(_attemptAny(2)){continue}} // 2 points by ignoring two: max & min limits
             else {
-                if(adb[i].score < floatNumber(filter.scoreMin, 2)) {if(_attemptAny()){continue}};
-                if(adb[i].score > floatNumber(filter.scoreMax, 2)) {if(_attemptAny()){continue}};
+                if(anime.score < floatNumber(filter.scoreMin, 2)) {if(_attemptAny()){continue}};
+                if(anime.score > floatNumber(filter.scoreMax, 2)) {if(_attemptAny()){continue}};
+            }
+        };
+        // sort by duration
+        if(filter.durationAllow && anime['type'] != 'MOVIE') {
+            if(anime.duration === undefined) {if(_attemptAny(2)){continue}} // 2 points by ignoring two: max & min limits
+            else {
+                if(anime.duration.value < filter.durationMin*60) {if(_attemptAny()){continue}};
+                if(anime.duration.value > filter.durationMax*60) {if(_attemptAny()){continue}};
             }
         };
         // sort by year
@@ -2364,8 +2327,8 @@ function getListFiltered(filter = filterDefault) {
         if(anime['animeSeason']['year'] < filter.yearMin) {if(_attemptAny()){continue}};
         // sort by include/exclude tags
         if(anime['tags'].length > 0) {
-            if(_attemptTags(filterIncludeTags(filter.tagsIncluded, anime['tags']))) {continue};
-            if(_attemptTags(filterExcludeTags(filter.tagsExcluded, anime['tags']))) {continue};
+            if(_attemptTags(filterTagsArray(filter.tagsIncluded, anime['tags']))) {continue};
+            if(_attemptTags(filterTagsArray(filter.tagsExcluded, anime['tags'], false))) {continue};
         } else {
             if(!pref.showNSFW) {continue}
             if(_attemptTags()){continue}
@@ -2441,6 +2404,7 @@ class animeList {
         this.eps = range(-1, 1);
         this.years = range(-1, 1);
         this.scores = range(-1, 1);
+        this.durs = range(-1, 1);
     }
     //
     updateTimestamp() {
@@ -2457,41 +2421,50 @@ class animeList {
         if(this.rangesMode == 'auto') {
             this.updateTimestamp();
             var anime = item;
-            // var malid = malAnimeID(anime.sources);
-            // if(malid == null) {anime.score = null}                               // it works with old `adb_ratings`
-            // else if(adb_ratings[malid] == undefined) {anime.score = null}
-            // else {anime.score = String(adb_ratings[malid].score)};
             // debug for old versions
             if(anime.score === undefined) {anime.score = null};
             //
-            if(String(Number(anime.episodes)) !== 'NaN') {
+            if(String(+anime.episodes) !== 'NaN') {
                 if(this.eps.min == -1) {
-                    this.eps.min = Number(anime.episodes);
-                    this.eps.max = Number(anime.episodes)
+                    this.eps.min = +anime.episodes;
+                    this.eps.max = +anime.episodes
                 } else {
-                    if(anime.episodes > this.eps.max) {this.eps.max = Number(anime.episodes)}
-                    else if(anime.episodes < this.eps.min) {this.eps.min = Number(anime.episodes)}
+                    if(anime.episodes > this.eps.max) {this.eps.max = +anime.episodes}
+                    else if(anime.episodes < this.eps.min) {this.eps.min = +anime.episodes}
                 }
             };
             //
-            if(anime.animeSeason.year != null && String(Number(anime.animeSeason.year)) !== 'NaN') {
+            if(anime.animeSeason.year != null && String(+anime.animeSeason.year) !== 'NaN') {
                 if(this.years.min == -1) {
-                    this.years.min = Number(anime.animeSeason.year);
-                    this.years.max = Number(anime.animeSeason.year)
+                    this.years.min = +anime.animeSeason.year;
+                    this.years.max = +anime.animeSeason.year
                 } else {
-                    if(anime.animeSeason.year > this.years.max) {this.years.max = Number(anime.animeSeason.year)}
-                    else if(anime.animeSeason.year < this.years.min) {this.years.min = Number(anime.animeSeason.year)}
+                    if(anime.animeSeason.year > this.years.max) {this.years.max = +anime.animeSeason.year}
+                    else if(anime.animeSeason.year < this.years.min) {this.years.min = +anime.animeSeason.year}
                 }
             };
             //
             if(anime.score !== null) {
-                if(String(Number(anime.score)) !== 'NaN') {
+                if(String(+anime.score) !== 'NaN') {
                     if(this.scores.min == -1) {
-                        this.scores.min = Number(anime.score);
-                        this.scores.max = Number(anime.score)
+                        this.scores.min = +anime.score;
+                        this.scores.max = +anime.score
                     } else {
-                        if(anime.score > this.scores.max) {this.scores.max = Number(anime.score)}
-                        else if(anime.score < this.scores.min) {this.scores.min = Number(anime.score)}
+                        if(anime.score > this.scores.max) {this.scores.max = +anime.score}
+                        else if(anime.score < this.scores.min) {this.scores.min = +anime.score}
+                    }
+                }
+            };
+            //
+            if(anime.duration !== undefined) {
+                if(String(+anime.duration.value) !== 'NaN') {
+                    var dur = Math.round(anime.duration.value / 60);
+                    if(this.durs.min == -1) {
+                        this.durs.min = dur;
+                        this.durs.max = dur
+                    } else {
+                        if(anime.duration.value > this.durs.max) {this.scores.max = +dur}
+                        else if(anime.duration.value < this.durs.min) {this.scores.min = +dur}
                     }
                 }
             }
@@ -2502,6 +2475,7 @@ class animeList {
             this.eps = range(-1, 1);
             this.years = range(-1, 1);
             this.scores = range(-1, 1);
+            this.durs = range(-1, 1);
             //
             for(var i in this.list) {
                 this.updateRangesSingle(adb[this.list[i]])
@@ -2510,7 +2484,7 @@ class animeList {
     }
     //
     parse(string) {
-        var obj = JSON.parse(string);
+        const obj = JSON.parse(string);
         this.list = obj.list !== undefined ? obj.list : this.list;
         this.name = obj.name !== undefined ? obj.name : this.name;
         this.desc = obj.desc !== undefined ? obj.desc : this.desc;
@@ -2523,6 +2497,7 @@ class animeList {
         this.eps = obj.eps !== undefined ? obj.eps : this.eps;
         this.years = obj.years !== undefined ? obj.years : this.years;
         this.scores = obj.scores !== undefined ? obj.scores : this.scores;
+        this.durs = obj.durs !== undefined ? obj.durs : this.durs;
     }
     stringify() {
         return JSON.stringify(this)
@@ -2551,7 +2526,7 @@ class animeList {
         }
     }
     deleteKey(key) {
-        var d = this.list.splice(key, 1);
+        const d = this.list.splice(key, 1);
         this.updateRangesAll();
         return d
     }
@@ -2564,17 +2539,16 @@ class animeList {
         return anime
     }
     //
-    compressArray(array) {
+    setupArray(array) {
         this.list = [];
         for(var a in array) {
             if(array[a].dbid !== undefined) {
-                this.list.push(array[a].dbid)
+                this.list.push(array[a])
             } else {
+                // is title not from ADB
                 var dbid = getAnimeDBID(array[a]);
                 if(dbid !== null) {
                     this.list.push(dbid)
-                } else {
-                    console.warn(`Title by DBID #${dbid} not found!`)
                 }
             }
         };
@@ -2720,7 +2694,7 @@ let translator = {
     state: 'idle',
     error: false,
     target: 'ru',
-    len: 4500, // api limit is 5000
+    len: 4500, // api limit
     //
     send: (text) => {
         // var data = JSON.stringify([{Text: text}]);
@@ -2789,13 +2763,16 @@ let translator = {
 //
 var _lastTypeDataArray = [];
 var _lastCalcEntries = [];
+var _lastCalcErrors = 0;
 //
 function getTypedData(root, database = adb) {
-    var data = [];
+    var data = [], piece;
     var l = database.length;
+    _lastCalcErrors = 0;
+    //
     console.info(`Start data collecting..."${root}".`);
     for(var i in database) {
-        piece = eval(`database[i]${root}`);
+        try {piece = eval(`database[i]${root}`)} catch {_lastCalcErrors++; continue}
         getArrayWorkProgress(i, l, 5);
         if(piece instanceof Array) {
             data = arrayAddNew(data, piece)
@@ -2805,16 +2782,18 @@ function getTypedData(root, database = adb) {
     };
     _lastTypeDataArray = data;
     console.info(`All data in "${root}" collected to "_lastTypeDataArray".`);
+    console.warn(`Errors: ` + _lastCalcErrors);
     return data
 };
 //
 function calcDataEntries(root, database=adb) {
     var data = {};
     var l = database.length;
+    _lastCalcErrors = 0;
+    //
     console.info(`Start entry calculating..."${root}".`);
     for(var i in database) {
-        try {piece = eval(`database[${i}]${root}`)}
-        catch {console.warn(`title has no "${root}" data`); continue};
+        try {piece = eval(`database[${i}]${root}`)} catch {_lastCalcErrors++; continue};
         getArrayWorkProgress(i, l, 5);
         if(piece instanceof Array) {data = objectAddEntry(data, piece)}
         else {data = objectAddEntry(data, [piece])}
@@ -2969,7 +2948,7 @@ function fullAlign(align=new Vector2(0.5), size=new Vector2(0)) {
 };
 //
 let _currentAngle = 0;
-function setRotation(anchor = new Vector2(), angle = 360) {
+function setRotation(anchor = __ro_v2, angle = 360) {
     _currentAngle += angle;
     ctx.translate(anchor.x, anchor.y);
     ctx.rotate((angle * Math.PI) / 180);
@@ -2980,7 +2959,7 @@ function resetRotation() {
     _currentAngle = 0;
 };
 //
-function clipCanvas(size, pos = new Vector2()) {
+function clipCanvas(size, pos = __ro_v2) {
     ctx.save();
     ctx.beginPath();
     ctx.rect(pos.x, pos.y, size.x, size.y);
@@ -3001,20 +2980,20 @@ function drawImagePart(image, vec2srcxy, vec2srcwh, vec2cvsxy, vec2cvswh) {
         vec2cvsxy.x, vec2cvsxy.y, vec2cvswh.x, vec2cvswh.y);
 };
 //
-function fillRect(size, pos=new Vector2(), color='#000') {
+function fillRect(size, pos=__ro_v2, color='#000') {
     ctx.fillStyle = color;
     ctx.fillRect(pos.x, pos.y, size.x, size.y)
 };
-function fillRectFast(size, pos=new Vector2()) {
+function fillRectFast(size, pos=__ro_v2) {
     ctx.fillRect(pos.x, pos.y, size.x, size.y)
 };
-function fillRectRounded(size, pos=new Vector2(), color='#000', radius=12*_scaleDynamic) {
+function fillRectRounded(size, pos=__ro_v2, color='#000', radius=12*_scaleDynamic) {
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.roundRect(pos.x, pos.y, size.x, size.y, [radius]);
     ctx.fill();
 };
-function fillRectRoundedFrame(size, pos=new Vector2(), color='#000', radius=12*_scaleDynamic) {
+function fillRectRoundedFrame(size, pos=__ro_v2, color='#000', radius=12*_scaleDynamic) {
     ctx.strokeStyle = color;
     ctx.beginPath();
     ctx.roundRect(pos.x, pos.y, size.x, size.y, [radius]);
@@ -3064,10 +3043,10 @@ class Color {
     ease = easeOutQuint;
     easer = 0;
     copy(uicolor) {
-        this.r = Number(String(uicolor.r)); this.rM = uicolor.rM; this.rD = uicolor.rD;
-        this.g = Number(String(uicolor.g)); this.gM = uicolor.gM; this.gD = uicolor.gD;
-        this.b = Number(String(uicolor.b)); this.bM = uicolor.bM; this.bD = uicolor.bD;
-        this.a = Number(String(uicolor.a)); this.aM = uicolor.aM; this.aD = uicolor.aD;
+        this.r = +uicolor.r; this.rM = uicolor.rM; this.rD = uicolor.rD;
+        this.g = +uicolor.g; this.gM = uicolor.gM; this.gD = uicolor.gD;
+        this.b = +uicolor.b; this.bM = uicolor.bM; this.bD = uicolor.bD;
+        this.a = +uicolor.a; this.aM = uicolor.aM; this.aD = uicolor.aD;
         this.dtime = uicolor.dtime; this.time = uicolor.time;
     }
     matrix(string) {
@@ -3076,10 +3055,10 @@ class Color {
         if(string.length < 4) {
             console.log("Color parse error \""+ a +"\"  - not enough parameters.");
         } else {
-            this.r = Number(string[0]); this.rM = 0;
-            this.g = Number(string[1]); this.gM = 0;
-            this.b = Number(string[2]); this.bM = 0;
-            this.a = Number(string[3]); this.aM = 0;
+            this.r = +string[0]; this.rM = 0;
+            this.g = +string[1]; this.gM = 0;
+            this.b = +string[2]; this.bM = 0;
+            this.a = +string[3]; this.aM = 0;
         }  
     }
     getColor() {
@@ -3155,7 +3134,7 @@ function colorMatrix(string) {
         console.log("Colormap parse error \""+ a +"\"  - not enough parameters.");
         return new Color(0, 0, 0, 1);
     } else {
-        return new Color(Number(string[0]), Number(string[1]), Number(string[2]), Number(string[3]))
+        return new Color(+string[0], +string[1], +string[2], +string[3])
     }  
 };
 //                                                                                                      UI MAP CLASS
@@ -3197,7 +3176,7 @@ class ColorMap {
     }
 };
 function colorMapMatrix(string) {
-    var map = string.split('#');
+    const map = string.split('#');
     return new ColorMap(
         colorMatrix(map[0]),
         colorMatrix(map[1]),
@@ -3826,7 +3805,7 @@ function setTextStyle(size, family, color=colorMatrix(`rgba(255,255,255,1)`), al
     }
 };
 function getTextMetrics(text) {
-    var t = ctx.measureText(text);
+    const t = ctx.measureText(text);
     return {y: t.fontBoundingBoxAscent, x: t.width, c: t.actualBoundingBoxLeft}
 };
 function getMaxTextWidth(array) {
@@ -3845,7 +3824,7 @@ function getMaxTextLength(array) {
 };
 //
 function textStringLimit(text, limit) {
-    var width = getTextMetrics(text).x;
+    const width = getTextMetrics(text).x;
     if(width <= limit) {
         return text
     } else {
@@ -3931,7 +3910,7 @@ class TextBox {
         this.onupd = () => {};
     }
     measureShadow() {
-        var maxwidth = getMaxTextWidth(this.complet);
+        const maxwidth = getMaxTextWidth(this.complet);
         // update shadow
         this.state = '';
         this.shadow = new Vector2(
@@ -3976,7 +3955,7 @@ class TextBox {
                     this.settext = this.text;
                     this.state = ''
                     // update shadow
-                    var maxwidth = getMaxTextWidth(this.complet);
+                    const maxwidth = getMaxTextWidth(this.complet);
                     this.shadow.movexy(
                         maxwidth.x + this.margin.get().x*2, 
                         (this.measure.y * this.complet.length) + (this.spacing * this.complet.length) + this.margin.y*2,
@@ -4008,7 +3987,7 @@ class TextBox {
             iters++
         };
         // ограничиваем ширину текста изменяя расстояние между знаками
-        var letters = 0-((this.shadow.getFixed().x - this.shadow.get().x)/(getMaxTextLength(this.complet)-1));
+        const letters = 0-((this.shadow.getFixed().x - this.shadow.get().x)/(getMaxTextLength(this.complet)-1));
         // if(letters > 0) {letters = 0};
         ctx.letterSpacing = `${letters}px`;
         // draw
@@ -4106,7 +4085,7 @@ let hoverHint = {
         hoverHint.alpha.update();
         hoverHint.cd -= deltaTime/1000;
         scaleFont(hoverHint.fsize, hoverHint.font);
-        var hoff = getTextMetrics('|').y;
+        const hoff = getTextMetrics('|').y;
         ctx.globalAlpha = hoverHint.alpha.get();
         hoverHint.main.text = hoverHint.text;
         hoverHint.fit = hoverHint.main.shadow.get();
@@ -4116,7 +4095,7 @@ let hoverHint = {
             // scale
             hoverHint.main.size.x = hoverHint.box * _scaleFixed;
             hoverHint.main.margin = hoverHint.margin.multxy(_scaleDynamic);
-            var offset = hoverHint.offset * _scaleDynamic;
+            const offset = hoverHint.offset * _scaleDynamic;
             // get pos
             mouse.pos.x + offset + hoverHint.fit.x > cvssize.x
             ? hoverHint.pose.x = cvssize.x - hoverHint.fit.x
@@ -4138,7 +4117,7 @@ let hoverHint = {
     }
 };
 //
-// @EAG IMAGE METHODS
+// @EAG IMAGE & POSTER METHODS
 //
 const fitFrameSize = new Vector2(240);
 const fitImageBorder = 4;
@@ -4158,9 +4137,27 @@ function invokeNewImage(src) {
     return image
 };
 //
-class imageFitFrame {
-    constructor(image = new Image()) {
+function getPosterShortdesc(title) {
+    if(title == false) {return};
+    const year = String(Number(title.animeSeason.year)) == 'NaN' ? '???' : Number(title.animeSeason.year);
+    const score = title.score == null ? '???' : Number(title.score);
+    return `${title.episodes} ep | rating ${score} | ${year}`
+};
+function getPosterDescAlpha() {
+    if(roulette.catchWinner !== true) {return 0};
+    const p = roulette.time / roulette.atime;
+    if(p >= 0.7 && p < 0.8) {
+        return (p - 0.7)*10
+    } else if(p >= 0.8) {
+        return 1
+    };
+    return 0
+};
+//
+class posterFitFrame {
+    constructor(image, title) {
         this.image = image;
+        this.desc = getPosterShortdesc(title);
         //
         this.active = true;
         this.align = new Vector2(0.5);
@@ -4170,7 +4167,7 @@ class imageFitFrame {
         this.winner = false;
         this.ratio = 1;
         this.alpha = 1;
-        this.zoom = 1
+        this.zoom = 1;
     }
     newImage(source) {
         this.image = new Image();
@@ -4178,10 +4175,11 @@ class imageFitFrame {
         this.fitsize = null
     }
     copy() {
-        var iff = new imageFitFrame(this.image);
+        var iff = new posterFitFrame(this.image, false);
+        iff.desc = String(this.desc);
         iff.fitsize = new Vector2().setv(this.fitsize);
         iff.fit();
-        iff.ratio = Number(String(this.ratio));
+        iff.ratio = +this.ratio;
         iff.offset.setv(this.offset)
         return iff
     }
@@ -4204,18 +4202,28 @@ class imageFitFrame {
             }
         }
     }
-    draw() {
+    draw(index) {
         // set fitsize (change only)
         if(this.image.complete) {
             if(this.image.naturalHeight <= 0) {this.image.src = imageNotFound.src};
             if(this.fitsize === null) {this.fit()};
+            // get desc showing status
+            const desch = 14 * _scaleDynamic;
+            const descst = index >= roulette.sorted.length-3 ? getPosterDescAlpha() : 0;
             // draw frame
-            var border = fitImageBorder * _scaleDynamic;
+            const border = fitImageBorder * _scaleDynamic;
             ctx.globalAlpha = this.alpha;
             var glal = normalAlign(this.align, this.fitsize.sumxy(border).multxy(this.zoom));
+            var size = this.fitsize.multxy(this.zoom);
             this.winner ? visual.lightRing(glal.sumv(this.fitsize.multxy(this.zoom/2)), visual.lightDiam.get()*this.zoom) : false;
-            fillRect(this.fitsize.multxy(this.zoom).sumxy(border*2), glal.minxy(border), this.bgColor.alpha(pref.bgalpha).getColor());
-            drawImageSized(this.image, glal, this.fitsize.multxy(this.zoom));
+            fillRect(size.sumxy(border*2, border*2 + (border + desch) * easeOutCirc(descst)), glal.minxy(border), this.bgColor.alpha(pref.bgalpha).getColor());
+            drawImageSized(this.image, glal, size);
+            // check index
+            if(index >= roulette.sorted.length-3 && roulette.catchWinner === true) {
+                // console.log('asdasdasd', glal.sumv(size.multxy(0.5, 1.1)), this.desc);
+                ctx.fillStyle = `rgba(255,255,255,${descst})`;
+                fillTextFast(glal.sumv(size.multxy(0.5, 1)).sumxy(0, desch), this.desc)
+            }
         }
     }
 };
@@ -4354,7 +4362,7 @@ let sites = {
                 // sites.buttons[b].pos.setv(sites.pos.sumxy(siteButtonSize/2, 0), siteButtonTime, easeInOutSine)
             }
         };
-        var xanchor = siteButtonSize * _scaleDynamic * (len/2);
+        const xanchor = siteButtonSize * _scaleDynamic * (len/2);
         sites.len = len; len = 0;
         for(var b in siteSequence) {
             if(sites.actives[siteSequence[b]] === undefined) {continue};
@@ -4366,7 +4374,7 @@ let sites = {
     },
     //
     resizeButtons: () => {
-        var xanchor = siteButtonSize * _scaleDynamic * (sites.len/2);
+        const xanchor = siteButtonSize * _scaleDynamic * (sites.len/2);
         var len = 0;
         for(var b in sites.actives) {
             sites.poses[b].movexy(-xanchor + siteButtonSize * _scaleDynamic * len, 0, 0.25, easeOutCirc);
@@ -4447,8 +4455,13 @@ const seasonsDataMap = {
 };
 function tinfEpisodesColor(x) {
     return x <= 1
-    ? x < 0.5 ? `rgba(${255*x*2},255,63,1)` : `rgba(255,${255-255*(x-0.5)*2},63,1`
+    ? x < 0.5 ? `rgba(${255*x*2},255,63,1)` : `rgba(255,${255-255*(x-0.5)*2},63,1)`
     : `rgba(255, 63, ${Math.norma(x-1)*255}, 1)`
+};
+function tinfDurationColor(x) {
+    return x <= 0 ? `#0000` : x < 0.5 
+    ? `rgba(${255*x*2},255,63,1)` 
+    : `rgba(255,${255-255*(x-0.5)*2},63,1)`
 };
 const typesDataMap = {
     SPECIAL:    `typeSpecial`,
@@ -4498,6 +4511,7 @@ let tInfo = {
     //
     episodes: new Vector1(0),
     episodest: '',
+    episodesc: '#0000',
     year: new Vector1(0),
     yeart: 0,
     status: '',
@@ -4505,6 +4519,9 @@ let tInfo = {
     type: '',
     score: new Vector1(0),
     scoret: '',
+    duration: new Vector1(0),
+    durt: '',
+    durc: '#0000',
     //
     updateTitle: (title) => {
         tInfo.updater = tinfTime;
@@ -4514,19 +4531,10 @@ let tInfo = {
         tInfo.season = txt([seasonsDataMap[title['animeSeason']['season']][1]]);
         tInfo.type = txt([typesDataMap[title['type']]]);
         tInfo.status = txt([typesDataMap[title['status']]]);
+        if(title['duration'] !== undefined) {tInfo.duration.move(+title.duration.value, tinfTime, easeInOutCubic)} else {tInfo.duration.move(0, tinfTime/2, easeInOutCubic)};
         // scores
         tInfo.rating = malAnimeID(title['sources']);
-        // if(tInfo.rating !== null) {
-        //     if(adb_ratings[tInfo.rating] !== undefined) {
-        //         tInfo.score = adb_ratings[tInfo.rating].score !== 'None'             // works with old `adb_ratings`
-        //         ? adb_ratings[tInfo.rating].score : '???';
-        //         tInfo.scoredby = adb_ratings[tInfo.rating].scoredby !== 'None'
-        //         ? adb_ratings[tInfo.rating].scoredby : '???';
-        //     } else {
-        //         tInfo.score = tInfo.scoredby = '???'
-        //     }
-        // }
-        if(title.score == null) {tInfo.score.move(-1, tinfTime, easeInOutCubic)} else {tInfo.score.move(title.score, tinfTime, easeInOutCubic)} // -1 is `???`
+        if(title.score == null) {tInfo.score.move(0, tinfTime/2, easeInOutCubic)} else {tInfo.score.move(title.score, tinfTime, easeInOutCubic)} // -1 is `???`
     },
     //
     posit: (x) => {return (new Vector2(tInfo.spacing, tInfo.spacing * (x+2) + tInfo.height * x)).sumv(tInfo.pos.get())},
@@ -4535,14 +4543,18 @@ let tInfo = {
         if(tInfo.updater >= -0.1) {
              tInfo.episodes.update();
              tInfo.episodest = txt('infoEps') + String(Math.round(tInfo.episodes.get()));
+             tInfo.episodesc = tinfEpisodesColor(tInfo.episodes.get() / filterDefault.episodeMax);
              //
              tInfo.year.update();
-             if(tInfo.title['animeSeason']['year'] < 1900 || typeof tInfo.title['animeSeason']['year'] !== 'number') {
-                tInfo.yeart = txt('infoYear404')} else {
-                tInfo.yeart = Math.round(tInfo.year.get())};
+             if(tInfo.title['animeSeason']['year'] < 1900 || typeof tInfo.title['animeSeason']['year'] !== 'number') {tInfo.yeart = txt('infoYear404')} 
+             else {tInfo.yeart = Math.round(tInfo.year.get())};
             //
             tInfo.score.update();
-            if(tInfo.score.getFixed() < 0) {tInfo.scoret = '???'} else {tInfo.scoret = floatNumber(tInfo.score.get(), 2)};
+            if(tInfo.score.get() == 0) {tInfo.scoret = '???'} else {tInfo.scoret = floatNumber(tInfo.score.get(), 2)};
+            //
+            tInfo.duration.update();
+            tInfo.durt = txt('infoDuration') + (tInfo.duration.get() == 0 ? '???' : Math.round(tInfo.duration.get()/60)) + txt('infoDuration2');
+            tInfo.durc = tinfDurationColor(tInfo.duration.get() / (filterDefault.durationMax*60));
             //
             tInfo.updater -= deltaTime / 1000
         };
@@ -4568,55 +4580,53 @@ let tInfo = {
         tInfo.pos = normalAlign(tInfo.anchor, new Vector2(tInfo.box));
         fillRectRounded(new Vector2(tInfo.box), tInfo.pos, `rgba(0,0,0,${pref.bgalpha})`, 10*_scaleDynamic);
         // размеры элементов
-        tInfo.height = (tInfo.box - tInfo.spacing * 9) / 8,
-        tInfo.width = tInfo.box - tInfo.spacing * 2,
+        tInfo.height = (tInfo.box - tInfo.spacing * 9) / 8;
+        tInfo.width = tInfo.box - tInfo.spacing * 2;
         // заголовок
         ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
         scaleFont(tinfHeaderSize, 'Segoe UI', 'bold');
         fillTextFast(tInfo.pos.sumxy(tInfo.box/2, -tInfo.spacing*2)  , txt('infoHead'));
         // серии
         scaleFont(tinfFontSize, 'Segoe UI', 'bold');
-        fillTextFast(tInfo.posit(0).sumxy(tInfo.width/2, tInfo.height*0.6), tInfo.episodest)
-        fillRectRounded(
-            new Vector2(tInfo.width, tInfo.height*0.2),
-            tInfo.posit(0).sumxy(0, tInfo.height*0.85),
-            `#0008`, tInfo.spacing);
-        fillRectRounded(
+        fillTextFast(tInfo.posit(0).sumxy(tInfo.width/2, tInfo.height*0.6), tInfo.episodest);
+        fillRectRounded(new Vector2(tInfo.width, tInfo.height*0.2), tInfo.posit(0).sumxy(0, tInfo.height*0.85), `#0008`, tInfo.spacing); //bg
+        fillRectRounded( // fore
             new Vector2(tInfo.width * Math.norma(tInfo.episodes.get() / filterDefault.episodeMax), tInfo.height*0.2),
-            tInfo.posit(0).sumxy(0, tInfo.height*0.85),
-            tinfEpisodesColor(tInfo.episodes.get() / filterDefault.episodeMax), tInfo.spacing);
+            tInfo.posit(0).sumxy(0, tInfo.height*0.85), tInfo.episodesc, tInfo.spacing);
+        // длительность
+        ctx.fillStyle = '#fff';
+        fillTextFast(tInfo.posit(1).sumxy(tInfo.width/2, tInfo.height*0.6), tInfo.durt)
+        fillRectRounded(new Vector2(tInfo.width, tInfo.height*0.2), tInfo.posit(1).sumxy(0, tInfo.height*0.85), `#0008`, tInfo.spacing); //bg
+        fillRectRounded( // fore
+            new Vector2(tInfo.width * Math.norma(tInfo.duration.get() / (filterDefault.durationMax*60)), tInfo.height*0.2),
+            tInfo.posit(1).sumxy(0, tInfo.height*0.85), tInfo.durc, tInfo.spacing);
         // сезон, год, тип, статус
         ctx.fillStyle = '#fff';
-        fillTextFast(tInfo.posit(1).sumxy(tInfo.width*0.25, tInfo.height*0.7), tInfo.season);
-        fillTextFast(tInfo.posit(2).sumxy(tInfo.width*0.25, tInfo.height*0.7), tInfo.type);
-        fillTextFast(tInfo.posit(1).sumxy(tInfo.width*0.75, tInfo.height*0.7), tInfo.yeart);
-        fillTextFast(tInfo.posit(2).sumxy(tInfo.width*0.75, tInfo.height*0.7), tInfo.status);
+        fillTextFast(tInfo.posit(2).sumxy(tInfo.width*0.25, tInfo.height*0.7), tInfo.season);
+        fillTextFast(tInfo.posit(3).sumxy(tInfo.width*0.25, tInfo.height*0.7), tInfo.type);
+        fillTextFast(tInfo.posit(2).sumxy(tInfo.width*0.75, tInfo.height*0.7), tInfo.yeart);
+        fillTextFast(tInfo.posit(3).sumxy(tInfo.width*0.75, tInfo.height*0.7), tInfo.status);
         // draw score info (строчки отдельно, чтобы не дрыгалось)
         ctx.textAlign = 'end';
-        fillTextFast(tInfo.posit(3).sumxy(tInfo.width*0.62, tInfo.height*0.7), txt('malScore'));
+        fillTextFast(tInfo.posit(4).sumxy(tInfo.width*0.62, tInfo.height*0.7), txt('malScore'));
         ctx.textAlign = 'start';
-        fillTextFast(tInfo.posit(3).sumxy(tInfo.width*0.64, tInfo.height*0.7), tInfo.scoret);
+        fillTextFast(tInfo.posit(4).sumxy(tInfo.width*0.64, tInfo.height*0.7), tInfo.scoret);
         // пресет
         ctx.textAlign = 'center';
         scaleFont(tinfFontSize, 'Segoe UI', 'bold');
         if(tInfo.meta.usePreset) {
-            fillTextFast(tInfo.posit(4).sumxy(tInfo.width/2, tInfo.height*0.7), textStringLimit(tInfo.meta.object.name, tInfo.width));
-            scaleFont(tinfFontSize, 'Segoe UI');
-            fillTextFast(tInfo.posit(5).sumxy(tInfo.width/2, tInfo.height*0.5), filterChangesString());
+            ctx.fillStyle = '#ff3';
+            fillTextFast(tInfo.posit(5).sumxy(tInfo.width/2, tInfo.height*0.7), textStringLimit(tInfo.meta.object.name, tInfo.width));
+            scaleFont(tinfFontSize, 'Segoe UI'); ctx.fillStyle = '#fffc';
+            fillTextFast(tInfo.posit(6).sumxy(tInfo.width/2, tInfo.height*0.5), filterChangesString());
         } else {
-            fillTextFast(tInfo.posit(4).sumxy(tInfo.width/2, tInfo.height*0.7), textStringLimit(tInfo.meta.object.name, tInfo.width));
-            scaleFont(tinfFontSize, 'Segoe UI');
-            fillTextFast(tInfo.posit(5).sumxy(tInfo.width/2, tInfo.height*0.5), tInfo.meta.object.timestamp.created);
-        }
-        // MAL оценки
-        // scaleFont(tinfFontSize, 'Segoe UI', 'bold');
-        // fillTextFast(tInfo.posit(5).sumxy(tInfo.width*0.5, tInfo.height*0.7), txt('malHead'));
-        // scaleFont(tinfFontSize, 'Segoe UI');
-        // fillTextFast(tInfo.posit(6).sumxy(tInfo.width*0.5, tInfo.height*0.5), txt('malScore') +  tInfo.scoret);
-        // fillTextFast(tInfo.posit(7).sumxy(tInfo.width*0.5, tInfo.height*0.3), txt('malScoredBy') + tInfo.scoredby)
+            ctx.fillStyle = '#ff3';
+            fillTextFast(tInfo.posit(5).sumxy(tInfo.width/2, tInfo.height*0.7), textStringLimit(tInfo.meta.object.name, tInfo.width));
+            scaleFont(tinfFontSize, 'Segoe UI'); ctx.fillStyle = '#fffc';
+            fillTextFast(tInfo.posit(6).sumxy(tInfo.width/2, tInfo.height*0.5), tInfo.meta.object.timestamp.created);
+        };
         // malid & dbid
-        ctx.fillStyle = '#fff8';
-        ctx.textAlign = 'start';
+        ctx.fillStyle = '#fff8'; ctx.textAlign = 'start';
         scaleFont(10, 'Consolas');
         fillTextFast(tInfo.pos.sumxy(tInfo.spacing*3, tInfo.box-tInfo.spacing/2), '#' + tInfo.title['fake_dbid']);
         ctx.textAlign = 'end';
@@ -4856,7 +4866,7 @@ let tDesc = {
             }
         };
         // индикаторы
-        var indic = tDesc.indicate[0]
+        const indic = tDesc.indicate[0]
             ? tDesc.indicate[1] 
                 ? '\\/ /\\'
                 : '\\/   '
@@ -4874,8 +4884,8 @@ let tDesc = {
         descrWatchTrailer.draw();      
         // начала и хвосты
         ctx.globalAlpha = ctx.globalAlpha * tDesc.alpha.get();
-        var start = Math.floor(tDesc.scroll.get() / tDesc.height.y) - 1;
-        var tail = Math.ceil((tDesc.scroll.get() + tDesc.clip.y) / tDesc.height.y) + 1;
+        const start = Math.floor(tDesc.scroll.get() / tDesc.height.y) - 1;
+        const tail = Math.ceil((tDesc.scroll.get() + tDesc.clip.y) / tDesc.height.y) + 1;
         // описание
         ctx.fillStyle = '#fff';
         ctx.textAlign = 'start';
@@ -5070,7 +5080,7 @@ let rollBar = {
             drawMapRoulette(rollBar.size.x - (rbRollWidth*2 + rollBar.spacing*4), rollBar.pos.sumxy(rbRollWidth + rollBar.spacing*4, rollBar.size.y*0.75 - rmpBarHeight/2));
             // фильтр, настройки
             // scaleFont(36, 'Arial', 'bold');
-            var btnsize = new Vector2(buttonDoRoll.size.y);
+            const btnsize = new Vector2(buttonDoRoll.size.y);
             if(!roulette.marathon) {
                 // block button while marathon is selecting anime
                 buttonOpenMarathon.sizedZoom(btnsize);
@@ -5208,7 +5218,7 @@ let musicLite = {
         if(musicLite.walpha.get() > 0) {
             ctx.globalAlpha = musicLite.walpha.get();
             // waiting for clip/music
-            var wsize = new Vector2(400, 24).multxy(_scaleDynamic);
+            const wsize = new Vector2(400, 24).multxy(_scaleDynamic);
             fillRectRounded(wsize, normalAlign(new Vector2(0.5,0.95), wsize), `#000a`, 8*_scaleDynamic);
             scaleFont(16, 'Segoe UI');
             ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
@@ -5228,9 +5238,9 @@ let musicLite = {
     drawfunc: () => {
         // scale
         musicLite.offset.update();
-        var spacing = mlcSpacing * _scaleDynamic;
-        var barsize =  mlcBarSize.multxy(_scaleDynamic);
-        var buttonsize = mlcButtonSize * _scaleDynamic;
+        const spacing = mlcSpacing * _scaleDynamic;
+        const barsize =  mlcBarSize.multxy(_scaleDynamic);
+        const buttonsize = mlcButtonSize * _scaleDynamic;
         // position
         musicLite.size = new Vector2(buttonsize*2 + spacing*2 + barsize.x, buttonsize);
         musicLite.pos = normalAlign(musicLite.anchor, musicLite.size).sumxy(0, spacing + musicLite.offset.get());
@@ -5262,7 +5272,7 @@ let musicLite = {
         };
         // draw text
         ctx.fillStyle = '#fffb'; ctx.textAlign = 'start';
-        var trackname = pref.bgmusic > 0 ? musicLite.name : txt('rbMusicOff');
+        const trackname = pref.bgmusic > 0 ? musicLite.name : txt('rbMusicOff');
         ctx.fillText(trackname, musicLite.pos.x + buttonsize + spacing*2, musicLite.pos.y + 20 * _scaleDynamic);
         if(mouse.pos.overAND(musicLite.pos.sumxy(buttonsize + spacing, spacing)) && pref.bgmusic > 0 &&
         mouse.pos.lessAND(musicLite.pos.sumv(musicLite.size).minxy(buttonsize + spacing, buttonsize/2))) {
@@ -5286,6 +5296,7 @@ let musicLite = {
 //
 // @EAG ROULETTE OBJECT
 //
+let _roulettePostersTimeout = 12; // timeout for poster loading @rel должно быть 10-15
 let roulette = {
     anime: [],
     pics: [],
@@ -5325,7 +5336,7 @@ let roulette = {
     scrAnimate: 'initlock',
     //
     picsGet: (array) => {
-        roulette.timeout = 12; // timeout for poster loading @rel должно быть 10-15
+        roulette.timeout = _roulettePostersTimeout;
         roulette.notfoundplaced = false;
         roulette.anime = array;
         lsSaveObject('roulette.anime', optimizeAnimeArray(roulette.anime));
@@ -5346,8 +5357,8 @@ let roulette = {
     setFrames: () => {
         for(var pic in roulette.pics) {
             roulette.pics[pic].naturalHeight !== 0
-            ? roulette.pics[pic] = new imageFitFrame(roulette.pics[pic])
-            : roulette.pics[pic] = new imageFitFrame(imageNotFound);
+            ? roulette.pics[pic] = new posterFitFrame(roulette.pics[pic], roulette.anime[pic])
+            : roulette.pics[pic] = new posterFitFrame(imageNotFound, roulette.anime[pic]);
             //
             roulette.pics[pic].align = new Vector2(0.5, -1);
             roulette.pics[pic].fit()
@@ -5362,12 +5373,14 @@ let roulette = {
         };
         if(roulette.timeout < 0 && !roulette.notfoundplaced) {
             roulette.notfoundplaced = true;
+            var notloaded = 0;
             for(var pic in roulette.pics) {
                 if(!roulette.pics[pic].complete) {
-                    console.warn('anime poster not loaded (timeout 15s.) -> ' + roulette.pics[pic].src);
+                    notloaded++;
                     roulette.pics[pic].src = 'images/notfound.png'
                 }
-            }
+            };
+            console.warn(`${notloaded} anime posters not loaded (timeout ${_roulettePostersTimeout}s.)`)
         }
     },
     centerItem: () => {
@@ -5438,7 +5451,7 @@ let roulette = {
         if(roulette.time < roulette.atime) {
             roulette.time += deltaTime/1000;
             //тут думать надо, мб всё это хуйня ыааыыыааооууо уэээээ :{
-            var diff = roulette.time / roulette.atime;
+            const diff = roulette.time / roulette.atime;
             if(diff <= 0.25) {
                 roulette.speed.set(roulette.speedMax * easeInQuad(diff*4))
             } else if(diff > 0.25 && diff <= 0.5) {
@@ -5492,11 +5505,7 @@ let roulette = {
                 if(wheelState !== 'idle' && roulette.scrAnimate != 'initlock') {
                     roulette.speed.set(0);
                     roulette.dragged = 5000;
-                    // if(wheelState == 'btm') {
-                    //     roulette.progress.move(Math.round(roulette.progress.getFixed())+1, 0.5, easeOutCirc)
-                    // } else if (wheelState == 'top') {
-                    //     roulette.progress.move(Math.round(roulette.progress.getFixed())-1, 0.5, easeOutCirc)
-                    // };
+                    //
                     if(wheelState == 'btm') {
                         roulette.scrTarget += 1;
                         roulette.scrAnimate = true;
@@ -5506,20 +5515,6 @@ let roulette = {
                     };
                     // roulette.scrTarget >= roulette.picsCount ? roulette.scrTarget -= roulette.picsCount : roulette.scrTarget < 0 ? roulette.scrTarget += roulette.picsCount-1 : 0;
                 };
-            };
-            // скроллим плавно
-            if(roulette.scrAnimate === true) {
-                var scrAccur = deltaTime/150;
-                scrAccur > 1 ? scrAccur = 1 :false;
-                if(roulette.scrTarget !== roulette.progress.value) {
-                    roulette.progress.value += (roulette.scrTarget - roulette.progress.value) * scrAccur;
-                };
-                if(Math.abs(roulette.scrTarget - roulette.progress.value) < 0.1) {
-                    roulette.progress.move(roulette.scrTarget, 0.2);
-                    roulette.scrAnimate = false
-                }
-            } else {
-                roulette.scrTarget = Math.round(roulette.progress.value)
             };
             // скроллим плавно
             if(roulette.scrAnimate === true) {
@@ -5578,19 +5573,19 @@ let roulette = {
         roulette.hidemap = false;
         roulette.isempty = false;
         roulette.sorted = [];
-        var depos = roulette.progress.get() - Math.round(roulette.progress.get());
+        const depos = roulette.progress.get() - Math.round(roulette.progress.get());
         if(roulette.picsCount <= 0) {
             // рулетка пуста
             roulette.isempty = true;
             roulette.hidemap = true;
-            var pos = normalAlign(new Vector2(0.5, 0.33));
+            const pos = normalAlign(new Vector2(0.5, 0.33));
             scaleFont(40, 'Segoe UI', 'bold');
             ctx.fillStyle = '#fff';
             ctx.fillText(txt('eagEmpty'), pos.x, pos.y)
         } else if (roulette.picsCount == 1) {
             // в рулетке 1 тайтл
             roulette.hidemap = true;
-            var transform = roulette.mapper(0.5);
+            const transform = roulette.mapper(0.5);
             var item = roulette.pics[0];
             item.align = transform.align.sumv(roulette.addAlign);
             item.zoom = transform.zoom * roulette.zoomMult;
@@ -5604,7 +5599,7 @@ let roulette = {
                 var item, elem = Math.round(roulette.progress.get()) - Math.floor(pref.rollImages/2) + i;
                 elem = elem - Math.floor(elem / roulette.picsCount) * roulette.picsCount;
                 //
-                var transform = roulette.mapper((i-depos+0.5)/pref.rollImages);
+                const transform = roulette.mapper((i-depos+0.5)/pref.rollImages);
                 if(pref.rollImages >= roulette.pics.length) {
                     item = roulette.pics[elem].copy()
                 } else {
@@ -5622,8 +5617,10 @@ let roulette = {
             };
             roulette.sorted.sort(rouletteSortPosters);
             //
+            ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+            scaleFont(12, 'Segoe UI', 'bold');
             for(var a in roulette.sorted) {
-                roulette.sorted[a].draw()
+                roulette.sorted[a].draw(a)
             }
         }
     },
@@ -5703,9 +5700,6 @@ function rouletteItemsBezier(p) {
     // pos
     tf.align = (_map1.multxy(Math.pow(1-p, 3))).sumv(_curve1.multxy(3*p*Math.pow(1-p, 2))).sumv(_curve2.multxy(3*p*p*(1-p))).sumv(_map2.multxy(p*p*p))
     // zoom, alpha
-    // if(p > 0 && p <= 0.4) {tf.zoom *= 0.3 + 0.5 * (p*2.5); tf.alpha = p*2.5} 
-    // else if (p > 0.4 && p <= 0.6) {tf.zoom *= 0.8 + 0.2 * easeParabolaQuad((p-0.4)*5); tf.alpha = 1} 
-    // else {tf.zoom *= 0.8 - 0.5 * ((p-0.6)*2.5); tf.alpha = 1 - (p-0.6)*2.5};
     tf.alpha = easeParabolaQuad(p);
     tf.zoom *= 0.2 + 0.6 * easeParabolaQuad(p);
     //
@@ -5728,6 +5722,9 @@ const novyigodSanta = invokeNewImage('images/chibi_santa.png');
 const novyigodElka = invokeNewImage('images/christmas_tree.png');
 const noviygodSize = new Vector2(160);
 const noviygodOffset = new Vector2(200, 0);
+// get date of novyy god
+var _showingSnowflakes = false;
+if((new Date()).getMonth() == 11 || (new Date()).getMonth() <= 1) {_showingSnowflakes = true};
 //
 const particleImages = {
     confetti: [
@@ -5754,13 +5751,13 @@ let snowflake = {
     flow: range(0.15, 0.4),
     flowX: range(50, 150),
     //
-    count: 200,
+    count: 50,
     array: [],
 };
 class Snowflake {
     constructor() {
-        this.pos = fullsize.multxy(Math.random(), -Math.random()).minxy(snowflake.sizeMax);
-        var depth = Math.random()*(snowflake.depth.max-snowflake.depth.min)+snowflake.depth.min;
+        this.pos = fullsize.multxy(Math.random(), -Math.random()).minxy(snowflake.sizeMax/2);
+        const depth = Math.random()*(snowflake.depth.max-snowflake.depth.min)+snowflake.depth.min;
         this.depth = depth;
         this.size = new Vector2(snowflake.sizeMax * depth);
         this.velocity = new Vector2();
@@ -5777,7 +5774,7 @@ class Snowflake {
     }
     draw() {
         // flow (такого замороченного снега нет нигде нихуя, агада)
-        var dt = deltaTime/1000;
+        const dt = deltaTime/1000;
         if(this.flow >= 2) {this.flow = 0} else {this.flow += this.flowspeed*dt};
         this.wave = Math.sin(Math.PI*this.flow) * this.flowX;
         // parallax
@@ -5799,21 +5796,24 @@ class Snowflake {
 };
 let resetSnowflakes = () => {snowflake.array=[];for(var i=0; i<snowflake.count; i++) {snowflake.array[i] = new Snowflake()}};
 function novyigodSnowflakes() {
+    // change count by halfing
+    if(pref.visualHalfed && snowflake.count == 100) {snowflake.count = 50; resetSnowflakes()};
+    if(!pref.visualHalfed && snowflake.count == 50) {snowflake.count = 100; resetSnowflakes()};
     // приколы
     if(firstMouseEvent) {
         noviygodOffset.update();
-        var ngsize = noviygodSize.multxy(_scaleDynamic);
+        const ngsize = noviygodSize.multxy(_scaleDynamic);
         drawImageSized(novyigodSanta, new Vector2(-noviygodOffset.get().x, fullsize.y-ngsize.y), ngsize);
         drawImageSized(novyigodElka, new Vector2(fullsize.x-ngsize.x+noviygodOffset.get().x, fullsize.y-ngsize.y), ngsize)
     } else {
         noviygodOffset.movexy(0, 0, 1.5, easeOutCirc)
     };
     // снежинки
-    var sfs = snowflake.sizeMax * _scaleDynamic, sfp = new Vector2();
+    const sfs = snowflake.sizeMax * _scaleDynamic;
     if(snowflake.image.complete) {
         for(var sf in snowflake.array) {
             snowflake.array[sf].draw();
-            sfp = snowflake.array[sf].getPos();
+            const sfp = snowflake.array[sf].getPos();
             // bottom portal
             if(sfp.y - sfs > fullsize.y) {
                 snowflake.array[sf].pos = new Vector2(Math.random()*fullsize.x, 0).minxy(sfs);
@@ -5878,15 +5878,15 @@ function particleMovePool(pool) {
 function particleSplash(particle, pool, pos, count, time=1) {
     for(let i=0; i<count; i++) {
         var p = visual[pool][visual.pointers[pool]];
-        var rtime = time + time * 0.2 * Math.random();
+        const rtime = time + time * 0.2 * Math.random();
         p.mode = 'pic';
         // setting
         p.lifetime = rtime;
         p.pos.setv(pos);
         p.size.setxy(60);
-        var vel = 350 + 100 * Math.random();  // distantion from center
-        var ang = 600 + 200 * Math.random(); // angular velocity
-        var rad = (Math.random() * 359.99) * (Math.PI / 180); // random direction
+        const vel = 350 + 100 * Math.random();  // distantion from center
+        const ang = 600 + 200 * Math.random(); // angular velocity
+        const rad = (Math.random() * 359.99) * (Math.PI / 180); // random direction
         p.velocity.setxy(Math.cos(rad)*vel, -Math.sin(rad)*vel);
         p.angVelocity.set(ang);
         p.pic = particle;
@@ -5909,9 +5909,9 @@ function particleDrop(particle, pool, pos, count, time=1) {
         p.lifetime = rtime;
         p.pos.setv(pos);
         p.size.setxy(30);
-        var vel = 250 + 150 * Math.random();  // distantion from center
-        var ang = 600; // angular velocity
-        var rad = (30 + Math.random() * 120) * (Math.PI / 180);
+        const vel = 250 + 150 * Math.random();  // distantion from center
+        const ang = 600; // angular velocity
+        const rad = (30 + Math.random() * 120) * (Math.PI / 180);
         p.velocity.setxy(Math.cos(rad)*vel*0.8, -Math.sin(rad)*vel);
         p.angVelocity.set(ang + ang*0.25 * Math.random());
         p.pic = particle;
@@ -5926,6 +5926,7 @@ function particleDrop(particle, pool, pos, count, time=1) {
     }
 };
 function particleApproachRect(pool, pos, size, time) {
+    if(!pref.visual) {return};
     var p = visual[pool][visual.pointers[pool]];
     p.mode = 'shape';
     p.pic = null;
@@ -5943,7 +5944,7 @@ function particleApproachRect(pool, pos, size, time) {
     p.alpha.move(0, time);
     // shape
     p.shapefunc = (obj) => {
-        var mult = (0.9 + 0.35 * (obj.alpha.dtime / obj.alpha.time)) * _scaleDynamic;
+        const mult = (0.9 + 0.35 * (obj.alpha.dtime / obj.alpha.time)) * _scaleDynamic;
         fillRectRounded(obj.size.multxy(mult), obj.pos.sumv(obj.size.multxy(0.5)).minv(obj.size.multxy(mult/2)), obj.color, 10*_scaleDynamic)
     };
     particleMovePool(pool)
@@ -5951,8 +5952,8 @@ function particleApproachRect(pool, pos, size, time) {
 //      SPECIAL FUNCTIONS
 //
 function spartMrthLogos(rect) {
-    if(mrthMeta.visuals === false) {return}; // false, 'half', 'full'
-    var mult = mrthMeta.visuals == 'full' ? 1 : 0.5;
+    if(!pref.visual) {return};
+    const mult = !pref.visualHalfed ? 1 : 0.5;
     if(rect.type == 'empty') {
         particleSplash(filterImageBrowser, 'mrth', mapRectCenter(rect), 4*mult, 1.5)
     } else {
@@ -5960,19 +5961,22 @@ function spartMrthLogos(rect) {
     }
 };
 function spartTopClicks(particle, count=1) {
+    if(!pref.visual) {return};
     particleDrop(particle, 'top', mouse.pos, count, 2)
 };
 function spartWinnerDrop(pos, count=1, time=4) {
+    if(!pref.visual) {return};
+    if(pref.visualHalfed) {count = Math.ceil(count/2)};
     for(let i=0; i<count; i++) {
-        var part = particleImages.confetti[Math.floor(Math.random() * (particleImages.confetti.length-0.001))];
+        const part = particleImages.confetti[Math.floor(Math.random() * (particleImages.confetti.length-0.001))];
         // var part = particleImages.confetti[1];
         particleDrop(part, 'top', pos, 1, time)
     }
 };
 // for event rects
 function spartMrthGoodIssue(coins=false) {
-    if(mrthMeta.visuals === false) {return};
-    var mult = mrthMeta.visuals == 'full' ? 1 : 0.5;
+    if(!pref.visual) {return};
+    const mult = !pref.visualHalfed ? 1 : 0.5;
     if(!coins) {
         particleSplash(particleImages.apply, 'mrth', mapRectCenter(mapMeta.selected), 8*mult, 1.5)
     } else {
@@ -5988,8 +5992,8 @@ function spartMrthGoodIssue(coins=false) {
     }
 };
 function spartMrthBadIssue() {
-    if(mrthMeta.visuals === false) {return};
-    var mult = mrthMeta.visuals == 'full' ? 1 : 0.5;
+    if(!pref.visual) {return};
+    const mult = !pref.visualHalfed ? 1 : 0.5;
     particleSplash(particleImages.remove, 'mrth', mapRectCenter(mapMeta.selected), 6*mult, 1.5);
     playSound(sound['warn'])
 };
@@ -6020,10 +6024,10 @@ let visual = {
     },
     // layers
     backgroundLayer: () => {
-        if(pref.snowflakes) {
+        if(_showingSnowflakes) {
             novyigodSnowflakes()
         };
-        if(pref.visual) {
+        if(pref.visualAudio) {
             // соме щит
             musicAnalysis.update();
             musicEqualizer.draw()
@@ -6051,8 +6055,8 @@ for(let i=0; i<100; i++) { // size is 100
 // @EAG STUFF ROULETTE
 //
 function radialShadow(p=0) {
-    var d = fullsize;
-    var diag = Math.sqrt((d.x/2)*(d.x/2) + d.y*d.y);
+    const d = fullsize;
+    const diag = Math.sqrt((d.x/2)*(d.x/2) + d.y*d.y);
     var g = ctx.createRadialGradient(d.x/2, d.y, diag/2 - (diag/2)*p, d.x/2, d.y, diag);
     g.addColorStop(0, `rgba(0,0,0,${0.3*p})`);
     g.addColorStop(0.6 * (1-p), `rgba(0, 0, 0, ${0.7 + 0.3*p})`);
@@ -6112,6 +6116,8 @@ let sload = {
 // downloading database
 let databaseRequestResult = null;
 let adb = [], adb_information = {};
+let _lidbADB = false;
+// xhr request for download from source
 let _adb_xml_request = new XMLHttpRequest();
 let _adb_xml_loadprogress = 0;
 _adb_xml_request.onprogress = (e) => {_adb_xml_loadprogress = e.loaded};
@@ -6124,45 +6130,61 @@ function getAnimeDatabase() {
 function awaitForDatabase() {
     if(databaseRequestResult !== null && databaseRequestResult !== 'success' && databaseRequestResult !== 'error') {
         if(databaseRequestResult[0] !== false) {
-            var fulldata = JSON.parse(databaseRequestResult);
-            adb = fulldata.data;
-            adb_information = {
-                license: fulldata.license,
-                repository: fulldata.repository,
-                lastUpdate: fulldata.lastUpdate
-            };
-            _preftitles.adb_author = {
-                name: 'Author',
-                object: 'manami-project',
-                url: false
-            };
-            _preftitles.adb = {
-                name: 'Name',
-                object: 'anime-offline-database',
-                url: adb_information.repository
-            };
-            _preftitles.adb_license = {
-                name: 'License',
-                object: adb_information.license.name,
-                url: adb_information.license.url
-            };
-            _preftitles.adb_version = {
-                name: 'Last update',
-                object: adb_information.lastUpdate,
-                url: false
-            };
-            _preftitles.adb_length = {
-                name: 'Anime count',
-                object: adb.length,
-                url: false
-            };
-            console.log(`anime-offline-database ${fulldata.lastUpdate} loaded.`);
+            const fulldata = JSON.parse(databaseRequestResult);
+            setupDatabase(fulldata);
+            lidbUploadObject({name: 'db', db: fulldata}, 'adb');
             databaseRequestResult = 'success'
         } else {
             databaseRequestResult = 'error'
         }
     };
 };
+function setupDatabase(fd) {
+    const fulldata = JSON.parse(JSON.stringify(fd));
+    adb = fulldata.data;
+    adb_information = {
+        license: fulldata.license,
+        repository: fulldata.repository,
+        lastUpdate: fulldata.lastUpdate
+    };
+    _preftitles.adb_author = {
+        name: 'Author',
+        object: 'manami-project',
+        url: false
+    };
+    _preftitles.adb = {
+        name: 'Name',
+        object: 'anime-offline-database',
+        url: adb_information.repository
+    };
+    _preftitles.adb_license = {
+        name: 'License',
+        object: adb_information.license.name,
+        url: adb_information.license.url
+    };
+    _preftitles.adb_version = {
+        name: 'Last update',
+        object: adb_information.lastUpdate,
+        url: false
+    };
+    _preftitles.adb_length = {
+        name: 'Anime count',
+        object: adb.length,
+        url: false
+    };
+    console.log(`anime-offline-database ${fulldata.lastUpdate} loaded.`);
+};
+function compareUpdateDates(current) {
+    // adb date -> '2025-06-20'
+    var date_adb = current.split('-');
+    date_adb = +date_adb[0] * 366 + (+date_adb[1] - 1) * 31 + +date_adb[2];
+    // idb date
+    const date = new Date();
+    const date_cur = date.getFullYear() * 366 + date.getMonth() * 31 + date.getDate()
+    // compare
+    return Math.abs(date_cur - date_adb)
+};
+// working with IDB
 //
 // titles
 let _preftitles = {};
@@ -6177,7 +6199,7 @@ const loadImagesBar = `rgba(200,200,200,0.2)#rgba(255,255,255,0.8)#rgba(0,0,0,1)
 function screenLoading() {
     imageLoadProgress.size.setxy(400 * _scaleDynamic);
     imageLoadProgress.margin.setxy(10 * _scaleDynamic);
-    var spbsize =  new Vector2(fullsize.x, 8 * _scaleDynamic);
+    const spbsize =  new Vector2(fullsize.x, 8 * _scaleDynamic);
     //
     sload.alpha.update();
     sload.dbProgress = Math.norma(_adb_xml_loadprogress / sload.dbSize);
@@ -6194,11 +6216,23 @@ function screenLoading() {
     };
     //
     if(sload.state === 'startup') {
-        if(sload.ayaya.complete) {sload.state = 'show'}
+        if(sload.ayaya.complete) {
+            // prepares
+            const scale = lsLoadValue('scale', null) === null
+            ? floatNumber(cvssize.y / 720, 1)
+            : lsLoadValue('scale', 1);
+            lsSaveValue('scale', scale);
+            cvsscale.set(scale);
+            globalRescale();
+            sload.alpha.move(1, sload.time, easeInOutSine);
+            imageLoadProgress.shadow.x = imageLoadProgress.size.x;
+            //
+            sload.state = 'check_idb'; // go to find ADB on IDB, if have - compare versions
+        }
     //
     } else if(sload.state === 'timeout') {
-        var center = fullAlign(new Vector2(0.5, 0.5));
-        var spacing = 15 * _scaleDynamic;
+        const center = fullAlign(new Vector2(0.5, 0.5));
+        const spacing = 15 * _scaleDynamic;
         ctx.fillStyle = '#b55'; ctx.textAlign = 'center';
         scaleFont(36, 'Segoe UI Light');
         fillTextFast(center.minxy(0, spacing), txt('loadNoCon'));
@@ -6206,22 +6240,37 @@ function screenLoading() {
         scaleFont(18, 'Segoe UI');
         fillTextArray(center.sumxy(-fullsize.x/4, spacing*3), textWidthFit(txt('loadRecon'), fullsize.x/2), spacing/4)
     //
+    } else if(sload.state === 'check_idb') {
+        // check ADB for LIDB
+        lidb.response = false;
+        lidbDownloadObject('db', 'adb');
+        sload.state = 'wait_idb'
+    //
+    } else if(sload.state === 'wait_idb') {
+        // checking: have ADB & updates for ADB
+        if(lidb.response !== false) {
+            if(lidb.response === undefined) {
+                // if no ADB in IDB = download from source
+                sload.state = 'show'
+            } else {
+                // compare month (response = fulldata)
+                if(compareUpdateDates(lidb.response.db.lastUpdate) <= 30) { // раз в месяц примерно
+                    setupDatabase(lidb.response.db); // setup from IDB
+                    databaseShorter();
+                    edList.edited = new animeList(); // создаём пустой список в редактор здесь, только после загрузки датабазы
+                    sload.state = 'wait'
+                } else {
+                    sload.state = 'show' // download new
+                }
+            }
+        };
     } else if(sload.state === 'show') {
-        var scale = lsLoadValue('scale', null) === null
-        ? floatNumber(cvssize.y / 720, 1)
-        : lsLoadValue('scale', 1);
-        lsSaveValue('scale', scale);
-        cvsscale.set(scale);
-        globalRescale();
-        //
-        sload.alpha.move(1, sload.time, easeInOutSine);
-        imageLoadProgress.text = txt('loadJkrg') + bytesStringify(_adb_xml_loadprogress);
-        imageLoadProgress.shadow.x = imageLoadProgress.size.x;
+        // download ADB from source
         getAnimeDatabase();
-        //
         sload.state = 'wait_adb'
     //
     } else if(sload.state === 'wait_adb') {
+        // wait for download ADB & optimize
         awaitForDatabase();
         imageLoadProgress.text = txt('loadJkrg') +' '+ bytesStringify(_adb_xml_loadprogress);
         shapeProgressBar(normalAlign(new Vector2(0.5, 0), spbsize), spbsize, sload.dbProgress, colorMapMatrix(loadImagesBar));
@@ -6293,7 +6342,7 @@ function screenLoading() {
             imageLoadProgress.text = txt('loadFirstEvent')
         };
         if(roulette.complete) {
-            if((mouse.click && mouse.pos.overSAND(new Vector2()) && mouse.pos.lessSAND(cvssize)) || firstMouseEvent) {
+            if((mouse.click && mouse.pos.overSAND(__ro_v2) && mouse.pos.lessSAND(cvssize)) || firstMouseEvent) {
                 roulette.speed.reset();
                 roulette.scrAnimate = 'initlock'; // lock scroll
                 if(!lsItemUndefined('roulette.winner') && !roulette.marathon) {
@@ -6335,8 +6384,8 @@ function screenLoading() {
     ctx.globalAlpha = sload.showing === true ? sload.alpha.get() : 1;
     if(sload.state !== 'startup' && sload.state !== 'timeout') {
         var center = fullAlign(new Vector2(0.5, 0.5));
-        var sizei = new Vector2(200 * _scaleDynamic);
-        var spacing = 15 * _scaleDynamic;
+        const sizei = new Vector2(200 * _scaleDynamic);
+        const spacing = 15 * _scaleDynamic;
         drawImageSized(sload.ayaya, center.minxy(sizei.x/2, sizei.y).minxy(0, spacing), sizei);
         imageLoadProgress.pos = normalAlign(new Vector2(0.5, 0.99), imageLoadProgress.shadow.get().multxy(0,1));
         ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
@@ -6383,7 +6432,7 @@ namebox.onupd = () => {
 //
 function screenRoulette() {
     srv.hideProgress.update();
-    var srvhp = srv.hideProgress.get();
+    const srvhp = srv.hideProgress.get();
     if(srv.state === 'show_roulette') {
         fillRect(fullsize, fullAlign(new Vector2(0.5), fullsize), radialShadow(srvhp));
         // развёртываем рулетку
@@ -6525,7 +6574,7 @@ let sbBlockHint = {
 };
 // blocks
 function sbTextHeader(text, pos, width, spacing, scroll=0) {
-    var sizey = spacing*2 + ctx.measureText(text).fontBoundingBoxAscent;
+    const sizey = spacing*2 + ctx.measureText(text).fontBoundingBoxAscent;
     ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
     ctx.fillText(text, pos.x + width/2, pos.y + sizey - spacing*2 - scroll);
     // hints
@@ -6538,13 +6587,13 @@ function sbTextHeader(text, pos, width, spacing, scroll=0) {
     return sizey
 };
 function sbTextFit(text, pos, width, spacing, scroll=0, fsize, color='#fff') {
-    var [array, measure] = textWidthFit(text, width - spacing*2);
+    const [array, measure] = textWidthFit(text, width - spacing*2);
     ctx.fillStyle = color;
     fillTextArray(pos.sumxy(spacing, spacing - scroll), [array, measure], fsize*0.5*_scaleDynamic);
     return spacing + (measure.y + fsize*0.5*_scaleDynamic) * array.length;
 };
 function sbButtonPrefix(text, button, pos, width, spacing, scroll=0) {
-    var sizey = spacing*2 + button.size.y;
+    const sizey = spacing*2 + button.size.y;
     button.pos.setv(pos.sumxy(width - (button.size.x + spacing), spacing - scroll));
     ctx.fillStyle = '#fff'; ctx.textAlign = 'start';
     ctx.fillText(text, pos.x + spacing, pos.y + sizey - spacing*2 - scroll);
@@ -6560,7 +6609,7 @@ function sbButtonPrefix(text, button, pos, width, spacing, scroll=0) {
     return sizey + spacing
 };
 function sbVoidPrefix(text, pos, width, spacing, scroll=0) {
-        var sizey = spacing*2 + ctx.measureText(text).fontBoundingBoxAscent;
+        const sizey = spacing*2 + ctx.measureText(text).fontBoundingBoxAscent;
         ctx.fillStyle = '#fff'; ctx.textAlign = 'start';
         ctx.fillText(text, pos.x + spacing, pos.y + sizey - spacing*2 - scroll);
         // hints
@@ -6573,7 +6622,7 @@ function sbVoidPrefix(text, pos, width, spacing, scroll=0) {
         return sizey + spacing
 };
 function sbTwoButtonPrefix(text, button1, button2, pos, width, spacing, scroll=0) {
-    var sizey = spacing*2 + button1.size.y;
+    const sizey = spacing*2 + button1.size.y;
     button1.pos.setv(pos.sumxy(width - (spacing*2 + button2.size.x + button1.size.x), spacing - scroll));
     button2.pos.setv(pos.sumxy(width - (spacing + button2.size.x), spacing - scroll));
     ctx.fillStyle = '#fff'; ctx.textAlign = 'start';
@@ -6584,13 +6633,13 @@ function sbTwoButtonPrefix(text, button1, button2, pos, width, spacing, scroll=0
     return sizey + spacing
 };
 function sbCenteredButton(button, pos, width, spacing, scroll=0) {
-    var sizey = spacing*2 + button.size.y;
+    const sizey = spacing*2 + button.size.y;
     button.pos.setv(pos.sumxy(width/2 - button.size.x/2, spacing - scroll));
     button.draw();
     return sizey + spacing
 };
 function sbThreeButtonAlign(array, pos, width, spacing, scroll=0) {
-    var sizey = spacing*2 + array[0].size.y;
+    const sizey = spacing*2 + array[0].size.y;
     array[0].size.x = array[1].size.x = array[2].size.x = (width - spacing*2)/3;
     array[0].pos.setv(pos.sumxy(0, spacing - scroll));
     array[1].pos.setv(pos.sumxy(width/2 - array[1].size.x/2, spacing - scroll));
@@ -6601,10 +6650,10 @@ function sbThreeButtonAlign(array, pos, width, spacing, scroll=0) {
     return sizey + spacing
 };
 function sbSelectbarPrefix(text, text2, bar, pos, width, spacing, scroll=0) {
-    var sizey = spacing*2 + ctx.measureText(text).fontBoundingBoxAscent;
+    const sizey = spacing*2 + ctx.measureText(text).fontBoundingBoxAscent;
     bar.pos = pos.sumxy(width - (bar.size.x + spacing), spacing*2 - scroll);
     ctx.fillStyle = '#fff'; ctx.textAlign = 'end';
-    var texty = pos.y + sizey - spacing*2 - scroll;
+    const texty = pos.y + sizey - spacing*2 - scroll;
     ctx.fillText(text2, (pos.x + width) - (spacing*2 + bar.size.x), texty);
     ctx.textAlign = 'start';
     ctx.fillText(text, pos.x + spacing, texty);
@@ -6644,7 +6693,7 @@ const filterBrowserItemAbout = {style: false, font: 'Segoe UI', size: 16};
 const buttonEditorDeleteSize = new Vector2(90, 30);
 //
 function sbBrowserItem(item, image, pos, width, spacing, scroll=0) {
-    var taby = filterBrowserTabHeight * _scaleDynamic;
+    const taby = filterBrowserTabHeight * _scaleDynamic;
     if(pos.y + taby >= scroll && pos.y <= scroll + cvssize.y) {
         // bg
         fillRectRounded(new Vector2(width, taby), pos.sumxy(0, -scroll), '#0005');
@@ -6654,7 +6703,7 @@ function sbBrowserItem(item, image, pos, width, spacing, scroll=0) {
         // name
         ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
         scaleFontObject(filterBrowserItemName);
-        var limit = width - (taby + spacing*3);
+        const limit = width - (taby + spacing*3);
         var textt = pos.sumxy(spacing*2 + taby + limit/2, spacing+filterBrowserItemName.size*_scaleDynamic);
         var limited = textStringLimit(item.name, limit);
         ctx.fillText(limited, textt.x, textt.y - scroll);
@@ -6677,7 +6726,7 @@ function sbBrowserItem(item, image, pos, width, spacing, scroll=0) {
 };
 //
 function sbEditorItem([item, image], pos, width, spacing, scroll=0) {
-    var taby = filterBrowserTabHeight * _scaleDynamic;
+    const taby = filterBrowserTabHeight * _scaleDynamic;
     if(pos.y + taby >= scroll && pos.y <= scroll + cvssize.y) {
         // bg
         fillRectRounded(new Vector2(width, taby), pos.sumxy(0, -scroll), '#0005');
@@ -6687,7 +6736,7 @@ function sbEditorItem([item, image], pos, width, spacing, scroll=0) {
         // name
         ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
         scaleFontObject(filterBrowserItemName);
-        var limit = width - (taby + spacing*3);
+        const limit = width - (taby + spacing*3);
         var textt = pos.sumxy(spacing*2 + taby + limit/2, spacing+filterBrowserItemName.size*_scaleDynamic);
         var limited = textStringLimit(item.name, limit);
         ctx.fillText(limited, textt.x, textt.y - scroll);
@@ -6713,11 +6762,11 @@ const pageManagerFont = {style: false, font: 'Segoe UI', size: 20};
 const pageManagerButton = new Vector2(150, 30);
 //
 function sbPageManager(control, button3, pos, width, spacing, scroll=0) {
-    var bsize = pageManagerButton.multxy(_scaleDynamic);
-    var h = spacing + pageManagerFont.size*_scaleDynamic + bsize.y;
+    const bsize = pageManagerButton.multxy(_scaleDynamic);
+    const h = spacing + pageManagerFont.size*_scaleDynamic + bsize.y;
     // text
-    var all = (control.current*control.max-1) > control.all ? control.all : control.current*control.max-1
-    var text = `${txt('browserPage')} ${control.current}/${control.pages} | ${(control.current-1)*control.max} - ${all}`;
+    const all = (control.current*control.max-1) > control.all ? control.all : control.current*control.max-1
+    const text = `${txt('browserPage')} ${control.current}/${control.pages} | ${(control.current-1)*control.max} - ${all}`;
     ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
     scaleFontObject(pageManagerFont);
     fillTextFast(pos.sumxy(width/2, h/3 - scroll), text);
@@ -6740,8 +6789,16 @@ function getAnimeDBID(data) {
     for(var a in adb) {
         if(adb[a].title == data.title) {return Number(a)}
     };
-    console.error(`Title "${data.title}" not found in DB!`);
+    console.warn(`Title "${data.title}" not found in ADB!`);
     return null
+};
+function formatTitleMAL(data) {
+    // try to find by name
+    var namef = getAnimeDBID(data);
+    if(namef != null) {
+        if(adb[namef] !== undefined) {return adb[namef]}
+    };
+    return false
 };
 //
 class AnimeItem {
@@ -6751,11 +6808,6 @@ class AnimeItem {
         this.malid = malAnimeID(data.sources);
         this.dbid = this.data.dbid !== undefined ? this.data.dbid : Number(getAnimeDBID(data));
         // get score
-        // this.score = null;
-        // if(this.malid != null) {
-        //     if(adb_ratings[this.malid] !== undefined) {                  // old version with `adb_ratings`, score already provided in ADB
-        //         this.score = Number(adb_ratings[this.malid].score)}};
-        // if(typeof this.score !== 'number' || String(this.score) == 'NaN') {this.score = '???'};
         data.score == null ? this.score = null : this.score = +data.score;
         // fast meta
         this.name = data.title;
@@ -6823,8 +6875,6 @@ let tagSelection = {
 let tagSelectionString = JSON.stringify(tagSelection);
 let presetSelected = lsLoadString('presetSelected', 'Бесится, но любит');
 let newPresetSelected = lsLoadString('presetSelected', 'Бесится, но любит');
-// let presetOnRoulette =  lsLoadString('presetOnRoulette', presetbase[presetSelected].name); UNUSED
-// let listOnRoulette = lsLoadString('listOnRoulette', 'ListName'); UNUSED
 //
 let presetButtons = {};
 const presetButtonFont = {
@@ -6896,9 +6946,10 @@ function presetSwitcher() {
     filterDefault = filterModify(filterDefault, presetbase[presetSelected].addon());
     lsSaveObject('filterDefault', filterDefault);
     filterPresetOnly = JSON.stringify(filterDefault);
-    // убираем игнор условий
-    filterAttempts = 0;
-    lsSaveValue('filterAttempts', 0);
+    // обнуляем все спец. функции
+    filterAttempts = 0; lsSaveValue('filterAttempts', 0);
+    filterAttemptTags = false; lsSaveValue('filterAttemptTags', false);
+    filterDefault.skipSpecial = false;
     // обновляем тэги, подсчитываем
     tagSelectionPrepare();
     filterPrecount.request()
@@ -6995,7 +7046,7 @@ colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba
 colorMapMatrix(`rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`));
 buttonFilterScoreMin.onclick = () => {
     playSound(sound['prompt']);
-    filterDefault['scoreMin'] = floatNumber(promptNumber(`${txt('promFloatLess')} ${filterDefault['scoreMax']}.`, 0, floatNumber(filterDefault['scoreMax']-0.1, 1), filterDefault['scoreMin']), 1);
+    filterDefault['scoreMin'] = floatNumber(promptNumber(`${txt('promFloatLess')} ${filterDefault['scoreMax']}.`, 0, floatNumber(filterDefault['scoreMax']-0.1, 1), filterDefault['scoreMin']));
     filterPrecount.request();
     lsSaveObject('filterDefault', filterDefault)
 };
@@ -7004,13 +7055,37 @@ colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba
 colorMapMatrix(`rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`));
 buttonFilterScoreMax.onclick = () => {
     playSound(sound['prompt']);
-    filterDefault['scoreMax'] = floatNumber(promptNumber(`${txt('promFloatOver')} ${filterDefault['scoreMin']}.`, floatNumber(filterDefault['scoreMin']+0.1, 1), 10, filterDefault['scoreMax']), 1);
+    filterDefault['scoreMax'] = floatNumber(promptNumber(`${txt('promFloatOver')} ${filterDefault['scoreMin']}.`, floatNumber(filterDefault['scoreMin']+0.1, 1), 10, filterDefault['scoreMax']));
+    filterPrecount.request();
+    lsSaveObject('filterDefault', filterDefault)
+};
+// duration
+let buttonFilterDurationAllow = new TextButtonShaped(shapeRectRounded, '', filterPromptSize,
+    colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+    colorMapMatrix(filterSwitchPalette)
+);
+buttonFilterDurationAllow.isSwitcher = true; buttonFilterDurationAllow.needshadow = false; buttonFilterDurationAllow.height = 0;
+buttonFilterDurationAllow.onclick = () => {filterDefault['durationAllow'] = true; lsSaveObject('filterDefault', filterDefault); filterPrecount.request(); spartTopClicks(particleImages.apply)};
+buttonFilterDurationAllow.ondeact = () => {filterDefault['durationAllow'] = false; lsSaveObject('filterDefault', filterDefault); filterPrecount.request(); spartTopClicks(particleImages.remove)};
+let buttonFilterDurationMin = new TextButtonShaped(shapeRectRounded, filterDefault['durationMin'], filterPromptSize,
+colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+colorMapMatrix(`rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`));
+buttonFilterDurationMin.onclick = () => {
+    playSound(sound['prompt']);
+    filterDefault['durationMin'] = floatNumber(promptNumber(`${txt('promIntLess')} ${filterDefault['durationMax']}.`, 0, floatNumber(filterDefault['durationMax']-0.1, 1), filterDefault['durationMin']));
+    filterPrecount.request();
+    lsSaveObject('filterDefault', filterDefault)
+};
+let buttonFilterDurationMax = new TextButtonShaped(shapeRectRounded, filterDefault['durationMax'], filterPromptSize,
+colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`),
+colorMapMatrix(`rgba(32,128,128,1)#rgba(48,180,180,1)#rgba(64,255,255,1)#rgba(200,200,47,0.1)`));
+buttonFilterDurationMax.onclick = () => {
+    playSound(sound['prompt']);
+    filterDefault['durationMax'] = floatNumber(promptNumber(`${txt('promIntOver')} ${filterDefault['durationMin']}.`, floatNumber(filterDefault['durationMin']+0.1, 1), 999, filterDefault['durationMax']));
     filterPrecount.request();
     lsSaveObject('filterDefault', filterDefault)
 };
 // filter attempts (это находится в стаффе префов)
-// let buttonFilterAttempts = new ShapedSelectBar(new Vector2(250*1.5, 16), colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
-// buttonFilterAttempts.onset = (value) => {var fa = Math.round(value); filterAttempts = fa; lsSaveValue('filterAttempts', fa)};
 // rescale functions
 function rescaleFilterButtons() {
     var measure, spacing;
@@ -7047,6 +7122,9 @@ function rescaleFilterButtons() {
     buttonScoreAllow.size = s[0];
     buttonFilterScoreMin.size = s[0];
     buttonFilterScoreMax.size = s[0];
+    buttonFilterDurationAllow.size = s[0];
+    buttonFilterDurationMax.size = s[0];
+    buttonFilterDurationMin.size = s[0];
     buttonFilterAttempts.size = new Vector2(300, 16).multxy(_scaleDynamic);
     buttonFilterAttTags.size = s[0];
     buttonFilterSkipSpecial.size = s[0];
@@ -7078,6 +7156,9 @@ function actualizeFilterButtons() {
     buttonFilterScoreMin.text = filterDefault['scoreMin'];
     buttonFilterScoreMax.text = filterDefault['scoreMax'];
     buttonScoreAllow.active = filterDefault['scoreAllow'];
+    buttonFilterDurationAllow.active = filterDefault['durationAllow'];
+    buttonFilterDurationMin.text = filterDefault['durationMin'];
+    buttonFilterDurationMax.text = filterDefault['durationMax'];
     buttonFilterAttTags.active = filterAttemptTags;
     buttonFilterSkipSpecial.active = true === filterDefault.skipSpecial;
 };
@@ -7186,21 +7267,26 @@ function animeListApply(list) {
 const changeableValues = [
     'NSFW', 'scoreAllow', 'scoreMin', 'scoreMax',
     'episodeMin', 'episodeMax', 'yearMin', 'yearMax',
+    'durationAllow', 'durationMin', 'durationMax', 'skipSpecial',
     'statusFinished', 'statusOngoing', 'statusUpcoming', 'statusUnknown',
     'typeTV', 'typeMovie', 'typeONA', 'typeOVA', 'typeSpecial', 'typeUnknown',
     'seasonSpring', 'seasonSummer', 'seasonFall', 'seasonWinter', 'seasonUndefined',
 ];
 function calcPresetChanges() {
-    var changes = 0, p = JSON.parse(filterPresetOnly);
+    var changes = 0; 
+    const p = JSON.parse(filterPresetOnly);
     // changeable
     for(var i = 0; i < changeableValues.length; i++) {
         if(filterDefault[changeableValues[i]] !== p[changeableValues[i]]) {changes++}
     };
     // tags
-    var tagsp = tagSelectionParse(p), tagsf = tagSelectionParse(filterDefault);
+    const tagsp = tagSelectionParse(p), tagsf = tagSelectionParse(filterDefault);
     for(var key in tagsp) {
         if(tagsp[key] !== tagsf[key]) {changes++}
     };
+    // super options
+    if(filterAttempts > 0) {changes += filterAttempts};
+    if(filterAttemptTags) {changes++};
     //
     return changes
 };
@@ -7266,7 +7352,7 @@ let filterImageBrowser = invokeNewImage('images/fs_browser.png');
 // filter tabs switcher
 function filterTabSwitcher(posx, swidth, fbSpacing) {
     var pos = new Vector2(posx, fbSpacing);
-    var width = (swidth - fbSpacing*3)/4;
+    const width = (swidth - fbSpacing*3)/4;
     buttonAnimeFilter.pos.setv(pos.sumxy(fbSpacing, 0));
     buttonAnimeArrays.pos.setv(pos.sumxy(width + fbSpacing*2, 0));
     buttonAnimeEditor.pos.setv(pos.sumxy(width*2 + fbSpacing*3, 0));
@@ -7285,7 +7371,7 @@ let buttonBrowseTitles = new TextButtonShaped(shapeRectRounded, txt('filterBrows
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`), 
     colorMapMatrix(filterMainThreePal));
 buttonBrowseTitles.onclick = () => {
-    var p = prompt(txt('filterBrowserPrompt'));
+    const p = prompt(txt('filterBrowserPrompt'));
     playSound(sound['prompt']);
     if(p == null) {return} else {sDBs.find(p)}
 };
@@ -7294,7 +7380,7 @@ let buttonBrowseTitlesMAL = new TextButtonShaped(shapeRectRounded, txt('filterMA
     colorMapMatrix(`rgba(220,220,220,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.6)`), 
     colorMapMatrix(filterMainThreePal));
 buttonBrowseTitlesMAL.onclick = () => {
-    var p = prompt(txt('filterMALPrompt'));
+    const p = prompt(txt('filterMALPrompt'));
     playSound(sound['prompt']);
     if(p == null) {return} else {sDBs.findMAL(p)}
 };
@@ -7329,9 +7415,9 @@ function screenAnimeFilter() {
     saf.scroll.update();
     saf.bgcolor = `rgba(0,0,0,${pref.bgalpha})`;
     // scaling
-    var sensivity = saf.sensivity * _scaleDynamic;
-    var fbSpacing = filterButtonsSpacing * _scaleDynamic;
-    var linew = 3*_scaleDynamic;
+    const sensivity = saf.sensivity * _scaleDynamic;
+    const fbSpacing = filterButtonsSpacing * _scaleDynamic;
+    const linew = 3*_scaleDynamic;
     // scrolling
     if(cvssize.y >= saf.height) {saf.scroll.set(0)}
     else {
@@ -7345,7 +7431,7 @@ function screenAnimeFilter() {
     //
     saf.width = fullsize.y * 1.3 > fullsize.x ? fullsize.x : fullsize.y * 1.3;
     saf.xanchor = (cvssize.x - saf.width)/2 - fbSpacing + cvsxoffset;
-    var header = buttonAnimeStateSize.y*2*_scaleDynamic + fbSpacing*3 + linew;
+    const header = buttonAnimeStateSize.y*2*_scaleDynamic + fbSpacing*3 + linew;
     fillRect(new Vector2(saf.width + fbSpacing*2, cvssize.y), new Vector2(saf.xanchor, 0), saf.bgcolor);
     // переключение менбшек
     filterTabSwitcher(saf.xanchor, saf.width, fbSpacing);
@@ -7479,11 +7565,16 @@ function animeSStateFilter(header, fbSpacing, swidth, xanchor) {
     saf.height += sbTwoButtonPrefix(txt('filterScore'), buttonFilterScoreMin, buttonFilterScoreMax, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
     saf.height += sbTwoButtonPrefix(txt('filterYear'), buttonFilterYearMin, buttonFilterYearMax, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
     saf.height += sbTwoButtonPrefix(txt('filterEps'), buttonFilterEpsMin, buttonFilterEpsMax, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
+    sbBlockHint.text = txt('hintAllowDuration');
+    saf.height += sbButtonPrefix(txt('filterDurationAllow'), buttonFilterDurationAllow, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
+    saf.height += sbTwoButtonPrefix(txt('filterDuration'), buttonFilterDurationMin, buttonFilterDurationMax, new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
+    // особые возможности
+    scaleFontObject(filterHeaderFont);
+    fillRectRounded(new Vector2(saf.width, saf.pointer3 - saf.height), new Vector2(saf.xanchor+fbSpacing, saf.height - saf.scroll.get()), saf.selbox, 10);
+    saf.height += sbTextHeader(txt('filterSupers'), new Vector2(saf.xanchor+fbSpacing, saf.height), saf.width, fbSpacing, saf.scroll.get());
     // аккуратность фильтрации
     buttonFilterAttempts.update(filterAttempts, filterAttRange.max);
     scaleFont(24, 'Segoe UI Light');
-    fillRectRounded(new Vector2(saf.width, saf.pointer3 - saf.height), new Vector2(saf.xanchor+fbSpacing, saf.height - saf.scroll.get()), saf.selbox, 10);
-    saf.height += fbSpacing;
     sbBlockHint.text = txt('hintAttempts');
     saf.height += sbSelectbarPrefix(txt('filterAttempts'), Math.round(buttonFilterAttempts.point()), buttonFilterAttempts, new Vector2(saf.xanchor+fbSpacing*2, saf.height), saf.width-fbSpacing*2, prefButtonSpacing*_scaleDynamic, saf.scroll.get());
     sbBlockHint.text = txt('hintAttTags');
@@ -7525,7 +7616,7 @@ let sDBs = {
         if(req == '') {return};
         sDBs.state = 'start_db';
         sDBs.newQuerry('db', 50);
-        var res = searchByTitle(req, hard);
+        const res = searchByTitle(req, hard);
         if(!res) {
             sDBs.state = 'no_anime';
             return
@@ -7568,7 +7659,7 @@ let sDBs = {
                 sDBs.current = 1;
                 sDBs.result = [];
                 jikan._onresult = () => {
-                    var res = JSON.parse(JSON.stringify(jikan._result));
+                    const res = JSON.parse(JSON.stringify(jikan._result));
                     sDBs.pages = res.pagination.last_visible_page;
                     sDBs.current = res.pagination.current_page;
                     sDBs.all = res.pagination.items.total;
@@ -7648,7 +7739,7 @@ buttonBrowserAdd.time = 500;
 let _saf_browserheight = 0;
 function animeSStateBrowser(header, fbSpacing, swidth, xanchor) {
     // свои кнопки
-    var width = (swidth - fbSpacing*3)/4;
+    const width = (swidth - fbSpacing*3)/4;
     var h = buttonAnimeStateSize.y * _scaleDynamic;
     var pos = new Vector2(xanchor, fbSpacing*2 + h);
     scaleFont(24, 'Segoe UI');
@@ -7699,8 +7790,8 @@ let edList = {
     anime: {},
     //
     getRoulette: () => {
-        edList.edited = new animeList('Roulette #'+Math.floor(Math.random()*10000000));
-        edList.edited.compressArray(roulette.anime);
+        edList.edited = new animeList('Roulette #'+Math.floor(Math.random()*99999999));
+        edList.edited.setupArray(roulette.anime);
         edList.getMeta()
     },
     getMeta: () => {
@@ -7729,7 +7820,7 @@ let edList = {
         return [edList.anime[edList.edited.list[id]], edList.images[edList.edited.list[id]]]
     },
     addTitle: (dbid) => {
-        var res = edList.edited.newEntry(dbid);
+        const res = edList.edited.newEntry(dbid);
         if(res) {edList.getMetaSingle(dbid); return true} else {return false}
     },
     deleteTitle: (dbid) => {
@@ -7801,7 +7892,7 @@ let edList = {
                         if(file.anime[a].dbid !== undefined) {delete file.anime[a].dbid}
                     }
                 };
-                edList.edited.compressArray(file.anime);
+                edList.edited.setupArray(file.anime);
                 edList.getMeta();
             }
         }
@@ -7843,7 +7934,7 @@ buttonEditorClaimRoll.onhover = () => {
 };
 buttonEditorClaimRoll.onclick = () => {if(roulette.anime.length > 0) {
     var conf = true; if(edList.edited.list.length > 0) {conf = confirm(txt('editorUploadOverwrite'))};
-    if(conf) {edList.edited.compressArray(roulette.anime); edList.getMeta()};
+    if(conf) {edList.edited.setupArray(roulette.anime); edList.getMeta()};
     playSound(sound['button'])
 }};
 //
@@ -7876,8 +7967,8 @@ buttonEditorUpload.onclick = () => {edList.uploadJSON(); playSound(sound['button
 //
 function animeSStateEditor(header, fbSpacing, swidth, xanchor) {
     // свои кнопки
-    var width = (swidth - fbSpacing*3)/4;
-    var h = buttonAnimeStateSize.y * _scaleDynamic;
+    const width = (swidth - fbSpacing*3)/4;
+    const h = buttonAnimeStateSize.y * _scaleDynamic;
     var pos = new Vector2(xanchor, fbSpacing*2 + h);
     scaleFont(24, 'Segoe UI');
     buttonFilterLeave.pos.setv(pos.sumxy(fbSpacing, 0));
@@ -7911,7 +8002,7 @@ function animeSStateEditor(header, fbSpacing, swidth, xanchor) {
 // @EAG ANIME - ARRAYS
 // 
 function animeSStateArrays(header, fbSpacing, swidth, xanchor) {
-    var size = imageWIPSize.multxy(_scaleDynamic/2);
+    const size = imageWIPSize.multxy(_scaleDynamic/2);
     drawImageSized(imageWorkInProgress, new Vector2(xanchor + fbSpacing*2, cvssize.y - size.y), size);
     scaleFont(28, 'Consolas');
     ctx.fillStyle = '#fbb'; ctx.textAlign = 'end';
@@ -8090,7 +8181,7 @@ function mrthInventoryAddItem(tag='') {
         var conf = false;
         if(mrthStuff.items[tag].specials !== undefined) {
             if(mrthStuff.items[tag].specials.conflict !== undefined) {
-                var conf = mrthStuff.items[tag].specials.conflict;
+                conf = mrthStuff.items[tag].specials.conflict;
             }
         };
         // check negatives
@@ -8109,7 +8200,7 @@ function mrthInventoryAddItem(tag='') {
         for(var s in mapMeta.inventory) {
             if(mapMeta.inventory[s].conflict !== undefined) {if(mapMeta.inventory[s].conflict == tag) {
                 // deleting item by negative
-                var posit = mapMeta.inventory[s].tag;
+                const posit = mapMeta.inventory[s].tag;
                 mapMeta.inventory[s] = false; 
                 return ['delete_eff', posit, tag]
             }}
@@ -8119,8 +8210,8 @@ function mrthInventoryAddItem(tag='') {
         if(mapMeta.effects['1'] === false) {mapMeta.effects['1'] = mrthCreateItem(tag); return ['add_eff', tag]};
         if(mapMeta.effects['2'] === false) {mapMeta.effects['2'] = mrthCreateItem(tag); return ['add_eff', tag]};
         // if no empty slots & not already have - replace random
-        var ind = Math.floor(Math.random() * 1.999) + 1;
-        var neg = mapMeta.effects[ind].tag;
+        const ind = Math.floor(Math.random() * 1.999) + 1;
+        const neg = mapMeta.effects[ind].tag;
         mapMeta.effects[ind] = mrthCreateItem(tag);
         return ['eff_replace', tag, neg]
     }
@@ -8491,8 +8582,8 @@ function debugSizeLine(pos, size) {
 };
 //
 function getWatchPointCount(episodes=1, rating=7, watched=1, multiplier=1, type='tv') {
-    var typemult = type == 'MOVIE' ? 4 : type != 'TV' ? 1.2 : 1;
-    var mult = watched >= episodes ? 1.25 : watched >= episodes/2 ? 1.1 : watched > 0 ? 1 : 0;
+    const typemult = type == 'MOVIE' ? 4 : type != 'TV' ? 1.2 : 1;
+    const mult = watched >= episodes ? 1.25 : watched >= episodes/2 ? 1.1 : watched > 0 ? 1 : 0;
     return Math.round(watched * mult * (1 + (10 - rating)/20) * multiplier * typemult * mapMeta.permSeries * mapMeta.permPoints)
 };
 // MARKUP
@@ -8503,9 +8594,9 @@ function inspDefHeader(pos, width, spacing, text) {
     fillTextFast(pos.sumxy(width/2, spacing), text)
 };
 function inspTextInput(statpos, width, spacing, container='', fsize) {
-    var [str, fit] = textWidthFit(container, width-spacing*3, 10); // add pointer
-    var len = str.length > 3 ? str.length : 3;
-    var sizey = spacing + (fit.y + fsize*0.5*_scaleDynamic) * len;
+    const [str, fit] = textWidthFit(container, width-spacing*3, 10); // add pointer
+    const len = str.length > 3 ? str.length : 3;
+    const sizey = spacing + (fit.y + fsize*0.5*_scaleDynamic) * len;
     var edit = String(container);
     ctx.fillStyle = '#00000077';
     fillRectFast(new Vector2(width, sizey), statpos);
@@ -8525,20 +8616,20 @@ function inspTextInput(statpos, width, spacing, container='', fsize) {
     return [edit, statpos.sumxy(0, sizey + spacing*2)]
 };
 function inspTextBlock(statpos, width, spacing, text, smax, fsize, drawing=true) {
-    var [str, vec] = textWidthFit(text, width - spacing, smax);
+    const [str, vec] = textWidthFit(text, width - spacing, smax);
     drawing ? fillTextArray(statpos.sumxy(0, spacing/2), [str, vec], fsize*0.5*_scaleDynamic):false;
     // debugSizeLine(statpos, new Vector2(width, spacing/2 + (fsize*0.5*_scaleDynamic + vec.y) * str.length));      // debug
     return statpos.sumxy(0, spacing + (fsize*0.5*_scaleDynamic + vec.y) * str.length);
 };
 function inspSingleString(statpos, width, spacing, text, fsize, drawing=true) {
-    var xoff = ctx.textAlign == 'start' ? 0 : ctx.textAlign == 'center' ? width/2 : width;
+    const xoff = ctx.textAlign == 'start' ? 0 : ctx.textAlign == 'center' ? width/2 : width;
     drawing ? fillTextFast(statpos.sumxy(xoff, fsize*_scaleDynamic), textStringLimit(text, width-spacing)):false;
     // debugSizeLine(statpos, new Vector2(width, spacing + fsize*_scaleDynamic));       // debug
     return statpos.sumxy(0, spacing + fsize*_scaleDynamic)
 };
 function inspSelectBar(statpos, width, spacing, bar, maxvalue) {
     bar.pos = statpos; bar.size.setxy(width, spacing*2); bar.maxvalue = maxvalue;
-    var oldstyle = ctx.fillStyle; // bar.draw() can change fillstyle, need to save before draw and load after 
+    const oldstyle = ctx.fillStyle; // bar.draw() can change fillstyle, need to save before draw and load after 
     bar.draw();
     ctx.fillStyle = oldstyle;
     return statpos.sumxy(0, spacing*3)
@@ -8566,11 +8657,11 @@ function inspInventorySlot(statpos, width, spacing, item) {
     }
 };
 function inspAnimePositiveItem(statpos, width, spacing, itemtag, insp) {
-    var item = mrthGetItem(itemtag);
+    const item = mrthGetItem(itemtag);
     // if player have item
     if(item !== false) {
         // update & draw if item not already used
-        var used = false;
+        const used = false;
         for(var i in insp.items) {if(insp.items[i] == item.tag) {used = true}};
         if(!used) {
             buttonApplyItemList[itemtag].insp = insp;
@@ -8581,8 +8672,8 @@ function inspAnimePositiveItem(statpos, width, spacing, itemtag, insp) {
 };
 //
 function inspDoubleStringCentered(statpos, width, spacing, xalign, str1, str2, DSS) {
-    var fsize = defaultDSS.DSSsizeMax(DSS);
-    var center = width * xalign;
+    const fsize = defaultDSS.DSSsizeMax(DSS);
+    const center = width * xalign;
     ctx.textAlign = 'end'; scaleFont(DSS.size[0], DSS.font[0], DSS.style[0]); ctx.fillStyle = DSS.color[0]; // prefix string
     fillTextFast(statpos.sumxy(center-spacing, fsize*_scaleDynamic), textStringLimit(str1, center-spacing*2));
     ctx.textAlign = 'start'; scaleFont(DSS.size[1], DSS.font[1], DSS.style[1]); ctx.fillStyle = DSS.color[1]; // suffix string
@@ -8599,7 +8690,7 @@ let defaultDSS = { // DSS - double string styles
 };
 //
 function inspAnimeNegativeInfo(statpos, width, spacing) {
-    var poop = mrthGetItem('poop'); var salad = mrthGetItem('salad'); var order = mrthGetItem('order');
+    const poop = mrthGetItem('poop'); const salad = mrthGetItem('salad'); const order = mrthGetItem('order');
     if(poop !== false || salad !== false || order !== false) {
         ctx.fillStyle = '#f33';
         statpos = inspSingleString(statpos, width, spacing, txtMrth('inspNegatives'), 14);
@@ -8616,14 +8707,14 @@ function inspMissionsList(statpos, width, spacing, list=false) {
         ctx.textAlign = 'center';
         if(m == 'daily') {continue}; // skip only in default missions
         if(list[m] !== false) {
-            var prog = missionGetProgress(list[m]);
+            const prog = missionGetProgress(list[m]);
             ctx.fillStyle = '#ffff55'; scaleFont(16, 'Segoe UI');
             statpos = inspSingleString(statpos, width, spacing, `${list[m].name} (${prog[2]})`, 16).minxy(0, spacing); // name
             ctx.fillStyle = '#cccccc'; scaleFont(12, 'Segoe UI');
             statpos = inspTextBlock(statpos, width, spacing, commentPermanentEffect(list[m].reward), 2, 12); // reward info
             if(list[m].nobar === undefined) {
                 // progress bar
-                var height = 13 * _scaleDynamic;
+                const height = 13 * _scaleDynamic;
                 fillRectRounded(new Vector2(width*0.8, height), statpos.sumxy(width*0.1, 0), '#ff000044');
                 fillRectRounded(new Vector2(width*prog[0]*0.8, height), statpos.sumxy(width*0.1, 0), '#ff0000ff');
                 statpos = statpos.sumxy(0, height*0.85);
@@ -8647,7 +8738,7 @@ function inspMissionsList(statpos, width, spacing, list=false) {
     return statpos
 };
 function inspThreeButtons(statpos, width, spacing, height, array) {
-    var w = (width - spacing*2)/3;
+    const w = (width - spacing*2)/3;
     array[0].size = array[1].size = array[2].size = new Vector2(w, height*_scaleDynamic);
     array[0].pos = statpos;                         array[0].draw();
     array[1].pos = statpos.sumxy(w+spacing, 0);     array[1].draw();
@@ -8772,7 +8863,7 @@ class inspAnime {
                 buttonRollAnime.text = txtMrth('rollAnime');
                 statpos = inspWideButton(statpos, width, spacing, buttonRollAnime).sumxy(0, spacing);
                 // positive items & handc
-                var handc = mrthGetItem('handcuffs');
+                const handc = mrthGetItem('handcuffs');
                 if(handc === false) {
                     statpos = inspAnimePositiveItem(statpos, width, spacing, 'glasses', this);
                     statpos = inspAnimePositiveItem(statpos, width, spacing, 'chocolate', this);
@@ -8783,10 +8874,10 @@ class inspAnime {
                     statpos = inspTextBlock(statpos, width, spacing, txtMrth('aniHandcAlert'), 3, 14)
                 };
                 if(this.list.length == 0) { // recycler (aval if no watched anime)
-                    var item = mrthGetItem('recycler');
+                    const item = mrthGetItem('recycler');
                     if(item !== false) {
                         // calc recycle points & show
-                        var recyclepoints = itemFunc.recyclerPoints(this.pos, this.preset);
+                        const recyclepoints = itemFunc.recyclerPoints(this.pos, this.preset);
                         statpos = inspTextBlock(statpos, width, spacing, txtMrth('aniUtil1') + recyclepoints +  txtMrth('aniUtil2'), 3, 14);
                         // setup button
                         buttonApplyItemRecycler.insp = this;
@@ -8802,7 +8893,7 @@ class inspAnime {
                     }
                 };
                 // info about marathon_key
-                var mkey = mrthGetItem('marathon_key');
+                const mkey = mrthGetItem('marathon_key');
                 if(mkey !== false) {
                     statpos = inspTextBlock(statpos, width, spacing, txtMrth('aniMkey'), 5, 14);  
                 };
@@ -8858,7 +8949,7 @@ class inspAnime {
             statpos = inspTextBlock(statpos, width, spacing, this.animedata.title, 2, 24);
             // anime info
             scaleFont(14, 'Segoe UI');
-            var str = `${this.animedata.episodes} ep. | Rating ${this.rating} | ${txt(typesDataMap[this.animedata.type])} | ${this.animedata.status} | ${this.animedata.animeSeason.year} | ${txt(seasonsDataMap[this.animedata.animeSeason.season][1])}`;
+            const str = `${this.animedata.episodes} ep. | Rating ${this.rating} | ${txt(typesDataMap[this.animedata.type])} | ${this.animedata.status} | ${this.animedata.animeSeason.year} | ${txt(seasonsDataMap[this.animedata.animeSeason.season][1])}`;
             statpos = inspSingleString(statpos, width, spacing, str, 14);
             // external links
             buttonExternalShiki.sizedZoom(new Vector2(40*_scaleDynamic));
@@ -8896,18 +8987,18 @@ class inspAnime {
             // points & spoilers
             scaleFont(14, 'Segoe UI', 'bold'); ctx.fillStyle = `#06a803`;
             this.points = getWatchPointCount(this.animedata.episodes, this.rating, this.watched+this.watchplus, presetbase[this.preset].mult * this.multiplier, this.animedata.type);
-            var pstr = this.watched > 0
+            const pstr = this.watched > 0
             ? `${txtMrth('aniWatchPoints')}: ${this.points} (~${floatNumber(this.points / (this.watched + this.watchplus), 1)} ${txtMrth('aniPointsEp')})`
             : `${txtMrth('aniWatchPoints')}: ${this.points}`;
             statpos = inspSingleString(statpos, width, spacing, pstr, 14);
             //
-            var spoilers = getSpoilerCount(this.watched + this.watchplus, this.animedata.type);
+            const spoilers = getSpoilerCount(this.watched + this.watchplus, this.animedata.type);
             if(spoilers > 0) {statpos = inspSingleString(statpos, width, spacing, txtMrth('aniExplore') + spoilers, 14)};
             // quota info
-            var quotaeps = Math.round(this.animedata.episodes * (mapMeta.permQuota/100) - 0.25); // 1.74 = 1, 1.75 = 2 (немного смещённое округление)
+            const quotaeps = Math.round(this.animedata.episodes * (mapMeta.permQuota/100) - 0.25); // 1.74 = 1, 1.75 = 2 (немного смещённое округление)
             if(this.watched > 0 && this.watched + this.watchplus < quotaeps) {
                 ctx.fillStyle = `#fa7223`;
-                var qtext = txtMrth('aniQuota1') + quotaeps + txtMrth('aniQuota2') + commentPermanentEffect(this.quota);
+                const qtext = txtMrth('aniQuota1') + quotaeps + txtMrth('aniQuota2') + commentPermanentEffect(this.quota);
                 statpos = inspTextBlock(statpos, width, spacing, qtext, 3, 14);
             };
             // apply button
@@ -8964,7 +9055,7 @@ class inspAnime {
                 statpos = statpos.sumxy(0, spacing/2 + 3*_scaleDynamic);
             };
             // universal_key
-            var item = mrthGetItem('universal_key');
+            const item = mrthGetItem('universal_key');
             if(mapMeta.pos.condAND(this.pos) && item !== false) {
                 ctx.textAlign = 'center'; scaleFont(14, 'Segoe UI');
                 buttonRollAnime.text = txtMrth('aniUseUkey');
@@ -9081,7 +9172,7 @@ class inspAnime {
         // checking map, if map do not have any anime rect - generating opened anime rect on random empty rect
         mapCheckAvalaibleAnimes();
         // rect spoiler cutscene
-        var spoiler = getSpoilerCount(buttonApplyWatch.insp.watched + buttonApplyWatch.insp.watchplus, buttonApplyWatch.insp.animedata.type);
+        const spoiler = getSpoilerCount(buttonApplyWatch.insp.watched + buttonApplyWatch.insp.watchplus, buttonApplyWatch.insp.animedata.type);
         if(spoiler > 0) {setTimeout(() => {mapMeta.cutscene = true; mapGenerateSpoilers(spoiler)}, 1500)};
         // delete watchplus bonus
         buttonApplyWatch.insp.watchplus = 0;
@@ -9198,7 +9289,7 @@ class inspQuestion {
         } else if(this.state == 'forming') {
             // get question type
             if(this.type == 'none') {
-                var types = ['pic', 'synop', 'charname', 'charanime'];
+                const types = ['pic', 'synop', 'charname', 'charanime'];
                 // var types = ['pic', 'synop']; // вопросы без персов
                 this.type = types[Math.floor(Math.random() * (types.length - 0.001))];
                 // get correct answer title
@@ -9213,7 +9304,7 @@ class inspQuestion {
                 this.picture.src = this.animes.data[this.title].images.webp.image_url;
                 this.content.answers = [];
                 while (this.content.answers.length < 4) {
-                    var ind = Math.floor(Math.random() * 24.999);
+                    const ind = Math.floor(Math.random() * 24.999);
                     if(ind == this.title) {continue};
                     if(this.animes.data[ind].title == 'used') {continue}
                     else {
@@ -9230,7 +9321,7 @@ class inspQuestion {
                 this.content.object = this.animes.data[this.title].synopsis;
                 this.content.answers = [];
                 while (this.content.answers.length < 4) {
-                    var ind = Math.floor(Math.random() * 24.999);
+                    const ind = Math.floor(Math.random() * 24.999);
                     if(ind == this.title) {continue};
                     if(this.animes.data[ind].title == 'used') {continue}
                     else {
@@ -9254,7 +9345,7 @@ class inspQuestion {
                     this.picture.src = this.characters.data[this.title].character.images.webp.image_url;
                     this.content.answers = [];
                     while (this.content.answers.length < 4) {
-                        var ind = Math.floor(Math.random() * (this.characters.data.length - 0.001));
+                        const ind = Math.floor(Math.random() * (this.characters.data.length - 0.001));
                         if(ind == this.title) {continue};
                         if(this.characters.data[ind].character.name == 'used') {continue}
                         else {
@@ -9272,14 +9363,14 @@ class inspQuestion {
                     jikan.custom(`https://api.jikan.moe/v4/anime/${this.animes.data[this.title].mal_id}/characters`);
                     this.state = 'jikan_chars'
                 } else {
-                    var char = Math.floor(Math.random() * (this.characters.data.length - 0.001));
+                    const char = Math.floor(Math.random() * (this.characters.data.length - 0.001));
                     this.content.quest = txtMrth('queTypeFrom');
                     this.content.type = 'pic';
                     this.picture = new Image(); this.picture.timeo = 0;
                     this.picture.src = this.characters.data[char].character.images.webp.image_url;
                     this.content.answers = [];
                     while (this.content.answers.length < 4) {
-                        var ind = Math.floor(Math.random() * 24.999);
+                        const ind = Math.floor(Math.random() * 24.999);
                         if(ind == this.title) {continue};
                         if(this.animes.data[ind].title == 'used') {continue}
                         else {
@@ -9310,7 +9401,7 @@ class inspQuestion {
             // q content
             scaleFont(14, 'Segoe UI');
             if(this.content.type == 'pic') {
-                var picsize = this.picture.naturalHeight > this.picture.naturalWidth
+                const picsize = this.picture.naturalHeight > this.picture.naturalWidth
                 ? new Vector2((this.picture.naturalWidth / this.picture.naturalHeight) * 200, 200)
                 : new Vector2(200, (this.picture.naturalHeight / this.picture.naturalWidth) * 200);
                 drawImageSized(this.picture, statpos.sumxy(width/2 - picsize.x/2, 0), picsize);
@@ -9413,7 +9504,7 @@ class inspMeeting {
         // quest info
         ctx.fillStyle = '#cccccc'; ctx.textAlign = 'start';
         scaleFont(14, 'Segoe UI');
-        var about = this.content != 'easy' ? txtMrth('metAboutNorm') : txtMrth('metAboutGood');
+        const about = this.content != 'easy' ? txtMrth('metAboutNorm') : txtMrth('metAboutGood');
         var statpos = inspTextBlock(pos.sumxy(0, spacing*2), width, spacing, about, 3, 14);
         // line && states
         fillRect(new Vector2(width, 3*_scaleDynamic), statpos, '#ffffff');
@@ -9632,7 +9723,7 @@ class inspTreasure {
     collect(content='medium') {
         this.content = content;
         // get array
-        var chance = content == 'easy' ? .8 : .55;
+        const chance = content == 'easy' ? .8 : .55;
         for(let i = 0; i<25; i++) {
             if(Math.random() < chance) {
                 this.positives++;
@@ -9661,7 +9752,7 @@ class inspTreasure {
         if(this.state != 'winner') {
             // chances
             ctx.textAlign = 'center'; scaleFont(18, 'Segoe UI');
-            var chances = this.positives/this.array.length;
+            const chances = this.positives/this.array.length;
             if(chances < 0.35) {ctx.fillStyle = '#f33'} else if(chances >= 0.35 && chances < 0.65) {ctx.fillStyle = '#ff3'} else {ctx.fillStyle = '#3f3'};
             statpos = inspSingleString(statpos, width, spacing, txtMrth('treChances') + floatNumber(chances*100, 1) + '%', 14).sumxy(0, spacing*2);
             // draw roulette
@@ -9671,8 +9762,8 @@ class inspTreasure {
                 if(i > this.progress + this.offset) {break};
                 //
                 ctx.globalAlpha = 1 - easeInCubic(Math.abs(this.progress - i) / this.offset);
-                var xpos = this.offset + (i - this.progress);
-                var name = this.array[i < 0 ? i + this.array.length : i > this.array.length-1 ? i - this.array.length : i];
+                const xpos = this.offset + (i - this.progress);
+                const name = this.array[i < 0 ? i + this.array.length : i > this.array.length-1 ? i - this.array.length : i];
                 fillTextFast(statpos.sumxy(width/2, xpos * (20 * _scaleDynamic)), mrthStuff.items[name].name);
                 ctx.globalAlpha = 1;
             };
@@ -9686,7 +9777,7 @@ class inspTreasure {
             // start button
             ctx.fillStyle = '#ffffff'; scaleFont(14, 'Segoe UI');
             if(mapMeta.pos.condAND(this.pos)) {
-                var black = mrthGetItem('black'); // get black metka ebana rotto
+                const black = mrthGetItem('black'); // get black metka ebana rotto
                 if(mrthInventoryFreeSpace()) {
                     ctx.textAlign = 'center';
                     buttonRollAnime.insp = this;
@@ -9743,7 +9834,7 @@ class inspTreasure {
                 mapMeta.cutscene = false;
                 this.comment = mrthInventoryComment(mrthInventoryAddItem(this.winner));
                 // check permanent items (azart)
-                var item = mrthGetItem('azart');
+                const item = mrthGetItem('azart');
                 if(item !== false) {
                     mapMeta.points -= Math.round(mapMeta.points * 0.25);
                     mrthDeleteItem('azart');
@@ -9946,7 +10037,7 @@ let mrthRectDefaultBalance = JSON.stringify(mrthRectTypes);
 function mrthRectsBalance() {
     var lw = 0;
     for(var r in mrthRectTypes) {
-        var w = +mrthRectTypes[r].weight;
+        const w = +mrthRectTypes[r].weight;
         mrthRectTypes[r].weight = [lw+1, lw + w];
         lw += w
     };
@@ -9982,8 +10073,8 @@ class mrthRect {
             // ment
             if(playerIsNeighbor(this.pos, true)) {
                 // get TAX item
-                var tax = mrthGetItem('tax');
-                var cost = tax === false ? this.object.explore : Math.round(this.object.explore * 1.5);
+                const tax = mrthGetItem('tax');
+                const cost = tax === false ? this.object.explore : Math.round(this.object.explore * 1.5);
                 ctx.fillStyle = mapMeta.points >= cost ? '#55ff55aa' : '#ff5555aa'; 
                 ctx.textAlign = 'center';
                 ctx.font = `bold ${size.y*0.3}px Segoe UI`;
@@ -10020,7 +10111,7 @@ function mrthNewRect(pos, type=mrthRectTypeRandom()) {
 };
 //
 function mrthRectTypeRandom() {
-    var rand = Math.ceil(Math.random() * (+mrthMeta.typesWeight-0.001));
+    const rand = Math.ceil(Math.random() * (+mrthMeta.typesWeight-0.001));
     for(var r in mrthRectTypes) {
         if(rand > mrthRectTypes[r].weight[1]) {continue} else {
             if(rand < mrthRectTypes[r].weight[0]) {continue} else {
@@ -10038,7 +10129,7 @@ function mapPosParse(str) {var values = str.split(','); return new Vector2(value
 function mapRectCenter(rect) {return rect.pos.multxy(mrthMeta.rectSize+mrthMeta.rectSpacing).sumxy(mrthMeta.rectSize/2)};
 //
 function mapGetRect(pos) {
-    var spos = mapPosStringify(pos);
+    const spos = mapPosStringify(pos);
     return spos in mapMeta.map ? mapMeta.map[spos] : null
 };
 function playerIsNeighbor(pos, diag=false) {
@@ -10127,7 +10218,7 @@ function mapMovePlayer(movement) {
             else {
                 // get tax item
                 var tax = mrthGetItem('tax');
-                var cost = tax === false ? rect.object.explore : Math.round(rect.object.explore * 1.5);
+                const cost = tax === false ? rect.object.explore : Math.round(rect.object.explore * 1.5);
                 if(cost > mapMeta.points) {return}
                 else {mapMeta.points -= cost; mrthReduceItem(tax)}
             }
@@ -10321,7 +10412,6 @@ mapMeta.map = { // set default starter map
 mapMeta.map['0,0'].open(); mapMeta.map['0,1'].open('easy');
 mapMeta.map['0,0'].object.intro = true;
 let mapMetaDefault = JSON.stringify(marathonSave(true));
-mrthMeta.visuals = 'full'; // add visuals after setup default map
 // save & load functions
 function marathonSave(copied=false) {
     var copy = mapMeta;
@@ -10415,7 +10505,7 @@ function marathonDeleteForce(backscreen=true) {
 function mapEaseScroll(time=0.25, rectpos=mapMeta.pos, cuts=false) {
     mapMeta.cutscene = true;
     //
-    var zoom = mapMeta.zoom.get();
+    const zoom = mapMeta.zoom.get();
     var pos = rectpos.multxy(-(mrthMeta.rectSpacing + mrthMeta.rectSize) * zoom); // player pos on map
     pos = pos.minxy((mrthMeta.rectSize/2) * zoom).sumv(fullsize.dividexy(2)); // pos on screen
     // invoke animation
@@ -10471,7 +10561,7 @@ function mapSelectRect(rect) {
         // enable main state
         mapMeta.overlayState = 'main';
         // move
-        var zoom = mapMeta.zoom.get();
+        const zoom = mapMeta.zoom.get();
         var p = rect.pos.multxy(-(mrthMeta.rectSpacing + mrthMeta.rectSize) * zoom); // player pos on map
         p = p.minxy((mrthMeta.rectSize/2) * zoom).sumv(fullsize.dividexy(2)); // pos on screen
         mapMeta.scroll.movev(p, 0.25, easeOutCirc);
@@ -10485,8 +10575,8 @@ function mapSelectRect(rect) {
 function drawStatsBadge(pos, unit, badge, value, back, fore) {
     // font work
     scaleFont((unit/_scaleDynamic)/2, 'Segoe UI', 'bold');
-    var textwidth = getTextMetrics(value).x;
-    var bsize = new Vector2(textwidth > unit/2 ? textwidth + unit*1.5 : unit*1.75, unit * 0.75);
+    const textwidth = getTextMetrics(value).x;
+    const bsize = new Vector2(textwidth > unit/2 ? textwidth + unit*1.5 : unit*1.75, unit * 0.75);
     // bg
     fillRectRounded(bsize.minxy(unit/2, 0), pos.minxy(bsize.x, -unit*0.125), back, unit * 0.35);
     // text
@@ -10497,8 +10587,8 @@ function drawStatsBadge(pos, unit, badge, value, back, fore) {
     return bsize.x + unit/4;
 };
 function drawMarathonHeader() {
-    var h = mapMeta.overlaySizing.y *  _scaleDynamic;
-    var unit = h * 0.8;
+    const h = mapMeta.overlaySizing.y *  _scaleDynamic;
+    const unit = h * 0.8;
     // badges
     var pointer = new Vector2(fullsize.x - h*0.1, h*0.1);
     pointer.x -= drawStatsBadge(pointer, unit, imageMarathonLogo, mapMeta.total, '#4444ff66', '#ccccff');
@@ -10511,7 +10601,7 @@ function drawMarathonHeader() {
     buttonInspectorInventory.pos.setv(pointer); pointer.x += unit + h*0.1;
     buttonInspectorStats.pos.setv(pointer); pointer.x += unit + h*0.1;
     buttonInspectorPref.pos.setv(pointer);
-    var bsize = new Vector2(unit);
+    const bsize = new Vector2(unit);
     buttonInspectorBack.sizedZoom(bsize); buttonInspectorBack.draw();
     buttonInspectorMain.sizedZoom(bsize); buttonInspectorMain.draw();
     buttonInspectorInventory.sizedZoom(bsize); buttonInspectorInventory.draw();
@@ -10667,12 +10757,12 @@ function screenMarathonMap() {
     mapMeta.zoom.update();
     srv.hideProgress.update(); // update this for show delayed musicBar.show task
     ctx.fillStyle = `rgba(0,0,15,${pref.bgalpha})`;
-    fillRectFast(fullsize, new Vector2());
+    fillRectFast(fullsize, __ro_v2);
     // scaling
-    var zoom = mapMeta.zoom.get();
-    var rectSpacing = new Vector2((mrthMeta.rectSpacing + mrthMeta.rectSize) * zoom);
+    const zoom = mapMeta.zoom.get();
+    const rectSpacing = new Vector2((mrthMeta.rectSpacing + mrthMeta.rectSize) * zoom);
     var rectSize = new Vector2(mrthMeta.rectSize * zoom);
-    var spacing = mrthMeta.spacing * _scaleDynamic;
+    const spacing = mrthMeta.spacing * _scaleDynamic;
     var player = mapMeta.playerSize.multxy(_scaleDynamic * zoom);
     // overlay style values
     mapMeta.overlayOffset.update();
@@ -10701,7 +10791,7 @@ function screenMarathonMap() {
     // post zoom align
     if(zoomed) {
         zoomed = false;
-        var zf = mapMeta.zoom.getFixed();
+        const zf = mapMeta.zoom.getFixed();
         var pos = mapMeta.selected == null ? mapMeta.pos : mapMeta.selected.pos; // selected or player position
         pos = pos.multxy(-(mrthMeta.rectSpacing + mrthMeta.rectSize) * zf); // pos on map
         pos = pos.minxy((mrthMeta.rectSize/2) * zf).sumv(fullsize.dividexy(2)); // pos on screen
@@ -10752,7 +10842,7 @@ function screenMarathonMap() {
             // draw rect
             mapMeta.map[i].draw(scroll, rectSize, rectSpacing);
             // draw spawn
-            if(mapMeta.map[i].pos.condAND(new Vector2())) {
+            if(mapMeta.map[i].pos.condAND(__ro_v2)) {
                 drawImageSized(imagesPrefTabs.about, pos.sumv(rectSize.dividexy(4)), rectSize.dividexy(2))
             };
         }
@@ -10764,7 +10854,7 @@ function screenMarathonMap() {
     drawImageSized(mapCurrentLocationLogo, mapMeta.player, player);
     // overlay background
     ctx.fillStyle = `#000016bb`;
-    fillRectFast(new Vector2(fullsize.x, anchor.y), new Vector2()); // overlay header
+    fillRectFast(new Vector2(fullsize.x, anchor.y), __ro_v2); // overlay header
     // draw debug
     ctx.fillStyle = '#ffffffaa'; ctx.textAlign = 'start'; scaleFont(14, 'Consolas');
     fillTextFast(anchor.sumxy(5, 15), `A ${_mrthAllRects} DR ${_mrthDrawedRects} DL ${_mrthDrawedLogos}`);
@@ -10775,11 +10865,11 @@ function screenMarathonMap() {
         // inspector bg
         ctx.fillStyle = `#000016bb`;
         fillRectFast(new Vector2(anchor.x, fullsize.x-anchor.y), new Vector2(0, anchor.y));
-        var width = mapMeta.overlaySizing.x * _scaleDynamic - spacing*2;
+        const width = mapMeta.overlaySizing.x * _scaleDynamic - spacing*2;
         // if mouse in inspector
         if(mouse.pos.y > anchor.y && mouse.pos.x < anchor.x) {
             mrthMeta.height = Math.ceil(mrthMeta.height);
-            var sensivity = mrthMeta.sensivity * _scaleDynamic;
+            const sensivity = mrthMeta.sensivity * _scaleDynamic;
             // scrolling
             if(fullsize.y - anchor.y >= mrthMeta.height) {mrthMeta.scroll.set(0)}
             else {
@@ -10861,7 +10951,7 @@ function screenMarathonMap() {
             for(var an in mrthStats.watched) {
                 if(statpos.y > fullsize.y) {break}
                 else {
-                    var draw = !(statpos.y + fullsize.y/2 < 0);
+                    const draw = !(statpos.y + fullsize.y/2 < 0);
                     draw ? _mrthDrawedHistory++ : false;
                     statpos = inspAnimeWatched(statpos, width, spacing, mrthStats.watched[an], draw)
                 }
@@ -11019,13 +11109,19 @@ prefAudioBG.onset = (value) => {prefSetValue('bgmusic', Math.round(value))}; pre
 prefAudioRoll.onset = (value) => {prefSetValue('rollmusic', Math.round(value))};
 let prefAudioShowPlayer = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
 let prefAudioNewTrack = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
-let prefAudioClips = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
-prefAudioShowPlayer.isSwitcher = true; prefAudioNewTrack.isSwitcher = true; prefAudioClips.isSwitcher = true;
-prefAudioShowPlayer.needshadow = false; prefAudioNewTrack.needshadow = false; prefAudioClips.needshadow = false;
-prefAudioShowPlayer.height = 0; prefAudioNewTrack.height = 0; prefAudioClips.height = 0;
+prefAudioShowPlayer.isSwitcher = true; prefAudioNewTrack.isSwitcher = true;
+prefAudioShowPlayer.needshadow = false; prefAudioNewTrack.needshadow = false;
+prefAudioShowPlayer.height = 0; prefAudioNewTrack.height = 0;
 prefAudioShowPlayer.onclick = () => {prefSetValue('playerShow', true)}; prefAudioShowPlayer.ondeact = () => {prefSetValue('playerShow', false)};
 prefAudioNewTrack.onclick = () => {prefSetValue('rollNewTrack', true)}; prefAudioNewTrack.ondeact = () => {prefSetValue('rollNewTrack', false)};
-prefAudioClips.onclick = () => {prefSetValue('playClip', true)}; prefAudioClips.ondeact = () => {prefSetValue('playClip', false)};
+// video
+let prefVideoEnable = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
+let prefVideoAllowCMV = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
+prefVideoEnable.isSwitcher = true; prefVideoAllowCMV.isSwitcher = true;
+prefVideoEnable.needshadow = false; prefVideoAllowCMV.needshadow = false;
+prefVideoEnable.height = 0; prefVideoAllowCMV.height = 0;
+prefVideoEnable.onclick = () => {prefSetValue('playClip', true)}; prefVideoEnable.ondeact = () => {prefSetValue('playClip', false)};
+prefVideoAllowCMV.onclick = () => {prefSetValue('allowCMV', true)}; prefVideoAllowCMV.ondeact = () => {prefSetValue('allowCMV', false)};
 //
 function actualPrefAudio() {
     prefAudioSound.update(pref['sound'], 100);
@@ -11033,8 +11129,9 @@ function actualPrefAudio() {
     prefAudioRoll .update(pref['rollmusic'], 100);
     prefAudioShowPlayer.active = pref.playerShow;
     prefAudioNewTrack.active = pref.rollNewTrack;
-    // поскольку в визуале сейчас только аудио
-    prefRenderVisual.active = pref.visual
+    // video
+    prefVideoEnable.active = pref.playClip;
+    prefVideoAllowCMV.active = pref.allowCMV;
 };
 // render
 let prefRenderText = [txt('pstDisable'), txt('pstLow'), txt('pstMedium'), txt('pstHigh')];
@@ -11058,12 +11155,19 @@ prefRenderShowFps.onclick = () => {prefSetValue('showFPS', true)}; prefRenderSho
 prefRenderDevInfo.onclick = () => {prefSetValue('showDebugInfo', true)}; prefRenderDevInfo.ondeact = () => {prefSetValue('showDebugInfo', false)};
 let prefRenderWallpaper = new TextButtonShaped(shapeRectRounded, txt('pstChange'), new Vector2(prefOptionWidth, prefButtonHeight*1.2), colorMapMatrix(prefTextPalette), colorMapMatrix(prefPromptPalette));
 let prefRenderParallax = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
+let prefFramesUnfocused = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
 prefRenderWallpaper.onclick = () => {setWallpaper(prompt(txt('filterWallpaper'), wallpaper.src))};
 prefRenderParallax.isSwitcher = true; prefRenderParallax.height = 0; prefRenderParallax.needshadow = false;
+prefFramesUnfocused.isSwitcher = true; prefFramesUnfocused.height = 0; prefFramesUnfocused.needshadow = false;
 prefRenderParallax.onclick = () => {prefSetValue('parallax', true)}; prefRenderParallax.ondeact = () => {prefSetValue('parallax', false)};
+prefFramesUnfocused.onclick = () => {prefSetValue('fpsUnfocused', true)}; prefFramesUnfocused.ondeact = () => {prefSetValue('fpsUnfocused', false)};
+// visual
 let prefRenderVisual = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
-prefRenderVisual.onclick = prefVisualSwitch; prefRenderVisual.ondeact = prefVisualSwitch;
+let prefRenderVisualHalfed = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
 prefRenderVisual.isSwitcher = true; prefRenderVisual.height = 0; prefRenderVisual.needshadow = false;
+prefRenderVisualHalfed.isSwitcher = true; prefRenderVisualHalfed.height = 0; prefRenderVisualHalfed.needshadow = false;
+prefRenderVisual.onclick = () => {prefSetValue('visual', true)}; prefRenderVisual.ondeact = () => {prefSetValue('visual', false)}; 
+prefRenderVisualHalfed.onclick = () => {prefSetValue('visualHalfed', true)}; prefRenderVisualHalfed.ondeact = () => {prefSetValue('visualHalfed', false)};
 // rescale
 let prefButtonSizes = [
     new Vector2(prefOptionWidth*1.5, prefBarHeight),
@@ -11105,7 +11209,8 @@ function prefButtonsRescale() {
     prefAudioRoll.size = s[0];
     prefAudioShowPlayer.size = s[1];
     prefAudioNewTrack.size = s[1];
-    prefAudioClips.size = s[1];
+    prefVideoEnable.size = s[1];
+    prefVideoAllowCMV.size = s[1];
     // render
     prefRenderFps.size = s[0];
     prefRenderBack.size = s[0];
@@ -11114,8 +11219,10 @@ function prefButtonsRescale() {
     prefRenderLockFps.size = s[1];
     prefRenderWallpaper.size = s[2];
     prefRenderParallax.size = s[1];
-    // other
+    prefFramesUnfocused.size = s[1];
     prefRenderVisual.size = s[1];
+    prefRenderVisualHalfed.size = s[1];
+    // other
     prefRenderShowFps.size = s[1];
     prefRenderDevInfo.size = s[1];
     buttonPrefDefault.size = s[1];
@@ -11139,9 +11246,12 @@ function actualPrefRender() {
     };
     prefRenderLockFps.active = pref.lockfps;
     prefRenderParallax.active = pref.parallax;
+    prefFramesUnfocused.active = pref.fpsUnfocused;
     prefRenderShowFps.active = pref.showFPS;
     prefRenderDevInfo.active = pref.showDebugInfo;
-    prefAudioClips.active = pref.playClip
+    // visual
+    prefRenderVisual.active = pref.visual;
+    prefRenderVisualHalfed.active = pref.visualHalfed;
 };
 // filter attempts
 let buttonFilterAttempts = new ShapedSelectBar(prefButtonSizes[0], colorMatrix(prefBarPalette[0]), colorMatrix(prefBarPalette[1]));
@@ -11221,10 +11331,10 @@ function screenPreferences() {
     spref.scroll.update();
     spref.bgcolor = `rgba(0,0,0,${pref.bgalpha})`;
     // scale
-    var sensivity = spref.sensivity * _scaleDynamic;
-    var spacing = prefButtonSpacing * _scaleDynamic;
-    var bheight = prefButtonHeight * _scaleDynamic;
-    var head = spref.head * _scaleDynamic;
+    const sensivity = spref.sensivity * _scaleDynamic;
+    const spacing = prefButtonSpacing * _scaleDynamic;
+    const bheight = prefButtonHeight * _scaleDynamic;
+    const head = spref.head * _scaleDynamic;
     // scrolling
     if(cvssize.y >= spref.height) {spref.scroll.set(0)}
     else {
@@ -11241,7 +11351,7 @@ function screenPreferences() {
     spref.xanchor = (cvssize.x - spref.width)/2 + cvsxoffset;
     // ayaya & bg
     if(spref.tab == 'about') {
-        var ayayasize = new Vector2(imageAyayaConfused.naturalWidth, imageAyayaConfused.naturalHeight).multxy(0.33 * _scaleDynamic);
+        const ayayasize = new Vector2(imageAyayaConfused.naturalWidth, imageAyayaConfused.naturalHeight).multxy(0.33 * _scaleDynamic);
         drawImageSized(imageAyayaConfused, new Vector2((spref.width + spref.xanchor + spacing*2) - ayayasize.x, fullsize.y-ayayasize.y), ayayasize);
     };
     fillRect(new Vector2(spref.width + spacing*2, cvssize.y), new Vector2(spref.xanchor, 0), spref.bgcolor);
@@ -11310,8 +11420,15 @@ function screenPreferences() {
         sbBlockHint.text = txt('hintNewTrack');
         spref.height += sbButtonPrefix(txt('prefANew'), prefAudioNewTrack, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
         spref.height += sbButtonPrefix(txt('prefAShow'), prefAudioShowPlayer, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-        // sbBlockHint.text = txt('hintAudioVisual'); @rel не даёт анализировать музыку с DP (((
+        // sbBlockHint.text = txt('hintAudioVisual'); @rel сломано из-за того, что клипы грузятся с DP +++ надо переместить в опцию в "рендер", и переименовать в `VisualAudio` эсли пофикшу
         // spref.height += sbButtonPrefix(txt('prefVisual'), prefRenderVisual, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
+        spref.height += sbTextHeader(txt('prefVideo'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
+        sbBlockHint.text = txt('hintAudioClips');
+        spref.height += sbButtonPrefix(txt('prefPlayClip'), prefVideoEnable, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        sbBlockHint.text = txt('hintAllowCMV');
+        spref.height += sbButtonPrefix(txt('prefAllowCMV'), prefVideoAllowCMV, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     // НАСТРОЙКИ ОТРИСОВКИ
     } else if(spref.tab === 'draw') {
         actualPrefRender();
@@ -11330,6 +11447,14 @@ function screenPreferences() {
         spref.height += _imagebuttonheight;
         sbBlockHint.text = txt('hintParallax');
         spref.height += sbButtonPrefix(txt('prefParallax'), prefRenderParallax, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        // visual
+        scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
+        spref.height += sbTextHeader(txt('prefVisualHeader'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
+        sbBlockHint.text = txt('hintVisual');
+        spref.height += sbButtonPrefix(txt('prefVisual'), prefRenderVisual, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        sbBlockHint.text = txt('hintVisualHalfed');
+        spref.height += sbButtonPrefix(txt('prefVisualHalfed'), prefRenderVisualHalfed, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
     // ДРУГИЕ ПРИКОЛЫ
     } else if(spref.tab === 'other') {
         actualPrefRender();
@@ -11340,8 +11465,9 @@ function screenPreferences() {
         spref.height += sbButtonPrefix(txt('prefDevinfo'), prefRenderDevInfo, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
         sbBlockHint.text = txt('hintAllowNSFW');
         spref.height += sbButtonPrefix(txt('prefRNSFW'), prefRouletteNSFW, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
-        sbBlockHint.text = txt('hintAudioClips');
-        spref.height += sbButtonPrefix(txt('prefPlayClip'), prefAudioClips, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        sbBlockHint.text = txt('hintFramesUnfocused');
+        spref.height += sbButtonPrefix(txt('prefFramesUnfocused'), prefFramesUnfocused, new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
+        // recovery
         scaleFont(40, 'Segoe UI', 'bold'); ctx.textAlign = 'center';
         spref.height += sbTextHeader(txt('prefRecovery'), new Vector2(spref.xanchor+spacing, spref.height), spref.width, spacing, spref.scroll.get());
         scaleFont(24, 'Segoe UI'); ctx.textAlign = 'start';
@@ -11500,6 +11626,8 @@ let rollWinner = {
     font: 'Segoe UI',
     fsize: 60,
     //
+    particleHalfing: 0,
+    //
     effvec: new Vector1(0),
     effect: () => {
         var style = ctx.createLinearGradient(0, 0, cvssize.x, cvssize.y);
@@ -11539,7 +11667,7 @@ let rollWinner = {
             rollWinner.zoom.update();
             rollWinner.effvec.update();
             // draw
-            fillRect(fullsize, new Vector2(), rollWinner.bg.getColor());
+            fillRect(fullsize, __ro_v2, rollWinner.bg.getColor());
             ctx.fillStyle = rollWinner.text.getColor();
             ctx.textAlign = 'center';
             ctx.letterSpacing = `${rollWinner.zoom.get()}px`;
@@ -11551,7 +11679,16 @@ let rollWinner = {
             ctx.letterSpacing = '0px';
             // particles
             if(rollWinner.blink.isMoving()) {
-                spartWinnerDrop(normalAlign(new Vector2(0.25 + 0.5 * rollWinner.blink.get(), 0.45)), 1, 3);
+                rollWinner.particleHalfing++;
+                if(pref.visualHalfed) {
+                    if(rollWinner.particleHalfing > 3) { // on every 4
+                        rollWinner.particleHalfing = 0;
+                        spartWinnerDrop(normalAlign(new Vector2(0.25 + 0.5 * rollWinner.blink.get(), 0.45)), 1, 3)
+                    }
+                } else if(rollWinner.particleHalfing > 1) { // on every 2
+                    rollWinner.particleHalfing = 0;
+                    spartWinnerDrop(normalAlign(new Vector2(0.25 + 0.5 * rollWinner.blink.get(), 0.45)), 1, 3)
+                }
             };
             //
             if(rollWinner.state === 'dark') {
@@ -11564,7 +11701,6 @@ let rollWinner = {
             } else if(rollWinner.state === 'blink'){
                 rollWinner.state = 'wait';
                 playSound(sound['winner']);
-                // spartWinnerDrop(normalAlign(new Vector2(0.5, 0.45)), 90);
                 rollWinner.text.getColor = rollWinner.effect;
                 rollWinner.effvec.move(1, rollWinner.waiter, easeInOutSine);
                 rollWinner.blink.move(1, 1);
@@ -11705,7 +11841,7 @@ function wallpaperImage() {
         ctx.globalAlpha = clipmainAlpha.get();
         drawImageSized(clipmain, fullAlign(new Vector2(0.5), clipmsize).sumv(parallaxOffsC), clipmsize);
         ctx.fillStyle = 'rgba(0,0,0,0.2)';
-        fillRectFast(fullsize, new Vector2());
+        fillRectFast(fullsize, __ro_v2);
         ctx.globalAlpha = 1;
     }
 };
@@ -11778,10 +11914,10 @@ function developInfo() {
         : devinfoValues.xanchor = fullsize.x - (devinfoValues.width + devinfoValues.offset);
         devinfoValues.text = devinfoValues.xanchor + devinfoValues.margin;
         //
-        var total = bytesStringify(performance.memory.totalJSHeapSize);
-        var usage = bytesStringify(performance.memory.usedJSHeapSize);
-        var ftnorm = Math.norma(_ft / 16.6);
-        // EASE (убрать, если чет добавлял для себя)
+        const total = bytesStringify(performance.memory.totalJSHeapSize);
+        const usage = bytesStringify(performance.memory.usedJSHeapSize);
+        const ftnorm = Math.norma(_ft / 16.6);
+        // @RELEASE (убрать, если чет добавлял для себя)
         fillRectRounded(new Vector2(devinfoValues.width, devinfoValues.height), new Vector2(devinfoValues.xanchor, devinfoValues.offset), '#0029', devinfoValues.margin);
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(1)), 'FPS: '+FPS, '#fff', 'bold 16px Consolas');
         fillText(new Vector2(devinfoValues.text + devinfoValues.width*0.4, devinfoValues.texty(1)), 'frame: '+_ft+' ms', `rgba(${255*ftnorm}, ${255-255*ftnorm}, 0, 0.8)`, 'bold 12px Consolas');
@@ -11793,8 +11929,8 @@ function developInfo() {
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(7)), 'session: '+bytesStringify(getSessionSize())+ ` (${floatNumber(getSessionSize()/sessionLimit*100, 1)}%)`, '#fc7', 'bold 12px Consolas');
 
         // music normal/roll status, currentTime && beatmap info
-        var mNormalStatus = String(musicNormal.duration) == 'NaN' ? 'loading' : 'ready';
-        var mRollStatus = musicRoll.currentSrc == '' ? 'no src' : String(musicRoll.duration) == 'NaN' ? 'loading' : 'ready';
+        const mNormalStatus = String(musicNormal.duration) == 'NaN' ? 'loading' : 'ready';
+        const mRollStatus = musicRoll.currentSrc == '' ? 'no src' : String(musicRoll.duration) == 'NaN' ? 'loading' : 'ready';
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(8)), `musicNormal -> ${mNormalStatus}, time: ${timeStringify(musicNormal.currentTime)}, lvol: ${floatNumber(musicNormalVolume.get(), 2)}`, '#ddf', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(9)), `musicRoll -> ${mRollStatus}, time: ${timeStringify(musicRoll.currentTime)}, lvol: ${floatNumber(musicRollVolume.get(), 2)}`, '#ddf', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(10)), 'beat: ' + beatmap.seeInfo(true), '#ffc', 'bold 12px Consolas');
@@ -11809,11 +11945,11 @@ function developInfo() {
             ctx.fillStyle = '#fffd'; ctx.textAlign = 'start';
             fillTextFast(new Vector2(devinfoValues.text, devinfoValues.texty(11)+85+devinfoValues.spacing), `videoClipBufferedRanges (${_clipmainBuffered.length})`);
             ctx.textAlign = 'end';
-            var dur = String(clipmain.duration) != 'Infinity' ? clipmain.duration : 300;
+            const dur = String(clipmain.duration) != 'Infinity' ? clipmain.duration : 300;
             fillTextFast(new Vector2(devinfoValues.xanchor + devinfoValues.width, devinfoValues.texty(11)+85+devinfoValues.spacing), `${timeStringify(clipmain.currentTime)} - ${timeStringify(dur)}`);
             for(var r in _clipmainBuffered) {
-                var w = (_clipmainBuffered[r][1] - _clipmainBuffered[r][0]) * devinfoValues.width;
-                var x = _clipmainBuffered[r][0] * devinfoValues.width;
+                const w = (_clipmainBuffered[r][1] - _clipmainBuffered[r][0]) * devinfoValues.width;
+                const x = _clipmainBuffered[r][0] * devinfoValues.width;
                 ctx.fillStyle = `hsla(${Math.round(360*(r/_clipmainBuffered.length))} 80% 60% / 0.4)`;
                 fillRectFast(new Vector2(w, devinfoValues.spacing), new Vector2(devinfoValues.xanchor + x, devinfoValues.texty(11)+85+devinfoValues.spacing*(Number(r)+1)))
             };
@@ -11827,7 +11963,7 @@ function developInfo() {
         fillRect(new Vector2(8*_scaleDynamic), mouse.pos.minxy(4*_scaleDynamic), '#0f0');
     } else if(pref.showFPS) {
         fillText(new Vector2(14, 30), FPS, '#fff', 'bold 16px Consolas');
-        var ftnorm = Math.norma(_ft / 16.6);
+        const ftnorm = Math.norma(_ft / 16.6);
         fillText(new Vector2(14, 40), _ft, `rgba(${255*ftnorm}, ${255-255*ftnorm}, 0, 0.8)`, 'bold 12px Consolas');
     }
 };

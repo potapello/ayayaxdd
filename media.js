@@ -1,4 +1,4 @@
-const _dropboxAffix = ['https://www.dropbox.com/scl/fi/','&raw=1'];
+﻿const _dropboxAffix = ['https://www.dropbox.com/scl/fi/','&raw=1'];
 // key ==> w0i5vrvg2qat8mawfjy2i/file.ext?rlkey=vc7tda62c9s0kfcznxnm02240
 function _dropboxURL(key) {
     return String(_dropboxAffix[0] + key + _dropboxAffix[1])
@@ -35,49 +35,49 @@ let music = [
     [_dropboxURL('7ytcdpxj66h357r4qnwdy/music03.m4a?rlkey=qhw1acr4s6xh9fp503mjuj372'), 60, 'Sachika Misawa - Links', 3],
     [_dropboxURL('ecsygwdebtkyd96xvnrzp/music04.m4a?rlkey=bq7rywb2rx0jbwqsew4y2hbiu'), 0, 'Aoi Yuki - Los! Los! Los!', 4],
     [_dropboxURL('8cc3wbf9tr40kw6l5cfgq/music05.m4a?rlkey=y3mgkbpirpn4umo9ngn9248ln'), 41, 'Ado - AntiSystem\'s', 5],
-    [_dropboxURL('f7sghsflxhjgrr285uigk/music06.m4a?rlkey=mlgc1k9k18jffeqbd1uu931xf'), 44, 'Kenshi Yonezu - KICK BACK'],
-    [_dropboxURL('8gjwnm27te5t4l1lywbme/music07.m4a?rlkey=1ux3k17drn9ocld1jma4c1p6n'), 34, 'BABYMETAL - Divine Attack'],
-    [_dropboxURL('g1e9hsneapxy487g6xemh/music08.m4a?rlkey=1vcn4l69607ayff782d8yneox'), 0, 'Uesaka Sumire - Inner Urge'],
-    [_dropboxURL('pglgg4ici7jb2a61xujav/music09.m4a?rlkey=3qqcwgdw7pxdx9g25vl1lhlpi'), 47.5, 'Kanako Itou - Fatima'],
-    [_dropboxURL('8fs90nkpcq6d3rw0t26pp/music10.m4a?rlkey=glmbxapdpanxw9hy5d78id4px'), 36, 'Kanako Itou - Hacking to the Gate'],
-    [_dropboxURL('5al9ofzosjgqfhac6bnpi/music11.m4a?rlkey=c5o4eshzim9twmaut386mw9cj'), 0, 'ZOE, Jododo - Lighting'],
-    [_dropboxURL('e2vfj3xp30d8hsuirtwv1/music12.m4a?rlkey=tui6pbrv2xc7jvabw4qx5s3ku'), 0, 'Ikimono Gakari - Blue Bird'],
-    [_dropboxURL('n0b26m3t1f0nsalyit8qm/music13.m4a?rlkey=asb3siiue4e7kfilhkhqpjy8l'), 46.5, 'Uverworld - Touch off'],
-    [_dropboxURL('eom0q3foxx0b7ku8cb1z7/music14.m4a?rlkey=0wfj3nvkai2p0m1rk1vn4hhcv'), 55, 'Masayuki Suzuki - Love Dramatic'],
-    [_dropboxURL('f5jyfwijl89tsj8aytxhy/music15.m4a?rlkey=hd9dudp7y9uz5qf7jqetcv54g'), 42, 'Konomi Suzuki - Redo'],
-    [_dropboxURL('sltnkc3cob3wbldeiydky/music16.m4a?rlkey=kfdfpmjqqc3pocyh7fospdnbb'), 34, 'Huwie Ishizaki - Wasuregataki'],
-    [_dropboxURL('dtawk4wbi8835ef2nkixh/music17.m4a?rlkey=gz94s2660msdwrs4qdfom5jtk'), 49, 'yama - Shikisai'],
-    [_dropboxURL('oounnedy4756d7c7brhhq/music18.m4a?rlkey=5lsrdmtxo6bzjeybve82gdxfl'), 27, 'Kessoku Band - Seishun Complex'],
-    [_dropboxURL('1tecvyy7gs78v7owj5f4f/music19.m4a?rlkey=ia5wrjf4je8s3uhnh5oixnczc'), 51, 'Perfume - Pick Me Up'],
-    [_dropboxURL('o1yuvq3gfciw9m86sqvga/music20.m4a?rlkey=0cdehua3111b5tm67qrawoa8s'), 23, 'Nightcore - Everytime We Touch'],
-    [_dropboxURL('pkthf66q2p3insxcdfhpk/music21.m4a?rlkey=5oklsgc21js6uur3tv57wkq2x'), 11, 'beatMARIO - Night of Nights'],
-    [_dropboxURL('hyq89kcdkvn0vc2qzx0lg/music22.m4a?rlkey=fadxm0m3u17ogn1ro1b2d6zmd'), 48, 'FELT - Summer Fever'],
-    [_dropboxURL('7aq3wuwkizar3s34ggcm7/music23.m4a?rlkey=joll5oytlr43vlxw9v8u6fxrq'), 20.5, 'SEREBRO - Мало тебя (speed up)'],
-    [_dropboxURL('vfgpnlem0sw1ga4uug1c3/music24.m4a?rlkey=4qqg4i9tc565zblcfwn61s65w'), 50, 'Touhou - Bad Apple!!'],
-    [_dropboxURL('t304vt9kur4oadu0zn2e4/music25.m4a?rlkey=5ceax45teng3hxnrxf26mdk58'), 42, 'ZUTOMAYO - TAIDADA'],
-    [_dropboxURL('lenkf5pqx2lfolme0sshs/music26.m4a?rlkey=7jpno16utfhr4q3kxc70aweds'), 35, 'Kuhaku Gokko - Pikaro'],
+    [_dropboxURL('f7sghsflxhjgrr285uigk/music06.m4a?rlkey=mlgc1k9k18jffeqbd1uu931xf'), 44, 'Kenshi Yonezu - KICK BACK', 6],
+    [_dropboxURL('8gjwnm27te5t4l1lywbme/music07.m4a?rlkey=1ux3k17drn9ocld1jma4c1p6n'), 34, 'BABYMETAL - Divine Attack', 7],
+    [_dropboxURL('g1e9hsneapxy487g6xemh/music08.m4a?rlkey=1vcn4l69607ayff782d8yneox'), 0, 'Uesaka Sumire - Inner Urge', 8],
+    [_dropboxURL('pglgg4ici7jb2a61xujav/music09.m4a?rlkey=3qqcwgdw7pxdx9g25vl1lhlpi'), 47.5, 'Kanako Itou - Fatima', 9],
+    [_dropboxURL('8fs90nkpcq6d3rw0t26pp/music10.m4a?rlkey=glmbxapdpanxw9hy5d78id4px'), 36, 'Kanako Itou - Hacking to the Gate', 10],
+    [_dropboxURL('5al9ofzosjgqfhac6bnpi/music11.m4a?rlkey=c5o4eshzim9twmaut386mw9cj'), 0, 'ZOE, Jododo - Lighting', 11],
+    [_dropboxURL('e2vfj3xp30d8hsuirtwv1/music12.m4a?rlkey=tui6pbrv2xc7jvabw4qx5s3ku'), 0, 'Ikimono Gakari - Blue Bird', 12],
+    [_dropboxURL('n0b26m3t1f0nsalyit8qm/music13.m4a?rlkey=asb3siiue4e7kfilhkhqpjy8l'), 46.5, 'Uverworld - Touch off', 13],
+    [_dropboxURL('eom0q3foxx0b7ku8cb1z7/music14.m4a?rlkey=0wfj3nvkai2p0m1rk1vn4hhcv'), 55, 'Masayuki Suzuki - Love Dramatic', 14],
+    [_dropboxURL('f5jyfwijl89tsj8aytxhy/music15.m4a?rlkey=hd9dudp7y9uz5qf7jqetcv54g'), 42, 'Konomi Suzuki - Redo', 15],
+    [_dropboxURL('sltnkc3cob3wbldeiydky/music16.m4a?rlkey=kfdfpmjqqc3pocyh7fospdnbb'), 34, 'Huwie Ishizaki - Wasuregataki', 16],
+    [_dropboxURL('dtawk4wbi8835ef2nkixh/music17.m4a?rlkey=gz94s2660msdwrs4qdfom5jtk'), 49, 'yama - Shikisai', 17],
+    [_dropboxURL('oounnedy4756d7c7brhhq/music18.m4a?rlkey=5lsrdmtxo6bzjeybve82gdxfl'), 27, 'Kessoku Band - Seishun Complex', 18],
+    [_dropboxURL('1tecvyy7gs78v7owj5f4f/music19.m4a?rlkey=ia5wrjf4je8s3uhnh5oixnczc'), 51, 'Perfume - Pick Me Up', 19],
+    [_dropboxURL('o1yuvq3gfciw9m86sqvga/music20.m4a?rlkey=0cdehua3111b5tm67qrawoa8s'), 23, 'Nightcore - Everytime We Touch', 20],
+    [_dropboxURL('pkthf66q2p3insxcdfhpk/music21.m4a?rlkey=5oklsgc21js6uur3tv57wkq2x'), 11, 'beatMARIO - Night of Nights', 21],
+    [_dropboxURL('hyq89kcdkvn0vc2qzx0lg/music22.m4a?rlkey=fadxm0m3u17ogn1ro1b2d6zmd'), 48, 'FELT - Summer Fever', 22],
+    [_dropboxURL('7aq3wuwkizar3s34ggcm7/music23.m4a?rlkey=joll5oytlr43vlxw9v8u6fxrq'), 20.5, 'SEREBRO - Мало тебя (speed up)', 23],
+    [_dropboxURL('vfgpnlem0sw1ga4uug1c3/music24.m4a?rlkey=4qqg4i9tc565zblcfwn61s65w'), 50, 'Touhou - Bad Apple!!', 24],
+    [_dropboxURL('t304vt9kur4oadu0zn2e4/music25.m4a?rlkey=5ceax45teng3hxnrxf26mdk58'), 42, 'ZUTOMAYO - TAIDADA', 25],
+    [_dropboxURL('lenkf5pqx2lfolme0sshs/music26.m4a?rlkey=7jpno16utfhr4q3kxc70aweds'), 35, 'Kuhaku Gokko - Pikaro', 26],
     // 1.4.0 | +21
-    [_dropboxURL('c5trk2qrotuck11yjh2d1/music27.m4a?rlkey=d9slxj9lscwf9ze724zq1twl4'), 35.5, 'Coda - Bloody Stream'],
-    [_dropboxURL('jig45enqq2pz1h1b9zfg2/music28.m4a?rlkey=xvl3mklku2hty0noxgmklynw1'), 32, 'Chirijiri - Chilly'],
-    [_dropboxURL('4fa4ns77dixkcd65d3y62/music29.m4a?rlkey=gcc5sz1ps8m3ptaj8n79wfikx'), 0, 'Shikairo Days - Shikanoko Nokonoko Koshitantan'],
-    [_dropboxURL('a5o8et37go52to8v4pk97/music30.m4a?rlkey=elzjz572rjjojdpl7s7y89y07'), 36, 'Minami - Kawakiwo Ameku'],
-    [_dropboxURL('qb30h1gw9f0wezikpbu1m/music31.m4a?rlkey=6jq9cgkw82e0lg1ch8ey5bakj'), 40, 'YOASOBI - Idol'],
-    [_dropboxURL('pfer3fxrsybicbll0sbuc/music32.m4a?rlkey=njv15j4stzzxk9pjgfpavghme'), 0, 'Creepy Nuts - Daten'],
-    [_dropboxURL('utqipw32j1hkug58o173h/music33.m4a?rlkey=25ryy5k103afnqzmtqo7ij2t5'), 57, 'Kana Hanazawa - Renai Circulation'],
+    [_dropboxURL('c5trk2qrotuck11yjh2d1/music27.m4a?rlkey=d9slxj9lscwf9ze724zq1twl4'), 35.5, 'Coda - Bloody Stream', 27],
+    [_dropboxURL('jig45enqq2pz1h1b9zfg2/music28.m4a?rlkey=xvl3mklku2hty0noxgmklynw1'), 32, 'Chirijiri - Chilly', 28],
+    [_dropboxURL('4fa4ns77dixkcd65d3y62/music29.m4a?rlkey=gcc5sz1ps8m3ptaj8n79wfikx'), 0, 'Shikairo Days - Shikanoko Nokonoko Koshitantan', 29],
+    [_dropboxURL('a5o8et37go52to8v4pk97/music30.m4a?rlkey=elzjz572rjjojdpl7s7y89y07'), 36, 'Minami - Kawakiwo Ameku', 30],
+    [_dropboxURL('qb30h1gw9f0wezikpbu1m/music31.m4a?rlkey=6jq9cgkw82e0lg1ch8ey5bakj'), 40, 'YOASOBI - Idol', 31],
+    [_dropboxURL('pfer3fxrsybicbll0sbuc/music32.m4a?rlkey=njv15j4stzzxk9pjgfpavghme'), 0, 'Creepy Nuts - Daten', 32],
+    [_dropboxURL('utqipw32j1hkug58o173h/music33.m4a?rlkey=25ryy5k103afnqzmtqo7ij2t5'), 57, 'Kana Hanazawa - Renai Circulation', 33],
     [_dropboxURL('qytfwt1pmvac6oqyo3qwn/music34.m4a?rlkey=f7m1f86dtm76cwugngcarhqck'), 45, 'Ryokuoushoku Shakai - Hana ni Natte', 34], // ostorozhno)
-    [_dropboxURL('s700smf20axbzvhks0pep/music35.m4a?rlkey=85wob9xl9489b5onqnc1vz2ln'), 46, 'Yomitan Akane - Enma the Second'],
-    [_dropboxURL('93xxt4ds4rpbc0onhpl01/music36.m4a?rlkey=m28m2wjp7p1yefuzof56eo5cr'), 39, 'SUPER EUROBEAT - Deja Vu'],
-    [_dropboxURL('54m7j253fyhqafolhjxnr/music37.m4a?rlkey=xxghtiw1cejavumkwtl752pya'), 54, 'Vickeblanka - Black Catcher'],
-    [_dropboxURL('7ghntknjfzpnpff3j1059/music38.m4a?rlkey=cpfzo43zqxh16ratgxud2d8r5'), 122, 'Millennium Parade, Sheena Ringo - Work'],
-    [_dropboxURL('emgeqzhgxbkekvoa9temx/music39.m4a?rlkey=uwq35k2dkcnrg5hg1fvrc08hl'), 0, 'TK from Ling tosite sigure - Unravel'],
-    [_dropboxURL('tn5ihvk1zbro06yis6v0c/music40.m4a?rlkey=ifgt8ntn2kubliscldfqlw8cq'), 38, 'YOASOBI - Brave'],
-    [_dropboxURL('4xhczt70quopiwd6t5ow4/music41.m4a?rlkey=g3eqm8q0woxirmrg5yu7ou4gc'), 32, 'DAZBEE - Othello'],
-    [_dropboxURL('s1m9ia3p69385vsx35d11/music42.m4a?rlkey=szzx8hba3j6cp7dju9qslbmgc'), 23.5, 'Hiiragi Magnetite - Tetoris'],
-    [_dropboxURL('bnu8mtgmo9akvn9hvsbdq/music43.m4a?rlkey=vj8b6to9dgh3f426e5572yzb1'), 43.3, 'LUCK LIFE - Symbol'],
-    [_dropboxURL('x88o3rcl3k8x8z247etsc/music44.m4a?rlkey=5hjvvcpumwocrcxu990nr05m3'), 41.3, 'Goose house - Hikaru Nara'],
-    [_dropboxURL('79f1oybvhu5wzb2dxfhxu/music45.m4a?rlkey=z6kctra84ubsn23i7rjgxmpck'), 0, 'Nobodyknows - Hero\'s Come Back!!'],
-    [_dropboxURL('e1hpncnz8mg9xkht5qhal/music46.m4a?rlkey=v1shyl2tznrtbxh9hs5pshjxr'), 38, 'OxT - Clattanoia'],
-    [_dropboxURL('wbbr91qzb2elnpdiu2edi/music47.m4a?rlkey=h39j5zk498r0a6wxx6joey0b8'), 20, 'Miyu Tomita - OveR'],
+    [_dropboxURL('s700smf20axbzvhks0pep/music35.m4a?rlkey=85wob9xl9489b5onqnc1vz2ln'), 46, 'Yomitan Akane - Enma the Second', 35],
+    [_dropboxURL('93xxt4ds4rpbc0onhpl01/music36.m4a?rlkey=m28m2wjp7p1yefuzof56eo5cr'), 39, 'SUPER EUROBEAT - Deja Vu', 36],
+    [_dropboxURL('54m7j253fyhqafolhjxnr/music37.m4a?rlkey=xxghtiw1cejavumkwtl752pya'), 54, 'Vickeblanka - Black Catcher', 37],
+    [_dropboxURL('7ghntknjfzpnpff3j1059/music38.m4a?rlkey=cpfzo43zqxh16ratgxud2d8r5'), 122, 'Millennium Parade, Sheena Ringo - Work', 38],
+    [_dropboxURL('emgeqzhgxbkekvoa9temx/music39.m4a?rlkey=uwq35k2dkcnrg5hg1fvrc08hl'), 0, 'TK from Ling tosite sigure - Unravel', 39],
+    [_dropboxURL('tn5ihvk1zbro06yis6v0c/music40.m4a?rlkey=ifgt8ntn2kubliscldfqlw8cq'), 38, 'YOASOBI - Brave', 40],
+    [_dropboxURL('4xhczt70quopiwd6t5ow4/music41.m4a?rlkey=g3eqm8q0woxirmrg5yu7ou4gc'), 32, 'DAZBEE - Othello', 41],
+    [_dropboxURL('s1m9ia3p69385vsx35d11/music42.m4a?rlkey=szzx8hba3j6cp7dju9qslbmgc'), 23.5, 'Hiiragi Magnetite - Tetoris', 42],
+    [_dropboxURL('bnu8mtgmo9akvn9hvsbdq/music43.m4a?rlkey=vj8b6to9dgh3f426e5572yzb1'), 43.3, 'LUCK LIFE - Symbol', 43],
+    [_dropboxURL('x88o3rcl3k8x8z247etsc/music44.m4a?rlkey=5hjvvcpumwocrcxu990nr05m3'), 41.3, 'Goose house - Hikaru Nara', 44],
+    [_dropboxURL('79f1oybvhu5wzb2dxfhxu/music45.m4a?rlkey=z6kctra84ubsn23i7rjgxmpck'), 0, 'Nobodyknows - Hero\'s Come Back!!', 45],
+    [_dropboxURL('e1hpncnz8mg9xkht5qhal/music46.m4a?rlkey=v1shyl2tznrtbxh9hs5pshjxr'), 38, 'OxT - Clattanoia', 46],
+    [_dropboxURL('wbbr91qzb2elnpdiu2edi/music47.m4a?rlkey=h39j5zk498r0a6wxx6joey0b8'), 20, 'Miyu Tomita - OveR', 47],
 ];
 //
 const clip_cmv_audio = [
@@ -184,53 +184,53 @@ class musicBeatmap {
 };
 // beatmaps array
 const music_beatmap = [
-    // new musicBeatmap(bpm, offset, [[chorus1], [chorus2]]),
+    // new musicBeatmap(bpm, offset, [[chorus1], [chorus2]])
     new musicBeatmap(120, 0.57, [[77, 97], [132, 152], [170, 203]]), // [0]
-    new musicBeatmap(155, 0.24, [[63, 92], [148, 175], [236, 264]]), // [1]
-    new musicBeatmap(170, 0.07, [[8, 19], [66, 88], [130, 154], [207, 241]]), // [2]
-    new musicBeatmap(149, 0.02, [[76, 109], [163, 196], [252, 284]]), // [3]
-    new musicBeatmap(120, 0.34, [[55, 81], [120, 144], [172, 204]]), // [4]
+    new musicBeatmap(155, 0.26, [[63, 92], [148, 175], [236, 264]]), // [1]
+    new musicBeatmap(170, 0.11, [[8, 19], [66, 88], [130, 154], [207, 241]]), // [2]
+    new musicBeatmap(149, 0.09, [[76, 109], [163, 196], [252, 284]]), // [3]
+    new musicBeatmap(120, 0.14, [[55, 81], [120, 144], [172, 204]]), // [4]
     new musicBeatmap(190, 0.3, [[55, 84], [119, 146], [173, 201]]), // [5]
-    undefined, // [6]
-    undefined, // [7]
-    undefined, // [8]
-    undefined, // [9]
-    undefined, // [10]
-    undefined, // [11]
-    undefined, // [12]
-    undefined, // [13]
-    undefined, // [14]
-    undefined, // [15]
-    undefined, // [16]
-    undefined, // [17]
-    undefined, // [18]
-    undefined, // [19]
-    undefined, // [20]
-    undefined, // [21]
-    undefined, // [22]
-    undefined, // [23]
-    undefined, // [24]
-    undefined, // [25]
-    undefined, // [26]
-    undefined, // [27]
-    undefined, // [28]
-    undefined, // [29]
-    undefined, // [30]
-    undefined, // [31]
-    undefined, // [32]
-    undefined, // [33]
-    new musicBeatmap(192, 0.02, [[59, 80], [158, 188]]), // [34] хана ни натееееее
-    undefined, // [35]
-    undefined, // [36]
-    undefined, // [37]
-    undefined, // [38]
-    undefined, // [39]
-    undefined, // [40]
-    undefined, // [41]
-    undefined, // [42]
-    undefined, // [43]
-    undefined, // [44]
-    undefined, // [45]
-    undefined, // [46]
-    undefined, // [47]
+    new musicBeatmap(204, 0.05, [[52, 75], [158, 181]]), // [6]
+    new musicBeatmap(180, -0.15, [[47, 68], [102, 122], [149, 192]]), // [7]
+    new musicBeatmap(135, -0.05, [[15, 32], [71, 89], [128, 146], [194, 211]]), // [8]
+    new musicBeatmap(178, 0.05, [[6, 15], [62, 83], [148, 169], [212, 233]]), // [9]
+    new musicBeatmap(160, 0.28, [[62, 89], [151, 178], [218, 242]]), // [10]
+    new musicBeatmap(174, 0.15, [[5, 17], [39, 49]]), // [11]
+    new musicBeatmap(152, 0.25, [[52, 84], [115, 141], [167, 199]]), // [12]
+    new musicBeatmap(200, 0.05, [[68, 91], [135, 158], [219, 245]]), // [13]
+    new musicBeatmap(129, 0.1, [[57, 89], [126, 158], [195, 227]]), // [14]
+    new musicBeatmap(190, -0.1, [[55, 89], [142, 176], [218, 244]]), // [15]
+    new musicBeatmap(125, -0.1, [[43, 75], [130, 160]]), // [16]
+    new musicBeatmap(117, 0, [[67, 83], [100, 116], [141, 165]]), // [17]
+    new musicBeatmap(190, 0.1, [[40, 60], [90, 110], [146, 169]]), // [18]
+    new musicBeatmap(128, 0.2, [[60, 90], [158, 188]]), // [19]
+    new musicBeatmap(170, 0.15, [[25, 47], [105, 162]]), // [20]
+    new musicBeatmap(180, -0.10, [[22, 44], [86, 107], [129, 171]]), // [21]
+    new musicBeatmap(120, -0.15, [[65, 81], [130, 161], [194, 209]]), // [22]
+    new musicBeatmap(192, -0.1, [[26, 55], [76, 105], [118, 148]]), // [23]
+    new musicBeatmap(138, -0.05, []), // ноль припеуэуэу))) [24]
+    new musicBeatmap(144, -0.05, [[59, 87], [138, 151], [193, 219]]), // [25]
+    new musicBeatmap(196, 0.05, [[55, 74], [126, 145], [201, 219]]), // [26]
+    new musicBeatmap(132, -0.2, [[54, 87], [165, 199], [220, 258]]), // [27]
+    new musicBeatmap(184, -0.15, [[44, 64], [71, 102]]), // [28]
+    new musicBeatmap(183, -0.16, [[52, 83], [161, 198]]), // [29]
+    new musicBeatmap(129, 0.15, [[60, 86], [130, 156], [179, 205]]), // [30]
+    new musicBeatmap(166, 0.05, [[55, 79], [102, 125], [172, 189]]), // [31]
+    new musicBeatmap(200, 0.16, [[30, 50], [82, 105], [126, 144]]), // [32]
+    new musicBeatmap(120, 0.18, [[58, 73], [138, 154], [204, 219]]), // [33]
+    new musicBeatmap(192, 0.17, [[59, 80], [158, 188]]), // [34] хана ни натееееее
+    new musicBeatmap(135, 0.05, [[63, 91], [148, 177]]), // [35]
+    new musicBeatmap(154, 0.0, [[64, 92], [130, 157], [196, 223]]), // [36]
+    new musicBeatmap(200, -0.02, [[67, 87], [117, 136], [155, 184]]), // [37]
+    new musicBeatmap(210, -0.08, [[52, 70], [143, 161], [180, 198]]), // [38]
+    new musicBeatmap(135, -0.08, [[62, 88], [159, 209]]), // [39]
+    new musicBeatmap(208, -0.04, [[59, 78], [146, 165]]), // [40]
+    new musicBeatmap(212, -0.03, [[50, 68], [145, 164]]), // [41]
+    new musicBeatmap(170, 0.0, [[34, 36], [39, 62], [85, 87], [91, 144]]), // [42]
+    new musicBeatmap(154, 0.03, [[57, 82], [116, 141], [174, 197]]), // [43]
+    new musicBeatmap(160, 0.1, [[56, 82], [121, 146], [182, 208]]), // [44]
+    new musicBeatmap(104, -0.12, [[9, 47], [121, 139], [204, 240]]), // [45]
+    new musicBeatmap(190, 0.05, [[0, 18], [52, 83], [127, 158], [190, 220]]), // [46]
+    new musicBeatmap(198, 0.08, [[51, 71], [119, 139], [199, 219]]), // [47]
 ];
