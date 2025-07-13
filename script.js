@@ -6121,7 +6121,7 @@ let sload = {
     head: txt('eagName'),
     headsize: 50,
     //
-    dbSize: 70*1024*1024,
+    dbSize: 22*1024*1024,
     dbProgress: 0,
     dbStatus: 'get',
     error: '',
