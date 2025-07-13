@@ -222,6 +222,8 @@ const _TextTranslations = {
         loadFirstEvent: `Нажмите в любую область экрана для продолжения...`,
         loadNoCon: `Нет соединения с интернетом!`,
         loadRecon: `Пожалуйста, проверьте соединение с интернетом и перезагрузите страницу.`,
+        loadADBError: 'Ошибка загрузки датабазы',
+        loadUnknownError: 'Неизвестная ошибка',
         // presetinfo
         prinIncludes: 'Включения:', prinExcludes: 'Исключения:', prinPreset: 'Пресет: ', prinEps: ' Серии: ',
         prinYears: '. Года выхода: ', prinScore: ' минут. Ср. оценка: ', prinMultiplier: '. Множитель:', prinDuration: '. Длительность: ',
@@ -691,6 +693,8 @@ const _TextTranslations = {
         loadFirstEvent: `Tap anywhere on the screen to continue...`,
         loadNoCon: `No internet connection!`,
         loadRecon: `Please check your internet connection and reload the page.`,
+        loadADBError: 'Database load error',
+        loadUnknownError: 'Unknown error',
         // presetinfo
         prinIncludes: 'Includes:', prinExcludes: 'Excludes:', prinPreset: 'Preset: ', prinEps: ' Episodes: ',
         prinYears: '. Years: ', prinScore: ' minutes. Avg. score: ', prinMultiplier: '. Multiplier:', prinDuration: '. Duration: ',

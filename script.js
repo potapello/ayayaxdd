@@ -36,6 +36,7 @@ function databaseShorter() {
         // counter
         adb[a].fake_dbid = Number(a);
         // shorter
+        delete adb[a].synonyms;
         delete adb[a].relations;
         delete adb[a].relatedAnime;
         delete adb[a].thumbnail;
@@ -52,8 +53,8 @@ function databaseShorter() {
 /** Содержит некоторую информацию о приложении. */
 let $appInfo = {
     // main @rel
-    version: '1.4.1 beta',
-    date: '06-07-2025',
+    version: '1.4.2 beta',
+    date: '13-07-2025',
     name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
     fullname: 'AYAYA - Anime Roulette',
     author: 'potapello',
@@ -61,7 +62,7 @@ let $appInfo = {
     licenseURL: 'https://github.com/potapello/ayayaxdd/blob/main/LICENSE',
     // other
     codename: 'ayayaxdd', // EAG? (когда то codename был EAG) в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
-    comment: 'ayayaxdd 1.4.1 beta',
+    comment: 'ayayaxdd 1.4.2 beta',
 };
 console.log(`\n${$appInfo.fullname}\n${$appInfo.comment} (${$appInfo.date})\nby ${$appInfo.author}\n `);
 //
@@ -79,7 +80,7 @@ if(!windowLocalFile) {
 //
 // @EAG FPS
 // уёбск
-const fpsCalcFreq = 10;
+const fpsCalcFreq = 5;
 var FPS = 0, deltaTime = 0, oldTime = 0;
 let fpsFrames = 0, fpsSumm = 0;
 let timeMultiplier = 1;
@@ -1607,15 +1608,14 @@ let pref = {
     rollSpeed: 40,
     rouletteItems: 50,
     rouletteItemsMax: 200,
-    rollImages: 13,
-    showMap: false,     // --not use
+    rollImages: 15,
     showNSFW: false,
     autoScroll: true,       // true
     // draw
     imageQuality: 'medium',
     imageSmoothing: true,
     lockfps: true,
-    framerate: 60,        
+    framerate: 60,
     bgalpha: 0.7,
     scale: 4,
     vsync: false,
@@ -1635,7 +1635,7 @@ let pref = {
     // other
     language: 'en',
     parallax: true,
-    showFPS: false,          // false
+    showFPS: true,          // false
     showDebugInfo: false,
     fpsUnfocused: true,
 };
@@ -1762,6 +1762,7 @@ function optimizeAnimeArray(array) {
 let lidb = {
     error: false,
     version: 1,
+    dbname: 'ayaya',
     // for anime lists
     max: 100,
     saved: 0,
@@ -1779,7 +1780,7 @@ let lidb = {
 };
 // startup func
 function setupLIDB() {
-    lidb.openreq = indexedDB.open("db", lidb.version);
+    lidb.openreq = indexedDB.open(lidb.dbname, lidb.version);
     lidb.openreq.onerror = () => {
         lidb.error = lidb.openreq.error;
         console.error("IDB error", lidb.openreq.error)
@@ -1841,7 +1842,7 @@ function lidbDeleteObject(name, store) {
     };
 };
 function fullResetLIDB() { // delete exists lidb and create new empty
-    indexedDB.deleteDatabase('db');
+    indexedDB.deleteDatabase(lidb.dbname);
     setupLIDB();
 };
 // lidb get all lists
@@ -1906,7 +1907,7 @@ class animeTag {
 };
 const tagbase = {
     // main
-    'action':           new animeTag('action', ['action']),
+    'action':           new animeTag('action', ['action', 'action drama']),
     'adventure':        new animeTag('adventure', ['adventure', 'travel']),
     'comedy':           new animeTag('comedy', ['comedy', 'dark comedy', 'verbal comedy', 'surreal comedy']),
     'drama':            new animeTag('drama', ['drama', 'tragedy', 'romantic drama', 'psychological drama']),
@@ -1920,12 +1921,12 @@ const tagbase = {
     'magic':            new animeTag('magic', ['magic', 'magical girl', 'magic school', ]),
     'mecha':            new animeTag('mecha', ['mecha', 'robot']),
     'military':         new animeTag('military', ['military', 'war', 'guns']),
-    'music':            new animeTag('music', ['music', 'classical music', 'musical', 'musical band']),
+    'music':            new animeTag('music', ['music', 'classical music', 'musical', 'musical band', 'band']),
     'mystery':          new animeTag('mystery', ['mystery', 'mystical']),
     'parody':           new animeTag('parody', ['parody']),
     'psychological':    new animeTag('psychological', ['psychological', 'philosophy']),
     'romance':          new animeTag('romance', ['romance', 'romantic', 'romantic comedy', 'mature romance']),
-    'school':           new animeTag('school', ['school', 'teacher', 'educational', 'high school', 'teaching', 'school life']),
+    'school':           new animeTag('school', ['school', 'teacher', 'educational', 'high school', 'teaching', 'school life', 'school club', 'school clubs']),
     'sci-fi':           new animeTag('sci-fi', ['sci-fi', 'sci fi', 'science fiction', 'science-fiction']),
     'seinen':           new animeTag('seinen', ['seinen']),
     'shoujo':           new animeTag('shoujo', ['shoujo', 'mahou shoujo', 'shoujo-ai', 'shoujo ai']),
@@ -1942,12 +1943,12 @@ const tagbase = {
     'kuudere':          new animeTag('kuudere', ['kuudere']),
     'detective':        new animeTag('detective', ['detective', 'detectives']),
     'space':            new animeTag('space', ['space', 'outer space', 'on spaceship', 'space pirates', 'space battles', 'space opera', 'space travel', 'astronauts', 'earth']),
-    'future':           new animeTag('future', ['future']),
+    'future':           new animeTag('future', ['future', 'futuristic']),
     'crime':            new animeTag('crime', ['crime', 'organized crime', 'prison', 'thief']),
     'cooking':          new animeTag('cooking', ['cooking', 'food', 'cocktails', 'restaurants']),
     // новые
     'present':          new animeTag('present', ['present']),
-    'kids':             new animeTag('kids', ['loli', 'kids']),
+    'kids':             new animeTag('kids', ['loli', 'kids', 'chibi']),
     'manga':            new animeTag('manga', ['based on a manga', 'manga']),
     'original':         new animeTag('original', ['original work']),
     'male':             new animeTag('male', ['male protagonist']),
@@ -1955,6 +1956,7 @@ const tagbase = {
     'family':           new animeTag('family', ['family friendly']),
     'altworld':         new animeTag('altworld', ['alternative world']),
     'shorts':           new animeTag('shorts', ['short episodes', 'shorts', 'short movie']),
+    // 'cgi':              new animeTag('cgi', ['cgi', 'full cgi']),
     // oh no
     'secret':           new animeTag('secret', ['hentai']),
     'allnsfw':          new animeTag('allnsfw', [
@@ -1964,7 +1966,16 @@ const tagbase = {
         'tentacle', 'threesome', 'boys love', 'sex', 'boobjob', 'group sex', 'lactation',
         'exhibitionism', 'incest', 'urinating', 'voyeurism', 'double penetration', 'strap-ons',
         'footjob', 'futanari', 'small breasts', 'lgbt themes', 'cunnilingus', 'public sex',
-        'bdsm', 'tentacles', 'hypersexuality', 'sex toys', 'handjob', 'magical sex shift']),
+        'bdsm', 'tentacles', 'hypersexuality', 'sex toys', 'handjob', 'magical sex shift',
+        'adult audience only',
+    ]),
+};
+function downloadAllUsedTags() {
+    var file = {tags: []};
+    for(var t in tagbase) {
+        file.tags = file.tags.concat(tagbase[t].tags)
+    };
+    fileManager.downloadJSON('tags', file)
 };
 //
 // @EAG PRESET CLASS
@@ -2308,7 +2319,7 @@ function getListFiltered(filter = filterDefault) {
         // sort by score, if allowed
         if(filter.scoreAllow) {
             // check if aodb have score info & sort by limits
-            if(anime.score === null) {if(_attemptAny(2)){continue}} // 2 points by ignoring two: max & min limits
+            if(anime.score == null) {if(_attemptAny(2)){continue}} // 2 points by ignoring two: max & min limits
             else {
                 if(anime.score < floatNumber(filter.scoreMin, 2)) {if(_attemptAny()){continue}};
                 if(anime.score > floatNumber(filter.scoreMax, 2)) {if(_attemptAny()){continue}};
@@ -6110,8 +6121,11 @@ let sload = {
     head: txt('eagName'),
     headsize: 50,
     //
-    dbSize: 70*1024*1024,
+    dbSize: 22*1024*1024,
     dbProgress: 0,
+    dbStatus: 'get',
+    error: '',
+    dbLatest: '',
 };
 // downloading database
 let databaseRequestResult = null;
@@ -6121,21 +6135,28 @@ let _lidbADB = false;
 let _adb_xml_request = new XMLHttpRequest();
 let _adb_xml_loadprogress = 0;
 _adb_xml_request.onprogress = (e) => {_adb_xml_loadprogress = e.loaded};
-function getAnimeDatabase() {
-    _adb_xml_request.open("GET",'https://raw.githubusercontent.com/manami-project/anime-offline-database/master/anime-offline-database-minified.json',true);
-    _adb_xml_request.onload = () => {databaseRequestResult = _adb_xml_request.responseText};
-    _adb_xml_request.onerror = () => {databaseRequestResult = false};
+// download
+function downloadAnimeDatabase() {
+    _adb_xml_request.open("GET", `https://raw.githubusercontent.com/potapello/ayayaxdd/refs/heads/main/database.json`, true);
+    _adb_xml_request.onload = () => {databaseRequestResult = _adb_xml_request.responseText; sload.dbStatus = 'down'};
+    _adb_xml_request.onerror = () => {sload.dbStatus = 'error'};
     _adb_xml_request.send(null);
 };
 function awaitForDatabase() {
-    if(databaseRequestResult !== null && databaseRequestResult !== 'success' && databaseRequestResult !== 'error') {
-        if(databaseRequestResult[0] !== false) {
-            const fulldata = JSON.parse(databaseRequestResult);
-            setupDatabase(fulldata);
-            lidbUploadObject({name: 'db', db: fulldata}, 'adb');
-            databaseRequestResult = 'success'
-        } else {
-            databaseRequestResult = 'error'
+    if(sload.dbStatus == 'get') {
+        sload.dbStatus = 'await';
+        downloadAnimeDatabase()
+    } else if(sload.dbStatus == 'down') {
+        try {
+            var data = JSON.parse(databaseRequestResult);
+            var test = data.data[0].title; // try to get some data from ADB, if is not ADB - error
+            setupDatabase(data);
+            lidbUploadObject({name: 'db', db: data}, 'adb');
+            sload.dbStatus = 'success';
+            databaseRequestResult = ''; // deleting json string
+        } catch(e) {
+            sload.dbStatus = 'error';
+            console.error('error with parsing database!!!', e);
         }
     };
 };
@@ -6145,7 +6166,8 @@ function setupDatabase(fd) {
     adb_information = {
         license: fulldata.license,
         repository: fulldata.repository,
-        lastUpdate: fulldata.lastUpdate
+        lastUpdate: fulldata.lastUpdate,
+        scored: fulldata.scored
     };
     _preftitles.adb_author = {
         name: 'Author',
@@ -6184,6 +6206,11 @@ function compareUpdateDates(current) {
     // compare
     return Math.abs(date_cur - date_adb)
 };
+// обход инета))))
+function pohuynainet(ignore_idb = false) {
+    firstMouseEvent = true;
+    sload.state = ignore_idb ? 'wait' : 'check_idb'
+};
 // working with IDB
 //
 // titles
@@ -6207,7 +6234,8 @@ function screenLoading() {
     //
     if(!navigator.onLine && !firstMouseEvent) {
         sload.alpha.move(1, sload.time, easeInOutSine);
-        sload.state = 'timeout'
+        sload.state = 'timeout';
+        sload.error = 'connect'
     };
     //
     if(wallpaper.complete && sload.showing === false) {
@@ -6235,7 +6263,13 @@ function screenLoading() {
         const spacing = 15 * _scaleDynamic;
         ctx.fillStyle = '#b55'; ctx.textAlign = 'center';
         scaleFont(36, 'Segoe UI Light');
-        fillTextFast(center.minxy(0, spacing), txt('loadNoCon'));
+        if(sload.error == 'connect') {
+            fillTextFast(center.minxy(0, spacing), txt('loadNoCon'))
+        } else if(sload.error == 'adb') {
+            fillTextFast(center.minxy(0, spacing), txt('loadADBError'))
+        } else {
+            fillTextFast(center.minxy(0, spacing), txt('loadUnknownError'))
+        };
         ctx.fillStyle = '#ccc';
         scaleFont(18, 'Segoe UI');
         fillTextArray(center.sumxy(-fullsize.x/4, spacing*3), textWidthFit(txt('loadRecon'), fullsize.x/2), spacing/4)
@@ -6251,33 +6285,31 @@ function screenLoading() {
         if(lidb.response !== false) {
             if(lidb.response === undefined) {
                 // if no ADB in IDB = download from source
-                sload.state = 'show'
+                sload.state = 'wait_adb'
             } else {
                 // compare month (response = fulldata)
                 if(compareUpdateDates(lidb.response.db.lastUpdate) <= 30) { // раз в месяц примерно
                     setupDatabase(lidb.response.db); // setup from IDB
-                    databaseShorter();
+                    // databaseShorter(); // уже делается в default/compress.py
                     edList.edited = new animeList(); // создаём пустой список в редактор здесь, только после загрузки датабазы
                     sload.state = 'wait'
                 } else {
-                    sload.state = 'show' // download new
+                    sload.state = 'wait_adb' // download new
                 }
             }
-        };
-    } else if(sload.state === 'show') {
-        // download ADB from source
-        getAnimeDatabase();
-        sload.state = 'wait_adb'
+        }
     //
     } else if(sload.state === 'wait_adb') {
-        // wait for download ADB & optimize
+        // cancel downloading with `pohuynainet`, because no connection
+        if(!navigator.onLine) {firstMouseEvent = false; return};
+        // wait for download ADB
         awaitForDatabase();
-        imageLoadProgress.text = txt('loadJkrg') +' '+ bytesStringify(_adb_xml_loadprogress);
+        imageLoadProgress.text = txt('loadJkrg') + ' ' + bytesStringify(_adb_xml_loadprogress);
         shapeProgressBar(normalAlign(new Vector2(0.5, 0), spbsize), spbsize, sload.dbProgress, colorMapMatrix(loadImagesBar));
-        if(databaseRequestResult == 'error') {sload.state = 'timeout'};
-        if(databaseRequestResult == 'success') {
+        if(sload.dbStatus == 'error') {sload.state = 'timeout'; sload.error = 'adb'};
+        if(sload.dbStatus == 'success') {
             // оптималим датабазу
-            databaseShorter();
+            // databaseShorter(); // уже делается в default/compress.py
             // создаём пустой список в редактор здесь, только после загрузки датабазы
             edList.edited = new animeList();
             //
@@ -11082,13 +11114,11 @@ prefRouletteTitles.onset = (value) => {prefSetValue('rouletteItems', 20 + Math.r
 prefRouletteImages.onset = (value) => {prefSetValue('rollImages', 7 + Math.round(value)*2)};
 prefRouletteImages.visAlias = true;
 let prefRouletteScroll = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
-let prefRouletteMap = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
 let prefRouletteNSFW = new TextButtonShaped(shapeRectRounded, '', new Vector2(prefOptionWidth/2, prefButtonHeight), colorMapMatrix(prefTextPalette), colorMapMatrix(prefSwitchPalette));
-prefRouletteScroll.isSwitcher = true; prefRouletteMap.isSwitcher = true; prefRouletteNSFW.isSwitcher = true;
-prefRouletteScroll.needshadow = false; prefRouletteMap.needshadow = false; prefRouletteNSFW.needshadow = false;
-prefRouletteScroll.height = 0; prefRouletteMap.height = 0; prefRouletteNSFW.height = 0;
+prefRouletteScroll.isSwitcher = true; prefRouletteNSFW.isSwitcher = true;
+prefRouletteScroll.needshadow = false; prefRouletteNSFW.needshadow = false;
+prefRouletteScroll.height = 0; prefRouletteNSFW.height = 0;
 prefRouletteScroll.onclick = () => {prefSetValue('autoScroll', true)}; prefRouletteScroll.ondeact = () => {prefSetValue('autoScroll', false)};
-prefRouletteMap.onclick = () => {prefSetValue('showMap', true)}; prefRouletteMap.ondeact = () => {prefSetValue('showMap', false)};
 prefRouletteNSFW.onclick = () => {prefSetValue('showNSFW', true)}; prefRouletteNSFW.ondeact = () => {prefSetValue('showNSFW', false)};
 //
 function actualPrefRoulette() {
@@ -11097,7 +11127,6 @@ function actualPrefRoulette() {
     prefRouletteTitles.update(pref['rouletteItems'] - 20, pref.rouletteItemsMax-20);
     prefRouletteImages.update((pref['rollImages'] - 7)/2, 10);
     prefRouletteScroll.active = pref.autoScroll;
-    prefRouletteMap.active = pref.showMap;
     prefRouletteNSFW.active = pref.showNSFW;
 };
 // audio
@@ -11201,7 +11230,6 @@ function prefButtonsRescale() {
     prefRouletteTitles.size = s[0];
     prefRouletteImages.size = s[0];
     prefRouletteScroll.size = s[1];
-    prefRouletteMap.size = s[1];
     prefRouletteNSFW.size = s[1];
     // audio
     prefAudioSound.size = s[0];
@@ -11919,7 +11947,7 @@ function developInfo() {
         const ftnorm = Math.norma(_ft / 16.6);
         // @RELEASE (убрать, если чет добавлял для себя)
         fillRectRounded(new Vector2(devinfoValues.width, devinfoValues.height), new Vector2(devinfoValues.xanchor, devinfoValues.offset), '#0029', devinfoValues.margin);
-        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(1)), 'FPS: '+FPS, '#fff', 'bold 16px Consolas');
+        fillText(new Vector2(devinfoValues.text, devinfoValues.texty(1)), 'FPS: '+Math.round(FPS), '#fff', 'bold 16px Consolas');
         fillText(new Vector2(devinfoValues.text + devinfoValues.width*0.4, devinfoValues.texty(1)), 'frame: '+_ft+' ms', `rgba(${255*ftnorm}, ${255-255*ftnorm}, 0, 0.8)`, 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(2)), 'memLimit: '+_mem_limit, '#fcc', 'bold 12px Consolas');
         fillText(new Vector2(devinfoValues.text, devinfoValues.texty(3)), 'memUsage/Total: ' + usage + ' / ' + total, '#fcc', 'bold 12px Consolas');
@@ -11962,7 +11990,7 @@ function developInfo() {
         fillRect(new Vector2(10*_scaleDynamic), mouse.pos.minxy(5*_scaleDynamic), '#0006');
         fillRect(new Vector2(8*_scaleDynamic), mouse.pos.minxy(4*_scaleDynamic), '#0f0');
     } else if(pref.showFPS) {
-        fillText(new Vector2(14, 30), FPS, '#fff', 'bold 16px Consolas');
+        fillText(new Vector2(14, 30), Math.round(FPS), '#fff', 'bold 16px Consolas');
         const ftnorm = Math.norma(_ft / 16.6);
         fillText(new Vector2(14, 40), _ft, `rgba(${255*ftnorm}, ${255-255*ftnorm}, 0, 0.8)`, 'bold 12px Consolas');
     }
