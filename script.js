@@ -10555,6 +10555,7 @@ if(mapMeta.event.has) {
     SUPABASE_ANON_KEY = mapMeta.event.key;
     mrthPlayerAvatar.onerror = () => {mrthPlayerAvatar.src = 'images/ayaya.png'};
 };
+mapMeta.event.connected = false; // for first connection
 // if not started - set date
 // if(!mapMeta.started) {mapMeta.started = true; mapMeta.startedAt = (new Date()).toLocaleDateString()};
 //
@@ -11136,10 +11137,10 @@ async function updateLeaderboard() {
             _eventLoadStatus = 'error'
         } finally {
             if(!mapMeta.event.connected) {
-                _eventLeaderboard = _lead ? _lead : [];
                 console.log('Connected to event!');
                 mapMeta.event.connected = true
             };
+            _eventLeaderboard = _lead ? _lead : [];
             _eventLoadStatus = 'connect'
             // update player data from board
             updatePlayerData()
