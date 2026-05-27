@@ -10032,7 +10032,7 @@ let mapMeta = {
     startedAt: (new Date()).toLocaleDateString(),
     // custom event data
     event: {
-        has: true,
+        has: false,
         connected: false,
         head: 'event-name',
         url: 'supabase-url',
