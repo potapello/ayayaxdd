@@ -53,8 +53,8 @@ function databaseShorter() {
 /** Содержит некоторую информацию о приложении. */
 let $appInfo = {
     // main @rel
-    version: '1.4.2 beta',
-    date: '13-07-2025',
+    version: '1.5.0 beta',
+    date: '28-05-2026',
     name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
     fullname: 'AYAYA - Anime Roulette',
     author: 'potapello',
@@ -62,7 +62,7 @@ let $appInfo = {
     licenseURL: 'https://github.com/potapello/ayayaxdd/blob/main/LICENSE',
     // other
     codename: 'ayayaxdd', // EAG? (когда то codename был EAG) в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
-    comment: 'ayayaxdd 1.4.2 beta',
+    comment: 'ayayaxdd 1.5.0 beta',
 };
 console.log(`\n${$appInfo.fullname}\n${$appInfo.comment} (${$appInfo.date})\nby ${$appInfo.author}\n `);
 //
@@ -6304,7 +6304,11 @@ function screenLoading() {
         if(!navigator.onLine) {firstMouseEvent = false; return};
         // wait for download ADB
         awaitForDatabase();
-        imageLoadProgress.text = txt('loadJkrg') + ' ' + bytesStringify(_adb_xml_loadprogress);
+        if(mapMeta.event.has && _eventLoadStatus == null) { // also check for event first leaderboard check
+            imageLoadProgress.text = 'Connecting to Event server...';
+        } else {
+            imageLoadProgress.text = txt('loadJkrg') + ' ' + bytesStringify(_adb_xml_loadprogress)
+        };
         shapeProgressBar(normalAlign(new Vector2(0.5, 0), spbsize), spbsize, sload.dbProgress, colorMapMatrix(loadImagesBar));
         if(sload.dbStatus == 'error') {sload.state = 'timeout'; sload.error = 'adb'};
         if(sload.dbStatus == 'success') {
@@ -8279,6 +8283,14 @@ function mrthInventoryHaveItems() {
     };
     return false
 };
+function selectedInventoryHaveItems(inv) {
+    if(inv) {
+        for(var s in mapMeta.inventory) {
+            if(mapMeta.inventory[s] !== false) {return true}
+        };
+        return false
+    } else {return false}
+};
 //
 function mrthCreateItem(tag) {
     var obj = JSON.parse(JSON.stringify(mrthStuff.items[tag]));
@@ -10018,6 +10030,23 @@ let mapMeta = {
     //
     date: '',
     startedAt: (new Date()).toLocaleDateString(),
+    // custom event data
+    event: {
+        has: true,
+        connected: false,
+        head: 'event-name',
+        url: 'supabase-url',
+        key: 'supabase-anon-key',
+    },
+    playerKey: '', // specified from supabase, via marathon savefile (.json)
+    playerName: '',
+};
+// load variables from event
+var mrthPlayerAvatar = new Image();
+if(mapMeta.event.has) {
+    SUPABASE_URL = mapMeta.event.url;
+    SUPABASE_ANON_KEY = mapMeta.event.key;
+    mrthPlayerAvatar.onerror = () => {mrthPlayerAvatar.src = 'images/ayaya.png'};
 };
 //
 let mrthRectTypes = {
@@ -10506,6 +10535,19 @@ function marathonLoad(from=false) {
         copy.overlayOffset = new Vector1(-600);
         // disable the cutscene & load
         copy.cutscene = false;
+        // upgrade version -> add event support
+        if (copy.event == undefined) {
+            copy.event = {
+                has: false,
+                connected: false,
+                head: 'event-name',
+                url: 'supabase-host-url',
+                key: 'supabase-host-anon-key',
+            };
+            copy.playerKey = 'key-from-supabase';
+            copy.playerName = '';
+        };
+        // load collected copy
         mapMeta = copy
     };
 };
@@ -10727,9 +10769,13 @@ buttonMrthUploadBackup.onclick = () => {
         // load from file
         requestScreen(screenRoulette, false);
         buttonOpenMarathon.state = 'unaval';
+        // delayed load & save (waiting for screen transition end)
         setTimeout(() => {
             marathonLoad(file);
+            marathonSave(); // upload backup & saving
             buttonOpenMarathon.state = 'idle';
+            // reload page for hard-reconnect to event
+            if(mapMeta.event.has) {window.location.reload()};
         }, tss.fulltime * 2000);
     }
 };
@@ -10835,6 +10881,12 @@ function screenMarathonMap() {
     _mrthDrawedRects = 0;
     _mrthDrawedLogos = 0;
     _mrthAllRects = 0;
+    if(mapMeta.event.has) {
+        var eventBadge = new Vector2(mrthMeta.rectSize*1.5, mrthMeta.rectSize*.5).multxy(_scaleDynamic);
+        var eventpos = new Vector2(fullsize.x - (eventBadge.x + spacing), anchor.y + spacing);
+        var eventhovered = mouse.pos.overAND(eventpos) && mouse.pos.lessAND(eventpos.sumv(eventBadge));
+    };
+    //
     for(var i in mapMeta.map) {
         _mrthAllRects++;
         // relative
@@ -10852,7 +10904,7 @@ function screenMarathonMap() {
             // if mouse on map
             if(mouse.pos.overAND(anchor) && !mapMeta.cutscene) {
                 // if hovered
-                if(mouse.pos.overAND(pos) && mouse.pos.lessAND(pos.sumv(rectSize))) {
+                if(mouse.pos.overAND(pos) && mouse.pos.lessAND(pos.sumv(rectSize)) && !eventhovered) {
                     if(mapMeta.map[i].opened) {
                         if(!selected) {
                             ctx.fillStyle = `#ffffff33`;
@@ -10891,6 +10943,38 @@ function screenMarathonMap() {
     ctx.fillStyle = '#ffffffaa'; ctx.textAlign = 'start'; scaleFont(14, 'Consolas');
     fillTextFast(anchor.sumxy(5, 15), `A ${_mrthAllRects} DR ${_mrthDrawedRects} DL ${_mrthDrawedLogos}`);
     fillTextFast(anchor.sumxy(5, 30), `P ${visual.counters.mrth}/${visual.mrth.length}`);
+    if(mapMeta.event.has) {
+        fillTextFast(anchor.sumxy(250, 15), mapMeta.event.connected ? 'Event connected' : 'Event disconnected');
+        if(mapMeta.event.connected) {
+            fillTextFast(anchor.sumxy(250, 30), evscMeta.savestate == 'saving' ? 'Saving data...' : `Next save: ${60 - Math.floor((performance.now() - evscMeta.lastUpdate)/1000)} s.`)
+        }
+    };
+    // draw event badge
+    if(mapMeta.event.has) {
+        // draw
+        fillRectRounded(eventBadge, eventpos, eventhovered ? '#66fa' :'#44f8', 5*_scaleDynamic);
+        scaleFont(16, 'Segoe UI', 'bold'); ctx.textAlign = 'center'; ctx.fillStyle = '#ff5';
+        fillTextFast(eventpos.sumxy(eventBadge.x*.5, eventBadge.y*.25), 'Anime Event Name');
+        drawImageSized(mrthPlayerAvatar, eventpos.sumxy(spacing/2, eventBadge.y*.3), new Vector2(eventBadge.y * 0.7 - spacing/2));
+        scaleFont(14, 'Segoe UI'); ctx.textAlign = 'start'; ctx.fillStyle = '#fff';
+        // player data & leaderboard
+        fillTextFast(eventpos.sumxy(eventBadge.y*.8, eventBadge.y*.48), `${mapMeta.playerName} #${_eventPlayerID+1} (${_eventPlayerMeta.score})`);
+        if(_eventPlayerMeta.watching) {
+            ctx.fillStyle = '#8f8';
+            var _title = _eventPlayerMeta.title.length > 23 ? _eventPlayerMeta.title.substring(0, 23) + '...' : _eventPlayerMeta.title.substring(0, 23);
+            var _preset = _eventPlayerMeta.preset.length > 23 ? _eventPlayerMeta.preset.substring(0, 23) + '...' : _eventPlayerMeta.preset.substring(0, 23);
+            fillTextFast(eventpos.sumxy(eventBadge.y*.8, eventBadge.y*.70), _title);
+            fillTextFast(eventpos.sumxy(eventBadge.y*.8, eventBadge.y*.92), _preset)
+        } else {
+            ctx.fillStyle = '#f88';
+            fillTextFast(eventpos.sumxy(eventBadge.y*.8, eventBadge.y*.75), `Ничего не смотрим`)
+        };
+        // click event
+        if(eventhovered && mouse.click && _eventLeaderboard.length > 0) {
+            mouse.click = false;
+            requestScreen(eventLeaderboardScreen);
+        }
+    };
     // inspector draw
     if(mapMeta.overlay) {
         clipCanvas(new Vector2(anchor.x, fullsize.x-anchor.y), new Vector2(0, anchor.y));
@@ -11017,6 +11101,383 @@ function screenMarathonMap() {
     drawMarathonHeader();
     // music
     musicLite.draw();
+};
+//
+// @EAG EVENT SCREEN
+//
+// event variables
+let _eventLeaderboard = [];
+let _eventPlayerID = -1;
+let _eventPlayerMeta = {score: -1, watching: false};
+let _eventLoadStatus = null;
+//
+let evscMeta = {
+    scroll: new Vector1(),
+    height: 0,
+    state: 'empty',
+    selected: 0,
+    avatar: new Image(),
+    //
+    lastUpdate: 0,
+    interval: null,
+    savestate: 'idle',
+};
+evscMeta.avatar.onerror = () => {evscMeta.avatar.src = 'images/ayaya.png'};
+evscMeta.avatar.src = 'images/ayaya.png';
+// funcs
+async function updateLeaderboard() {
+    if(mapMeta.event.has) {
+        try {
+            _eventLeaderboard = await fetchLeaderboardDirect();
+        } catch(e) {
+            console.error('Cannot connect to event!', e);
+            mapMeta.event.connected = false;
+            _eventLoadStatus = 'error'
+        } finally {
+            if(!mapMeta.event.connected) {
+                console.log('Connected to event!');
+                mapMeta.event.connected = true
+            };
+            _eventLoadStatus = 'connect'
+            // update player data from board
+            updatePlayerData()
+        }
+    }
+};
+updateLeaderboard();
+//
+function updatePlayerData() {
+    for(var i=0; i < _eventLeaderboard.length; i++) {
+        if(_eventLeaderboard[i].player_name == mapMeta.playerName) {
+            _eventPlayerID = i;
+            mrthPlayerAvatar.src = _eventLeaderboard[i].avatar_url;
+            if(_eventLeaderboard[i].data) {
+                _eventPlayerMeta = _eventLeaderboard[i].data
+            };
+            _eventPlayerMeta.score = _eventLeaderboard[i].score;
+            break
+        }
+    }
+};
+//
+function collectEventData() {
+    var data = {};
+    data.pos = {x: mapMeta.pos.x, y: mapMeta.pos.y};
+    // copy variables
+    const copied = ['watching', 'points', 'total', 'animes', 'episodes', 'rerolls', 'explored', 'missCompleted', 'permPoints', 'permExplore', 
+        'permSeries', 'permQuota', 'inventory', 'effects', 'missions'];
+    for(var i=0; i < copied.length; i++) {
+        data[copied[i]] = mapMeta[copied[i]]
+    };
+    // get watch history
+    marcsWatched();
+    data.history = mrthStats.watched;
+    // get curently watching
+    data.title = null; data.preset = null;
+    if(mapMeta.watching) {
+        data.title = mapGetRect(mapMeta.pos).object.animedata.title;
+        data.preset = mapGetRect(mapMeta.pos).object.preset
+    };
+    //
+    return data
+};
+async function eventSaveData() {
+    if(mapMeta.event.has) {
+        try {
+            await updatePlayerDirect(mapMeta.playerKey, mapMeta.total, null, collectEventData())
+        } catch(e) {
+            console.error('Cannot send event data!', e);
+            mapMeta.event.connected = false
+        }
+    }
+};
+// start intervals for update event data
+async function eventUpdateInterval() {
+    if(mapMeta.event.connected) {
+        evscMeta.savestate = 'saving';
+        await eventSaveData();
+        await updateLeaderboard();
+        evscMeta.lastUpdate = performance.now();
+        evscMeta.savestate = 'idle';
+        setTimeout(eventUpdateInterval, 60000);
+    } else {
+        console.error('Cannot update event data: connection lost! Fix internet & press F5.');
+    }
+};
+if(SUPABASE_URL != null) {setTimeout(eventUpdateInterval, 60000)};
+// stuff
+var buttonCloseLeaderboard = new TextButtonShaped(shapeRectRounded, 'Назад', new Vector2(100,50), 
+    colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
+    colorMapMatrix(`rgba(48,48,180,0.3)#rgba(48,48,180,0.7)#rgba(64,64,255,0.9)#rgba(64,64,64,0.3)`));
+var buttonEventOpenHistory = new TextButtonShaped(shapeRectRounded, 'История просмотров', new Vector2(100,50), 
+    colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
+    colorMapMatrix(`rgba(48,180,48,0.3)#rgba(48,180,48,0.7)#rgba(64,255,48,0.9)#rgba(64,64,64,0.3)`));
+var buttonEventCloseHistory = new TextButtonShaped(shapeRectRounded, 'Закрыть историю', new Vector2(100,50), 
+    colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
+    colorMapMatrix(`rgba(48,180,48,0.3)#rgba(48,180,48,0.7)#rgba(64,255,48,0.9)#rgba(64,64,64,0.3)`));
+buttonCloseLeaderboard.waitanim = false; buttonCloseLeaderboard.height = 0;
+buttonEventOpenHistory.waitanim = false; buttonEventOpenHistory.height = 0;
+buttonEventCloseHistory.waitanim = false; buttonEventCloseHistory.height = 0;
+buttonCloseLeaderboard.onclick = () => {
+    requestScreen(screenMarathonMap, false);
+};
+buttonEventOpenHistory.onclick = () => {
+    evscMeta.state = 'history';
+    evscMeta.scroll.set(0);
+};
+buttonEventCloseHistory.onclick = () => {
+    evscMeta.state = 'info';
+    evscMeta.scroll.set(0);
+};
+// screen
+function eventLeaderboardScreen() {
+    srv.hideProgress.update(); // update this for show delayed musicBar.show task
+    // darker bg
+    ctx.fillStyle = `rgba(0,0,15,${pref.bgalpha})`;
+    fillRectFast(fullsize, __ro_v2);
+    // markup values
+    const spacing = mrthMeta.spacing * _scaleDynamic;
+    var anchor = mapMeta.overlaySizing.multxy(_scaleDynamic);
+    var height = (mrthMeta.rectSize*.25) * _scaleDynamic;
+    evscMeta.scroll.update();
+    // overlay background
+    ctx.fillStyle = `#000016bb`;
+    fillRectFast(new Vector2(fullsize.x, anchor.y), __ro_v2); // head
+    fillRectFast(new Vector2(anchor.x, fullsize.y - anchor.y), new Vector2(0, anchor.y)); // inspector
+    // overlay elements
+    scaleFont(20, 'Segoe UI'); ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+    buttonCloseLeaderboard.size.setxy(200*_scaleDynamic, anchor.y-spacing*2);
+    buttonCloseLeaderboard.pos.setxy((fullsize.x - musicLite.size.x)/4 - (100*_scaleDynamic), spacing);
+    buttonCloseLeaderboard.draw();
+    musicLite.draw();
+    // leaderboard markup
+    var board_names = ['№', 'Имя', 'Очки', 'Монеты', 'Что смотрит?', 'Тайтлы', 'Серии',];
+    var board_sizes = [.04, .24, .08, .08, .40, .08, .08]; // width of collumns
+    // var board_offsets = [0, .04, .28, .36, .44, .84, .92];
+    var board_offsets = [.02, .16, .32, .40, .64, .88, .96]; // x-centers of all columns
+    var width = fullsize.x - anchor.x;
+    // draw leaderboard items
+    for(var i=0; i<_eventLeaderboard.length+1; i++) {
+        // detect hovering
+        var rowhovered = mouse.pos.overAND(anchor.sumxy(0, height*i+5)) && mouse.pos.lessAND(anchor.sumxy(width, height*(i+1)));
+        if(i == 0) {fillRect(new Vector2(width, height), anchor.sumxy(0, height*i), `#0007`)}
+        else if(rowhovered) {
+            // full black bg of hovered
+            fillRect(new Vector2(width, height), anchor.sumxy(0, height*i), `#000`)
+        } else {
+            // darker odd rows
+            if(i%2 == 0) {fillRect(new Vector2(width, height), anchor.sumxy(0, height*i), `#0004`)}
+        };
+        // draw rows
+        scaleFont(20, 'Segoe UI', 'bold'); ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+        if(i == 0) {
+            // draw board head
+            for(var c=0; c<7; c++) {
+                var cellpos = new Vector2(anchor.x + width * board_offsets[c], anchor.y + height * 0.8);
+                // var cellsize = new Vector2(width * board_sizes[c], height);
+                fillTextFast(cellpos, board_names[c])
+            }
+        } else {
+            scaleFont(20, 'Segoe UI');
+            // collect player data
+            if(_eventLeaderboard[i-1].data) {
+                var cellinfo = [`${i}.`, _eventLeaderboard[i-1].player_name, _eventLeaderboard[i-1].score, _eventLeaderboard[i-1].data.points, 
+                _eventLeaderboard[i-1].data.title, _eventLeaderboard[i-1].data.animes, _eventLeaderboard[i-1].data.episodes]
+            } else {
+                var cellinfo = [`${i}.`, _eventLeaderboard[i-1].player_name, _eventLeaderboard[i-1].score, 0, 0, 0, 0]
+            };
+            // draw player data row
+            for(var c=0; c<7; c++) {
+                var cellpos = new Vector2(anchor.x + width * board_offsets[c], anchor.y + (height * (i+0.8)));
+                // var cellsize = new Vector2(width * board_sizes[c], height);
+                if(c == 4) {
+                    fillTextFast(cellpos, textStringLimit(cellinfo[c] ? cellinfo[c] : '*ничего не смотрит*', width * board_sizes[4] * 0.8))
+                } else {
+                    fillTextFast(cellpos, cellinfo[c])
+                }
+            };
+            // selecting player
+            if(rowhovered && mouse.click) {
+                mouse.click = false;
+                evscMeta.selected = i-1;
+                evscMeta.state = 'info';
+                evscMeta.scroll.set(0);
+                if(_eventLeaderboard[evscMeta.selected].avatar_url) {
+                    evscMeta.avatar.src = _eventLeaderboard[evscMeta.selected].avatar_url;
+                } else {
+                    evscMeta.avatar.src = 'images/ayaya.png'
+                }
+            }
+        }
+    };
+    // build inspector scrollable viewport
+    clipCanvas(new Vector2(anchor.x, fullsize.x-anchor.y), new Vector2(0, anchor.y));
+    const inspWidth = anchor.x - spacing*2;
+    // if mouse in inspector
+    if(mouse.pos.y > anchor.y && mouse.pos.x < anchor.x) {
+        const sensivity = mrthMeta.sensivity * _scaleDynamic;
+        evscMeta.height = Math.ceil(evscMeta.height);
+        // scrolling
+        if(fullsize.y - anchor.y >= evscMeta.height) {evscMeta.scroll.set(0)}
+        else {
+        if(evscMeta.scroll.getFixed() < evscMeta.height - (fullsize.y - anchor.y) && wheelState === 'btm') {
+            evscMeta.scroll.move(Math.floor(evscMeta.scroll.getFixed())+sensivity, 0.5, easeOutExpo)}
+            else if(evscMeta.scroll.getFixed() > 0 && wheelState === 'top') {
+                evscMeta.scroll.move(Math.floor(evscMeta.scroll.getFixed())-sensivity, 0.5, easeOutExpo)};
+            if(evscMeta.scroll.get() < 0) {evscMeta.scroll.set(0)};
+            if(evscMeta.scroll.get() > evscMeta.height - (fullsize.y - anchor.y)) {evscMeta.scroll.set(evscMeta.height - (fullsize.y - anchor.y))}
+        }
+    };
+    // inspector positioning with scroll
+    var inspPos = new Vector2(spacing, anchor.y + spacing*2 - evscMeta.scroll.get());
+    evscMeta.height = evscMeta.scroll.get();
+    // draw inspector states
+    if(evscMeta.state == 'empty') {
+        inspDefHeader(inspPos, inspWidth, spacing, 'Статистика игрока');
+        var statpos = inspPos.sumxy(0, spacing*3);
+        // empty insp info
+        scaleFont(14, 'Segoe UI');  ctx.textAlign = 'center';
+        statpos = inspTextBlock(statpos, inspWidth, spacing, 'Выберите игрока справа, чтобы увидеть подробную информацию о нём.', 3, 12);
+    //
+    } else if(evscMeta.state == 'info') {
+        // check for selected id
+        if(evscMeta.selected < 0 || evscMeta.selected >= _eventLeaderboard.length) {
+            evscMeta.state = 'empty';
+            evscMeta.scroll.set(0)
+        };
+        var playerinfo = _eventLeaderboard[evscMeta.selected];
+        // head
+        inspDefHeader(inspPos, inspWidth, spacing, `Статистика ${playerinfo.player_name}`);
+        var statpos = inspPos.sumxy(0, spacing*3);
+        // avatar
+        var avatarsize = new Vector2(200 * _scaleDynamic);
+        if(evscMeta.avatar.complete) {
+            drawImageSized(evscMeta.avatar, statpos.sumxy((inspWidth - avatarsize.x)/2, spacing), avatarsize)
+        };
+        statpos = statpos.sumxy(0, spacing*2 + avatarsize.y);
+        // player data
+        scaleFont(14, 'Segoe UI');  ctx.textAlign = 'center';
+        if(playerinfo.data == null) {
+            // empty player data
+            statpos = inspTextBlock(statpos, inspWidth, spacing, 'У игрока нет почти никаких данных. Возможно, он только начал ивент...', 2, 12);
+        } else {
+            // place, points, coins
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.52, 'Место', evscMeta.selected+1, defaultDSS.multPoints);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.52, 'Очки', playerinfo.score, defaultDSS.multPoints);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.52, 'Монеты', playerinfo.data.points, defaultDSS.multPoints);
+            // last update time
+            scaleFont(14, 'Segoe UI'); ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+            var lastupdate = `${new Date(playerinfo.last_update).toLocaleDateString()} ${new Date(playerinfo.last_update).toLocaleTimeString()}`;
+            statpos = inspTextBlock(statpos, inspWidth, spacing, 'Последнее обновление: ' + lastupdate, 2, 12);
+            // watching header
+            inspDefHeader(statpos.sumxy(0, spacing*2), inspWidth, spacing, 'Сейчас смотрит');
+            statpos = statpos.sumxy(0, spacing*4);
+            if(playerinfo.data.watching) {
+                scaleFont(16, 'Segoe UI', 'bold');
+                statpos = inspTextBlock(statpos, inspWidth, spacing, playerinfo.data.title, 3, 13);
+                scaleFont(14, 'Segoe UI');
+                statpos = inspTextBlock(statpos, inspWidth, spacing, `Пресет: ${playerinfo.data.preset}`, 1, 12);
+            } else {
+                scaleFont(14, 'Segoe UI'); ctx.fillStyle = '#fffa';
+                statpos = inspTextBlock(statpos, inspWidth, spacing, '*игрок в данный момент ничего не смотрит*', 3, 12);
+            };
+            // multipliers
+            inspDefHeader(statpos.sumxy(0, spacing*2), inspWidth, spacing, txtMrth('charPerms'));
+            statpos = statpos.sumxy(0, spacing*4);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, mrthStuff.perms['points'].name, floatNumber(playerinfo.data.permPoints, 2), defaultDSS.multSeries);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, mrthStuff.perms['explore'].name, floatNumber(playerinfo.data.permExplore, 2), defaultDSS.multExplore);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, mrthStuff.perms['series'].name, floatNumber(playerinfo.data.permSeries, 2), defaultDSS.multSeries);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, mrthStuff.perms['quota'].name, floatNumber(playerinfo.data.permQuota, 2) + '%', defaultDSS.multExplore);
+            // watch stats
+            inspDefHeader(statpos.sumxy(0, spacing*2), inspWidth, spacing, 'Остальное');
+            statpos = statpos.sumxy(0, spacing*4);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, txtMrth('statsAnimes'), playerinfo.data.animes, defaultDSS.stats);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, txtMrth('statsEpisodes'), playerinfo.data.episodes, defaultDSS.stats);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, txtMrth('statsRerolls'), playerinfo.data.rerolls, defaultDSS.multExplore);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, txtMrth('statsExplored'), playerinfo.data.explored, defaultDSS.stats);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, txtMrth('statsMissions'), playerinfo.data.missCompleted, defaultDSS.stats);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.5, 'Позиция', `${playerinfo.data.pos.x} ${playerinfo.data.pos.y}`, defaultDSS.multExplore);
+            // watch history button
+            scaleFont(14, 'Segoe UI');  ctx.textAlign = 'center';
+            if(playerinfo.data.history.length > 0) {
+                ctx.fillStyle = '#fff';
+                statpos = inspWideButton(statpos, inspWidth, spacing, buttonEventOpenHistory);
+            } else {
+                ctx.fillStyle = '#fffa';
+                statpos = inspTextBlock(statpos, inspWidth, spacing, '*игрок ещё ничего не посмотрел*', 1, 12)
+            };
+            // inventory
+            if(selectedInventoryHaveItems(playerinfo.data.inventory)) {
+                inspDefHeader(statpos.sumxy(0, spacing*2), inspWidth, spacing, txtMrth('charItems'));
+                statpos = statpos.sumxy(0, spacing*4);
+                // draw positive
+                scaleFont(16, 'Segoe UI'); 
+                for(var i in playerinfo.data.inventory) {
+                    if(playerinfo.data.inventory[i] !== false) {
+                        statpos = inspInventorySlot(statpos, inspWidth, spacing, playerinfo.data.inventory[i])
+                    }
+                }
+            } else {
+                scaleFont(14, 'Segoe UI'); ctx.textAlign = 'center'; ctx.fillStyle = '#fffa';
+                statpos = statpos.sumxy(0, spacing);
+                statpos = inspSingleString(statpos, inspWidth, spacing, '*инвентарь игрока пуст*', 12)
+            };
+            // negatives
+            if(selectedInventoryHaveItems(playerinfo.data.effects)) {
+                ctx.fillStyle = '#ffffff';
+                inspDefHeader(statpos.sumxy(0, spacing*2), inspWidth, spacing, txtMrth('charNegs'));
+                statpos = statpos.sumxy(0, spacing*4);
+                // negatives
+                scaleFont(16, 'Segoe UI'); 
+                for(var i in playerinfo.data.effects) {
+                    if(playerinfo.data.inventory[i] !== false) {
+                        statpos = inspInventorySlot(statpos, inspWidth, spacing, playerinfo.data.effects[i])
+                    }                
+                }
+            } else {
+                scaleFont(14, 'Segoe UI'); ctx.textAlign = 'center'; ctx.fillStyle = '#fffa';
+                statpos = statpos.sumxy(0, spacing);
+                statpos = inspSingleString(statpos, inspWidth, spacing, '*у игрока нет негативных эффектов*', 12)
+            };
+            // missions
+            if(selectedInventoryHaveItems(playerinfo.data.missions)) {
+                ctx.fillStyle = '#ffffff';
+                inspDefHeader(statpos.sumxy(0, spacing*2), inspWidth, spacing, txtMrth('misName'));
+                statpos = statpos.sumxy(0, spacing*4);
+                for(var mis in playerinfo.data.missions) {
+                    if(playerinfo.data.missions[mis] !== false) {
+                        statpos = inspMissionsList(statpos, inspWidth, spacing, {"m" : playerinfo.data.missions[mis]})
+                    }
+                }
+            } else {
+                scaleFont(14, 'Segoe UI'); ctx.textAlign = 'center'; ctx.fillStyle = '#fffa';
+                statpos = statpos.sumxy(0, spacing);
+                statpos = inspSingleString(statpos, inspWidth, spacing, '*у игрока нет заданий*', 12)
+            };
+        };
+        evscMeta.height += statpos.y + 150*_scaleDynamic; // for easy-to-read
+    //
+    } else if(evscMeta.state == 'history') {
+        var playerinfo = _eventLeaderboard[evscMeta.selected];
+        inspDefHeader(inspPos, inspWidth, spacing, `История ${playerinfo.player_name}`);
+        var statpos = inspPos.sumxy(0, spacing*3);
+        // close history button
+        scaleFont(14, 'Segoe UI');
+        statpos = inspWideButton(statpos, inspWidth, spacing, buttonEventCloseHistory);
+        // draw history
+        _mrthDrawedHistory = 0;
+            for(var an in playerinfo.data.history) {
+                if(statpos.y > fullsize.y) {break}
+                else {
+                    const draw = !(statpos.y + fullsize.y/2 < 0);
+                    draw ? _mrthDrawedHistory++ : false;
+                    statpos = inspAnimeWatched(statpos, inspWidth, spacing, playerinfo.data.history[an], draw)
+                }
+            };
+            evscMeta.height += statpos.y + 150 * _scaleDynamic; // for easy-to-read
+    };
+    // inspector end
+    clipRestore();
 };
 //
 // @EAG STUFF PREFERENCES

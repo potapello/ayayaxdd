@@ -1,4 +1,4 @@
-//          ---GUIDE---
+﻿//          ---GUIDE---
 //
 // 1. Define lang
 //      `_allMeetings[X] = {};`
