@@ -10041,13 +10041,6 @@ let mapMeta = {
     playerKey: '', // specified from supabase, via marathon savefile (.json)
     playerName: '',
 };
-// load variables from event
-var mrthPlayerAvatar = new Image();
-if(mapMeta.event.has) {
-    SUPABASE_URL = mapMeta.event.url;
-    SUPABASE_ANON_KEY = mapMeta.event.key;
-    mrthPlayerAvatar.onerror = () => {mrthPlayerAvatar.src = 'images/ayaya.png'};
-};
 //
 let mrthRectTypes = {
     // all
@@ -10555,6 +10548,13 @@ function marathonLoad(from=false) {
 marathonLoad();
 // update daily mission
 missionDaily();
+// load variables from event
+var mrthPlayerAvatar = new Image();
+if(mapMeta.event.has) {
+    SUPABASE_URL = mapMeta.event.url;
+    SUPABASE_ANON_KEY = mapMeta.event.key;
+    mrthPlayerAvatar.onerror = () => {mrthPlayerAvatar.src = 'images/ayaya.png'};
+};
 // if not started - set date
 // if(!mapMeta.started) {mapMeta.started = true; mapMeta.startedAt = (new Date()).toLocaleDateString()};
 //
@@ -11127,14 +11127,16 @@ evscMeta.avatar.src = 'images/ayaya.png';
 // funcs
 async function updateLeaderboard() {
     if(mapMeta.event.has) {
+        var _lead = [];
         try {
-            _eventLeaderboard = await fetchLeaderboardDirect();
+            _lead = await fetchLeaderboardDirect();
         } catch(e) {
             console.error('Cannot connect to event!', e);
             mapMeta.event.connected = false;
             _eventLoadStatus = 'error'
         } finally {
             if(!mapMeta.event.connected) {
+                _eventLeaderboard = _lead ? _lead : [];
                 console.log('Connected to event!');
                 mapMeta.event.connected = true
             };
