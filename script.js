@@ -8285,8 +8285,8 @@ function mrthInventoryHaveItems() {
 };
 function selectedInventoryHaveItems(inv) {
     if(inv) {
-        for(var s in mapMeta.inventory) {
-            if(mapMeta.inventory[s] !== false) {return true}
+        for(var s in inv) {
+            if(inv[s] !== false) {return true}
         };
         return false
     } else {return false}
