@@ -10955,7 +10955,7 @@ function screenMarathonMap() {
         // draw
         fillRectRounded(eventBadge, eventpos, eventhovered ? '#66fa' :'#44f8', 5*_scaleDynamic);
         scaleFont(16, 'Segoe UI', 'bold'); ctx.textAlign = 'center'; ctx.fillStyle = '#ff5';
-        fillTextFast(eventpos.sumxy(eventBadge.x*.5, eventBadge.y*.25), 'Anime Event Name');
+        fillTextFast(eventpos.sumxy(eventBadge.x*.5, eventBadge.y*.25), mapMeta.event.head);
         drawImageSized(mrthPlayerAvatar, eventpos.sumxy(spacing/2, eventBadge.y*.3), new Vector2(eventBadge.y * 0.7 - spacing/2));
         scaleFont(14, 'Segoe UI'); ctx.textAlign = 'start'; ctx.fillStyle = '#fff';
         // player data & leaderboard
