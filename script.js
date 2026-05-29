@@ -53,8 +53,8 @@ function databaseShorter() {
 /** Содержит некоторую информацию о приложении. */
 let $appInfo = {
     // main @rel
-    version: '1.5.0 beta',
-    date: '28-05-2026',
+    version: '1.5.1 beta',
+    date: '30-05-2026',
     name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
     fullname: 'AYAYA - Anime Roulette',
     author: 'potapello',
@@ -62,7 +62,7 @@ let $appInfo = {
     licenseURL: 'https://github.com/potapello/ayayaxdd/blob/main/LICENSE',
     // other
     codename: 'ayayaxdd', // EAG? (когда то codename был EAG) в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
-    comment: 'ayayaxdd 1.5.0 beta',
+    comment: 'ayayaxdd 1.5.1 beta',
 };
 console.log(`\n${$appInfo.fullname}\n${$appInfo.comment} (${$appInfo.date})\nby ${$appInfo.author}\n `);
 //
@@ -496,7 +496,7 @@ let wheelState = 'idle';
 let touchScroll = 0;
 let _holdTicks = 1;
 let _wheelTicks = 1;
-let _pressTicks = 100;
+let _pressTicks = 250;
 mouse.holdTicks = _holdTicks;
 mouse.wheelTicks = _wheelTicks;
 // mouse position
@@ -8628,7 +8628,8 @@ function debugSizeLine(pos, size) {
 function getWatchPointCount(episodes=1, rating=7, watched=1, multiplier=1, type='tv') {
     const typemult = type == 'MOVIE' ? 4 : type != 'TV' ? 1.2 : 1;
     const mult = watched >= episodes ? 1.25 : watched >= episodes/2 ? 1.1 : watched > 0 ? 1 : 0;
-    return Math.round(watched * mult * (1 + (10 - rating)/20) * multiplier * typemult * mapMeta.permSeries * mapMeta.permPoints)
+    var _rating = String(Number(rating)) == 'NaN' ? 5 : rating;
+    return Math.round(watched * mult * (1 + (10 - _rating)/20) * multiplier * typemult * mapMeta.permSeries * mapMeta.permPoints)
 };
 // MARKUP
 //
@@ -10945,7 +10946,7 @@ function screenMarathonMap() {
     fillTextFast(anchor.sumxy(5, 15), `A ${_mrthAllRects} DR ${_mrthDrawedRects} DL ${_mrthDrawedLogos}`);
     fillTextFast(anchor.sumxy(5, 30), `P ${visual.counters.mrth}/${visual.mrth.length}`);
     if(mapMeta.event.has) {
-        fillTextFast(anchor.sumxy(250, 15), mapMeta.event.connected ? 'Event connected' : 'Event disconnected');
+        fillTextFast(anchor.sumxy(250, 15), mapMeta.event.connected ? `Connected. Online: ${_eventCurrentOnlineCount}` : 'Event disconnected');
         if(mapMeta.event.connected) {
             fillTextFast(anchor.sumxy(250, 30), evscMeta.savestate == 'saving' ? 'Saving data...' : `Next save: ${60 - Math.floor((performance.now() - evscMeta.lastUpdate)/1000)} s.`)
         }
@@ -10968,7 +10969,7 @@ function screenMarathonMap() {
             fillTextFast(eventpos.sumxy(eventBadge.y*.8, eventBadge.y*.92), _preset)
         } else {
             ctx.fillStyle = '#f88';
-            fillTextFast(eventpos.sumxy(eventBadge.y*.8, eventBadge.y*.75), `Ничего не смотрим`)
+            fillTextFast(eventpos.sumxy(eventBadge.y*.8, eventBadge.y*.75), txtMrth('eventPlayerNoWatch'))
         };
         // click event
         if(eventhovered && mouse.click && _eventLeaderboard.length > 0) {
@@ -11111,6 +11112,8 @@ let _eventLeaderboard = [];
 let _eventPlayerID = -1;
 let _eventPlayerMeta = {score: -1, watching: false};
 let _eventLoadStatus = null;
+let _eventPlayersOnline = {};
+let _eventCurrentOnlineCount = 0;
 //
 let evscMeta = {
     scroll: new Vector1(),
@@ -11150,16 +11153,21 @@ async function updateLeaderboard() {
 updateLeaderboard();
 //
 function updatePlayerData() {
+    _eventCurrentOnlineCount = 0;
     for(var i=0; i < _eventLeaderboard.length; i++) {
+        // update current player data
         if(_eventLeaderboard[i].player_name == mapMeta.playerName) {
             _eventPlayerID = i;
             mrthPlayerAvatar.src = _eventLeaderboard[i].avatar_url;
             if(_eventLeaderboard[i].data) {
                 _eventPlayerMeta = _eventLeaderboard[i].data
             };
-            _eventPlayerMeta.score = _eventLeaderboard[i].score;
-            break
-        }
+            _eventPlayerMeta.score = _eventLeaderboard[i].score
+        };
+        // update player activity
+        var player_active = (new Date(_eventLeaderboard[i].last_update)) - (new Date()) > -300000;
+        if(player_active) {_eventCurrentOnlineCount++};
+        _eventPlayersOnline[_eventLeaderboard[i].player_name] = player_active
     }
 };
 //
@@ -11209,13 +11217,13 @@ async function eventUpdateInterval() {
 };
 if(SUPABASE_URL != null) {setTimeout(eventUpdateInterval, 60000)};
 // stuff
-var buttonCloseLeaderboard = new TextButtonShaped(shapeRectRounded, 'Назад', new Vector2(100,50), 
+var buttonCloseLeaderboard = new TextButtonShaped(shapeRectRounded, txt('wordBack'), new Vector2(100,50), 
     colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
     colorMapMatrix(`rgba(48,48,180,0.3)#rgba(48,48,180,0.7)#rgba(64,64,255,0.9)#rgba(64,64,64,0.3)`));
-var buttonEventOpenHistory = new TextButtonShaped(shapeRectRounded, 'История просмотров', new Vector2(100,50), 
+var buttonEventOpenHistory = new TextButtonShaped(shapeRectRounded, txtMrth('eventOpenHist'), new Vector2(100,50), 
     colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
     colorMapMatrix(`rgba(48,180,48,0.3)#rgba(48,180,48,0.7)#rgba(64,255,48,0.9)#rgba(64,64,64,0.3)`));
-var buttonEventCloseHistory = new TextButtonShaped(shapeRectRounded, 'Закрыть историю', new Vector2(100,50), 
+var buttonEventCloseHistory = new TextButtonShaped(shapeRectRounded, txtMrth('eventCloseHist'), new Vector2(100,50), 
     colorMapMatrix(`rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,1)#rgba(255,255,255,0.8)`),
     colorMapMatrix(`rgba(48,180,48,0.3)#rgba(48,180,48,0.7)#rgba(64,255,48,0.9)#rgba(64,64,64,0.3)`));
 buttonCloseLeaderboard.waitanim = false; buttonCloseLeaderboard.height = 0;
@@ -11254,7 +11262,7 @@ function eventLeaderboardScreen() {
     buttonCloseLeaderboard.draw();
     musicLite.draw();
     // leaderboard markup
-    var board_names = ['№', 'Имя', 'Очки', 'Монеты', 'Что смотрит?', 'Тайтлы', 'Серии',];
+    var board_names = txtMrth('eventTableHead');
     var board_sizes = [.04, .24, .08, .08, .40, .08, .08]; // width of collumns
     // var board_offsets = [0, .04, .28, .36, .44, .84, .92];
     var board_offsets = [.02, .16, .32, .40, .64, .88, .96]; // x-centers of all columns
@@ -11294,7 +11302,7 @@ function eventLeaderboardScreen() {
                 var cellpos = new Vector2(anchor.x + width * board_offsets[c], anchor.y + (height * (i+0.8)));
                 // var cellsize = new Vector2(width * board_sizes[c], height);
                 if(c == 4) {
-                    fillTextFast(cellpos, textStringLimit(cellinfo[c] ? cellinfo[c] : '*ничего не смотрит*', width * board_sizes[4] * 0.8))
+                    fillTextFast(cellpos, textStringLimit(cellinfo[c] ? cellinfo[c] : txtMrth('eventTableNoWatch'), width * board_sizes[4] * 0.8))
                 } else {
                     fillTextFast(cellpos, cellinfo[c])
                 }
@@ -11336,11 +11344,11 @@ function eventLeaderboardScreen() {
     evscMeta.height = evscMeta.scroll.get();
     // draw inspector states
     if(evscMeta.state == 'empty') {
-        inspDefHeader(inspPos, inspWidth, spacing, 'Статистика игрока');
+        inspDefHeader(inspPos, inspWidth, spacing, txtMrth('eventPlayerStats'));
         var statpos = inspPos.sumxy(0, spacing*3);
         // empty insp info
         scaleFont(14, 'Segoe UI');  ctx.textAlign = 'center';
-        statpos = inspTextBlock(statpos, inspWidth, spacing, 'Выберите игрока справа, чтобы увидеть подробную информацию о нём.', 3, 12);
+        statpos = inspTextBlock(statpos, inspWidth, spacing, txtMrth('eventNoSelect'), 3, 12);
     //
     } else if(evscMeta.state == 'info') {
         // check for selected id
@@ -11350,7 +11358,7 @@ function eventLeaderboardScreen() {
         };
         var playerinfo = _eventLeaderboard[evscMeta.selected];
         // head
-        inspDefHeader(inspPos, inspWidth, spacing, `Статистика ${playerinfo.player_name}`);
+        inspDefHeader(inspPos, inspWidth, spacing, `${txtMrth('prefStats')} ${playerinfo.player_name}`);
         var statpos = inspPos.sumxy(0, spacing*3);
         // avatar
         var avatarsize = new Vector2(200 * _scaleDynamic);
@@ -11362,18 +11370,24 @@ function eventLeaderboardScreen() {
         scaleFont(14, 'Segoe UI');  ctx.textAlign = 'center';
         if(playerinfo.data == null) {
             // empty player data
-            statpos = inspTextBlock(statpos, inspWidth, spacing, 'У игрока нет почти никаких данных. Возможно, он только начал ивент...', 2, 12);
+            statpos = inspTextBlock(statpos, inspWidth, spacing, txtMrth('eventNoData'), 2, 12);
         } else {
             // place, points, coins
-            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.52, 'Место', evscMeta.selected+1, defaultDSS.multPoints);
-            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.52, 'Очки', playerinfo.score, defaultDSS.multPoints);
-            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.52, 'Монеты', playerinfo.data.points, defaultDSS.multPoints);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.52, txt('wPlace'), evscMeta.selected+1, defaultDSS.multPoints);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.52, txt('wPoints'), playerinfo.score, defaultDSS.multPoints);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.52, txt('wCoins'), playerinfo.data.points, defaultDSS.multPoints);
             // last update time
-            scaleFont(14, 'Segoe UI'); ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
-            var lastupdate = `${new Date(playerinfo.last_update).toLocaleDateString()} ${new Date(playerinfo.last_update).toLocaleTimeString()}`;
-            statpos = inspTextBlock(statpos, inspWidth, spacing, 'Последнее обновление: ' + lastupdate, 2, 12);
+            scaleFont(14, 'Segoe UI'); ctx.textAlign = 'center';
+            if(_eventPlayersOnline[playerinfo.player_name]) {
+                ctx.fillStyle = '#9f9';
+                var lastupdate = `${new Date(playerinfo.last_update).toLocaleDateString()} ${new Date(playerinfo.last_update).toLocaleTimeString()} (${txt('wOnline')})`;
+            } else {
+                ctx.fillStyle = '#fff';
+                var lastupdate = `${new Date(playerinfo.last_update).toLocaleDateString()} ${new Date(playerinfo.last_update).toLocaleTimeString()}`;
+            };
+            statpos = inspTextBlock(statpos, inspWidth, spacing, txtMrth('eventLastUpd') + lastupdate, 2, 12);
             // watching header
-            inspDefHeader(statpos.sumxy(0, spacing*2), inspWidth, spacing, 'Сейчас смотрит');
+            inspDefHeader(statpos.sumxy(0, spacing*2), inspWidth, spacing, txtMrth('eventPlayerWatch'));
             statpos = statpos.sumxy(0, spacing*4);
             if(playerinfo.data.watching) {
                 scaleFont(16, 'Segoe UI', 'bold');
@@ -11382,7 +11396,7 @@ function eventLeaderboardScreen() {
                 statpos = inspTextBlock(statpos, inspWidth, spacing, `Пресет: ${playerinfo.data.preset}`, 1, 12);
             } else {
                 scaleFont(14, 'Segoe UI'); ctx.fillStyle = '#fffa';
-                statpos = inspTextBlock(statpos, inspWidth, spacing, '*игрок в данный момент ничего не смотрит*', 3, 12);
+                statpos = inspTextBlock(statpos, inspWidth, spacing, txtMrth('eventNoWatch'), 3, 12);
             };
             // multipliers
             inspDefHeader(statpos.sumxy(0, spacing*2), inspWidth, spacing, txtMrth('charPerms'));
@@ -11392,14 +11406,14 @@ function eventLeaderboardScreen() {
             statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, mrthStuff.perms['series'].name, floatNumber(playerinfo.data.permSeries, 2), defaultDSS.multSeries);
             statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, mrthStuff.perms['quota'].name, floatNumber(playerinfo.data.permQuota, 2) + '%', defaultDSS.multExplore);
             // watch stats
-            inspDefHeader(statpos.sumxy(0, spacing*2), inspWidth, spacing, 'Остальное');
+            inspDefHeader(statpos.sumxy(0, spacing*2), inspWidth, spacing, txt('prefOthers'));
             statpos = statpos.sumxy(0, spacing*4);
             statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, txtMrth('statsAnimes'), playerinfo.data.animes, defaultDSS.stats);
             statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, txtMrth('statsEpisodes'), playerinfo.data.episodes, defaultDSS.stats);
             statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, txtMrth('statsRerolls'), playerinfo.data.rerolls, defaultDSS.multExplore);
             statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, txtMrth('statsExplored'), playerinfo.data.explored, defaultDSS.stats);
             statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.57, txtMrth('statsMissions'), playerinfo.data.missCompleted, defaultDSS.stats);
-            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.5, 'Позиция', `${playerinfo.data.pos.x} ${playerinfo.data.pos.y}`, defaultDSS.multExplore);
+            statpos = inspDoubleStringCentered(statpos, inspWidth, spacing, 0.5, txt('wPos'), `${playerinfo.data.pos.x} ${playerinfo.data.pos.y}`, defaultDSS.multExplore);
             // watch history button
             scaleFont(14, 'Segoe UI');  ctx.textAlign = 'center';
             if(playerinfo.data.history.length > 0) {
@@ -11407,7 +11421,7 @@ function eventLeaderboardScreen() {
                 statpos = inspWideButton(statpos, inspWidth, spacing, buttonEventOpenHistory);
             } else {
                 ctx.fillStyle = '#fffa';
-                statpos = inspTextBlock(statpos, inspWidth, spacing, '*игрок ещё ничего не посмотрел*', 1, 12)
+                statpos = inspTextBlock(statpos, inspWidth, spacing, txtMrth('eventNoHistory'), 1, 12)
             };
             // inventory
             if(selectedInventoryHaveItems(playerinfo.data.inventory)) {
@@ -11423,7 +11437,7 @@ function eventLeaderboardScreen() {
             } else {
                 scaleFont(14, 'Segoe UI'); ctx.textAlign = 'center'; ctx.fillStyle = '#fffa';
                 statpos = statpos.sumxy(0, spacing);
-                statpos = inspSingleString(statpos, inspWidth, spacing, '*инвентарь игрока пуст*', 12)
+                statpos = inspSingleString(statpos, inspWidth, spacing,  txtMrth('eventNoInv'), 12)
             };
             // negatives
             if(selectedInventoryHaveItems(playerinfo.data.effects)) {
@@ -11440,7 +11454,7 @@ function eventLeaderboardScreen() {
             } else {
                 scaleFont(14, 'Segoe UI'); ctx.textAlign = 'center'; ctx.fillStyle = '#fffa';
                 statpos = statpos.sumxy(0, spacing);
-                statpos = inspSingleString(statpos, inspWidth, spacing, '*у игрока нет негативных эффектов*', 12)
+                statpos = inspSingleString(statpos, inspWidth, spacing, txtMrth('eventNoEff'), 12)
             };
             // missions
             if(selectedInventoryHaveItems(playerinfo.data.missions)) {
@@ -11455,14 +11469,14 @@ function eventLeaderboardScreen() {
             } else {
                 scaleFont(14, 'Segoe UI'); ctx.textAlign = 'center'; ctx.fillStyle = '#fffa';
                 statpos = statpos.sumxy(0, spacing);
-                statpos = inspSingleString(statpos, inspWidth, spacing, '*у игрока нет заданий*', 12)
+                statpos = inspSingleString(statpos, inspWidth, spacing, txtMrth('eventNoMiss'), 12)
             };
         };
         evscMeta.height += statpos.y + 150*_scaleDynamic; // for easy-to-read
     //
     } else if(evscMeta.state == 'history') {
         var playerinfo = _eventLeaderboard[evscMeta.selected];
-        inspDefHeader(inspPos, inspWidth, spacing, `История ${playerinfo.player_name}`);
+        inspDefHeader(inspPos, inspWidth, spacing, `${txt('wHistory')} ${playerinfo.player_name}`);
         var statpos = inspPos.sumxy(0, spacing*3);
         // close history button
         scaleFont(14, 'Segoe UI');

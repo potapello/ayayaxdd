@@ -1,7 +1,7 @@
 ﻿/* need to translate
 */
 const _TextTranslations = {
-    'ru': {
+    'ru': { // ETALONE
         // global
         eagName: 'Аниме Рулетка',
         eagFilter: 'Фильтруем Аниме',
@@ -157,6 +157,12 @@ const _TextTranslations = {
         wordReset: 'Сбросить',
         wordApp: 'Приложение',
         wordDatabase: 'Датабаза',
+        wPoints: 'Очки',
+        wPlace: 'Место',
+        wCoins: 'Монеты',
+        wPos: 'Позиция',
+        wHistory: 'История',
+        wOnline: 'Онлайн',
         // prompts
         promIntLess: 'Введите целое число, меньше чем',
         promIntOver: 'Введите целое число, больше чем',
@@ -470,6 +476,22 @@ const _TextTranslations = {
             statsRerolls: 'Сделано рероллов',
             statsExplored: 'Изучено клеток',
             statsMissions: 'Выполнено миссий',
+            // event
+            eventPlayerNoWatch: 'Ничего не смотрим',
+            eventOpenHist: 'История просмотров',
+            eventCloseHist: 'Закрыть историю',
+            eventTableHead: ['№', 'Имя', 'Очки', 'Монеты', 'Что смотрит?', 'Тайтлы', 'Серии',],
+            eventTableNoWatch: '*ничего не смотрит*',
+            eventPlayerStats: 'Статистика игрока',
+            eventNoSelect: 'Выберите игрока справа, чтобы увидеть подробную информацию о нём.',
+            eventNoData: 'У игрока нет почти никаких данных. Возможно, он только начал ивент...',
+            eventLastUpd: 'Последнее обновление: ',
+            eventPlayerWatch: 'Сейчас смотрит',
+            eventNoWatch: '*игрок в данный момент ничего не смотрит*',
+            eventNoHistory: '*игрок ещё ничего не посмотрел*',
+            eventNoInv: '*инвентарь игрока пуст*',
+            eventNoEff: '*у игрока нет негативных эффектов*',
+            eventNoMiss: '*у игрока нет заданий*',
         },
     },
     'en': {
@@ -628,6 +650,12 @@ const _TextTranslations = {
         wordReset: 'Reset',
         wordApp: 'App',
         wordDatabase: 'Database',
+        wPoints: 'Points',
+        wPlace: 'Place',
+        wCoins: 'Coins',
+        wPos: 'Position',
+        wHistory: 'History',
+        wOnline: 'Online',
         // prompts
         promIntLess: 'Enter an integer less than',
         promIntOver: 'Enter an integer greater than',
@@ -941,6 +969,22 @@ const _TextTranslations = {
             statsRerolls: 'Rerolls made',
             statsExplored: 'Cells explored',
             statsMissions: 'Missions completed',
+            // event
+            eventPlayerNoWatch: 'No watching',
+            eventOpenHist: 'View history',
+            eventCloseHist: 'Close history',
+            eventTableHead: ['#', 'Name', 'Points', 'Coins', 'What watching?', 'Titles', 'Series',],
+            eventTableNoWatch: '*not watching anything*',
+            eventPlayerStats: 'Player statistics',
+            eventNoSelect: 'Select a player on the right to see detailed information about them.',
+            eventNoData: 'The player has almost no data. Perhaps they have just started the event...',
+            eventLastUpd: 'Last update: ',
+            eventPlayerWatch: 'Currently watching',
+            eventNoWatch: '*player is not watching anything at the moment*',
+            eventNoHistory: '*player has not watched anything yet*',
+            eventNoInv: '*player inventory is empty*',
+            eventNoEff: '*player has no negative effects*',
+            eventNoMiss: '*player has no tasks*',
         },
     },
 };

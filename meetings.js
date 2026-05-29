@@ -15,6 +15,22 @@
 //      extrastring: () => {return `SOME_TEXT ${value} SOME_TEXT_2`} (interpolated text parts, only in -> ``)
 // 4. Main Rule !!!
 //      All meeting variants must be defined and translated.
+// 5. Functions & values guide 
+//      mrthInventoryComment(mrthInventoryAddItem('item-code')) -> `mrthInventoryComment` [string] create comment about add item function result, `mrthInventoryAddItem('item-code')` adds item with 'item-code' into player inventory
+//      spartMrthGoodIssue(coins?) [void] -> shows visual effect, after good ending. If `coins?` = true, shows coin particles
+//      spartMrthBadIssue() [void] -> shows visual effect, after bad ending
+//      itemFunc.getHonestCost(x) [number] -> returns increased specified number of points (x) depending on how far the player is from the center
+//      mapMeta.points [number] -> this variable stores the number of coins of the player
+//      obj.result [string] -> here you need to send a text about how the meeting ended, briefly (can be result of `mrthInventoryComment`)
+//      mrthReduceItem(item-object) [void] -> removes an item if it is disposable, or takes away 1 charge of the item. If `item-object` = false, does nothing
+//      mrthGetItem('item-code') [item-object OR false] -> returns an item if the player has one, or returns false
+//      mapGenerateSpoilers(x) [void] -> generates good cells in the empty areas around the player, from 1 to 4
+//      mrthInventoryFreeSpace() [boolean] -> returns true, if player inventory have free space
+//      mrthInventoryHaveItems() [boolean] -> returns true, if player have at least 1 item
+//      mrthDeleteItem(item-object) [void] -> deletes `item-object` item from player inventory, if `item-object` = false, does nothing
+//      extrastring: (obj) => {return `String about ${obj.values.value} value.`}, -> the function that returns a string with variable interpolation is displayed at the end of root
+//      callback: (obj) => {return [someFunction('value'), mapMeta.points >= 100, true]}, -> such a callback should be in the routes that contain the choice (choice: []), it determines which choices are available and which are not. The size of the array in the callback should always be equal to the number of selections in the choice
+//      mrthDeleteRandomItem() [void] => deleted random item from player inventory
 let _allMeetings = {};
 //
 _allMeetings['ru'] = {};
@@ -28,7 +44,7 @@ _allMeetings['ru']['hole'] = {
         ],choice: [
             {name: 'Взять', root: 'pick'},{name: 'Ничего не делать', root: 'not'},
         ]}, pick: {text: ['Стоило мне попытаться взять предмет, который он давал мне, он тут же убрал руку под свой плащ. После он бросил на меня недовольный взгляд, развернулся и начал уходить...',
-            'Но вдруг заговорил. Говорил он о том, что одалела его жадность, когда он посетил данный сектор. Нет ему больше выхода отсюда, поскольку один шаг внутрь равняется тысяче шагов назад.',
+            'Но вдруг заговорил. Говорил он о том, что одолела его жадность, когда он посетил данный сектор. Нет ему больше выхода отсюда, поскольку один шаг внутрь равняется тысяче шагов назад.',
             'По моей спине пробежал холод. Пусть я и шел всего три минуты, зато возвращаться отсюда мне придётся двое суток. Дед после добавил, что пытался добраться до центра около полугода из-за желания поживиться добром. Как так получилось, что мы с ним встретились - непонятно.',
             'После он окончательно ушёл, обратно в центр. Мне ничего не оставалось, как просто развернуться и начать этот очень долгий путь назад из сектора. Я потеряю на это очень много сил и времени...',
         ],choice: [
