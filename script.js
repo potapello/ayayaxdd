@@ -2306,10 +2306,11 @@ let _filterHaveAttempts = 0;
 let _filterWorkTime = 0;
 //
 function getListFiltered(filter = filterDefault) {
-    var list = [], anime;
+    var list = [], anime, durat;
     var ts = performance.now();
     for(var i in adb) {
         anime = adb[i];
+        durat = getAnimeDuration(anime);
         _filterHaveAttempts = Number(filterAttempts);
         // sort by episodes
         if(anime['episodes'] < filter.episodeMin) {if(_attemptAny()){continue}};
@@ -2329,8 +2330,8 @@ function getListFiltered(filter = filterDefault) {
         if(filter.durationAllow && anime['type'] != 'MOVIE') {
             if(anime.duration === undefined) {if(_attemptAny(2)){continue}} // 2 points by ignoring two: max & min limits
             else {
-                if(anime.duration.value < filter.durationMin*60) {if(_attemptAny()){continue}};
-                if(anime.duration.value > filter.durationMax*60) {if(_attemptAny()){continue}};
+                if(durat < filter.durationMin) {if(_attemptAny()){continue}};
+                if(durat > filter.durationMax) {if(_attemptAny()){continue}};
             }
         };
         // sort by year
@@ -2467,16 +2468,14 @@ class animeList {
                 }
             };
             //
-            if(anime.duration !== undefined) {
-                if(String(+anime.duration.value) !== 'NaN') {
-                    var dur = Math.round(anime.duration.value / 60);
-                    if(this.durs.min == -1) {
-                        this.durs.min = dur;
-                        this.durs.max = dur
-                    } else {
-                        if(anime.duration.value > this.durs.max) {this.scores.max = +dur}
-                        else if(anime.duration.value < this.durs.min) {this.scores.min = +dur}
-                    }
+            const durat = getAnimeDuration(anime);
+            if(durat) {
+                if(this.durs.min == -1) {
+                    this.durs.min = durat;
+                    this.durs.max = durat
+                } else {
+                    if(durat > this.durs.max) {this.durs.max = +durat}
+                    else if(durat < this.durs.min) {this.durs.min = +durat}
                 }
             }
         }
@@ -2851,10 +2850,17 @@ function searchByMALPage(url) {
     return false
 };
 //
+/** Работает с `title` из `adb`, возвращает длительность эпизода в минутах, возвращает `false` если длительность не указана.*/
 function getAnimeDuration(title) {
     if(title.duration === undefined) {return false};
-    if(title.duration.unit == 'SECONDS') {return title.duration.value}
+    if(title.duration.unit == 'SECONDS' && String(Number(title.duration.value != 'NaN'))) {return Math.round(title.duration.value / 60)}
     else {return false}
+};
+/** Работает с `title` из `adb`, возвращает краткую характеристику тайтла в виде строки. */
+function getAnimeDescription(title, rating=0) {
+    const durat = getAnimeDuration(title);
+    const _rating = rating ? rating : title.score;
+    return `${title.episodes} ep. ${durat ? `${durat} min. ` : ``}| Rating ${_rating} | ${txt(typesDataMap[title.type])} | ${title.status} | ${title.animeSeason.year} | ${txt(seasonsDataMap[title.animeSeason.season][1])}`;
 };
 //
 // @EAG RESIZE WINDOW
@@ -4542,7 +4548,8 @@ let tInfo = {
         tInfo.season = txt([seasonsDataMap[title['animeSeason']['season']][1]]);
         tInfo.type = txt([typesDataMap[title['type']]]);
         tInfo.status = txt([typesDataMap[title['status']]]);
-        if(title['duration'] !== undefined) {tInfo.duration.move(+title.duration.value, tinfTime, easeInOutCubic)} else {tInfo.duration.move(0, tinfTime/2, easeInOutCubic)};
+        var durat = getAnimeDuration(title);
+        if(durat) {tInfo.duration.move(durat, tinfTime, easeInOutCubic)} else {tInfo.duration.move(0, tinfTime/2, easeInOutCubic)};
         // scores
         tInfo.rating = malAnimeID(title['sources']);
         if(title.score == null) {tInfo.score.move(0, tinfTime/2, easeInOutCubic)} else {tInfo.score.move(title.score, tinfTime, easeInOutCubic)} // -1 is `???`
@@ -4564,8 +4571,8 @@ let tInfo = {
             if(tInfo.score.get() == 0) {tInfo.scoret = '???'} else {tInfo.scoret = floatNumber(tInfo.score.get(), 2)};
             //
             tInfo.duration.update();
-            tInfo.durt = txt('infoDuration') + (tInfo.duration.get() == 0 ? '???' : Math.round(tInfo.duration.get()/60)) + txt('infoDuration2');
-            tInfo.durc = tinfDurationColor(tInfo.duration.get() / (filterDefault.durationMax*60));
+            tInfo.durt = txt('infoDuration') + (tInfo.duration.get() == 0 ? '???' : Math.round(tInfo.duration.get())) + txt('infoDuration2');
+            tInfo.durc = tinfDurationColor(tInfo.duration.get() / filterDefault.durationMax);
             //
             tInfo.updater -= deltaTime / 1000
         };
@@ -4609,7 +4616,7 @@ let tInfo = {
         fillTextFast(tInfo.posit(1).sumxy(tInfo.width/2, tInfo.height*0.6), tInfo.durt)
         fillRectRounded(new Vector2(tInfo.width, tInfo.height*0.2), tInfo.posit(1).sumxy(0, tInfo.height*0.85), `#0008`, tInfo.spacing); //bg
         fillRectRounded( // fore
-            new Vector2(tInfo.width * Math.norma(tInfo.duration.get() / (filterDefault.durationMax*60)), tInfo.height*0.2),
+            new Vector2(tInfo.width * Math.norma(tInfo.duration.get() / filterDefault.durationMax), tInfo.height*0.2),
             tInfo.posit(1).sumxy(0, tInfo.height*0.85), tInfo.durc, tInfo.spacing);
         // сезон, год, тип, статус
         ctx.fillStyle = '#fff';
@@ -8625,11 +8632,13 @@ function debugSizeLine(pos, size) {
     ctx.stroke();
 };
 //
-function getWatchPointCount(episodes=1, rating=7, watched=1, multiplier=1, type='tv') {
+function getWatchPointCount(episodes=1, rating=7, watched=1, multiplier=1, type='TV', duration=23) {
     const typemult = type == 'MOVIE' ? 4 : type != 'TV' ? 1.2 : 1;
-    const mult = watched >= episodes ? 1.25 : watched >= episodes/2 ? 1.1 : watched > 0 ? 1 : 0;
-    var _rating = String(Number(rating)) == 'NaN' ? 5 : rating;
-    return Math.round(watched * mult * (1 + (10 - _rating)/20) * multiplier * typemult * mapMeta.permSeries * mapMeta.permPoints)
+    const watchmult = watched > 0 ? 1 + easeInQuad((watched/episodes)) * 0.25 : 0;
+    var durmult = type == 'MOVIE' ? 1 : duration ? duration / 23 : 1; // UNUSED DURING EVENT @rel
+    durmult = durmult < 0.25 ? 0.25 : durmult > 1.5 ? 1.5 : durmult;
+    const ratmult = String(Number(rating)) == 'NaN' ? 1 : 1 + ((10 - rating)/20);
+    return Math.round(watched * watchmult * ratmult * multiplier * typemult * mapMeta.permSeries * mapMeta.permPoints)
 };
 // MARKUP
 //
@@ -8940,7 +8949,7 @@ class inspAnime {
                 // info about marathon_key
                 const mkey = mrthGetItem('marathon_key');
                 if(mkey !== false) {
-                    statpos = inspTextBlock(statpos, width, spacing, txtMrth('aniMkey'), 5, 14);  
+                    statpos = inspTextBlock(statpos, width, spacing, txtMrth('aniMkey'), 5, 14);
                 };
                 // info about items
                 if(this.items.length > 0) {
@@ -8994,8 +9003,7 @@ class inspAnime {
             statpos = inspTextBlock(statpos, width, spacing, this.animedata.title, 2, 24);
             // anime info
             scaleFont(14, 'Segoe UI');
-            const str = `${this.animedata.episodes} ep. | Rating ${this.rating} | ${txt(typesDataMap[this.animedata.type])} | ${this.animedata.status} | ${this.animedata.animeSeason.year} | ${txt(seasonsDataMap[this.animedata.animeSeason.season][1])}`;
-            statpos = inspSingleString(statpos, width, spacing, str, 14);
+            statpos = inspSingleString(statpos, width, spacing, getAnimeDescription(this.animedata, this.rating), 14);
             // external links
             buttonExternalShiki.sizedZoom(new Vector2(40*_scaleDynamic));
             buttonExternalShiki.pos.setv(statpos.sumxy(width/2 - (spacing/2 + 40*_scaleDynamic), 0));
@@ -9031,7 +9039,7 @@ class inspAnime {
             [this.review, statpos] = inspTextInput(statpos, width, spacing, this.review, 12);
             // points & spoilers
             scaleFont(14, 'Segoe UI', 'bold'); ctx.fillStyle = `#06a803`;
-            this.points = getWatchPointCount(this.animedata.episodes, this.rating, this.watched+this.watchplus, presetbase[this.preset].mult * this.multiplier, this.animedata.type);
+            this.points = getWatchPointCount(this.animedata.episodes, this.rating, this.watched+this.watchplus, presetbase[this.preset].mult * this.multiplier, this.animedata.type, getAnimeDuration(this.animedata));
             const pstr = this.watched > 0
             ? `${txtMrth('aniWatchPoints')}: ${this.points} (~${floatNumber(this.points / (this.watched + this.watchplus), 1)} ${txtMrth('aniPointsEp')})`
             : `${txtMrth('aniWatchPoints')}: ${this.points}`;
@@ -11186,8 +11194,10 @@ function collectEventData() {
     // get curently watching
     data.title = null; data.preset = null;
     if(mapMeta.watching) {
-        data.title = mapGetRect(mapMeta.pos).object.animedata.title;
-        data.preset = mapGetRect(mapMeta.pos).object.preset
+        const animeobject = mapGetRect(mapMeta.pos).object;
+        data.title = animeobject.animedata.title;
+        data.preset = animeobject.preset;
+        data.desc = getAnimeDescription(animeobject.animedata)
     };
     //
     return data
@@ -11393,7 +11403,8 @@ function eventLeaderboardScreen() {
                 scaleFont(16, 'Segoe UI', 'bold');
                 statpos = inspTextBlock(statpos, inspWidth, spacing, playerinfo.data.title, 3, 13);
                 scaleFont(14, 'Segoe UI');
-                statpos = inspTextBlock(statpos, inspWidth, spacing, `Пресет: ${playerinfo.data.preset}`, 1, 12);
+                statpos = inspTextBlock(statpos, inspWidth, spacing, playerinfo.data.desc, 1, 12);
+                statpos = inspTextBlock(statpos, inspWidth, spacing, txt('infoPreset') + playerinfo.data.preset, 1, 12);
             } else {
                 scaleFont(14, 'Segoe UI'); ctx.fillStyle = '#fffa';
                 statpos = inspTextBlock(statpos, inspWidth, spacing, txtMrth('eventNoWatch'), 3, 12);
@@ -11447,7 +11458,7 @@ function eventLeaderboardScreen() {
                 // negatives
                 scaleFont(16, 'Segoe UI'); 
                 for(var i in playerinfo.data.effects) {
-                    if(playerinfo.data.inventory[i] !== false) {
+                    if(playerinfo.data.effects[i] !== false) {
                         statpos = inspInventorySlot(statpos, inspWidth, spacing, playerinfo.data.effects[i])
                     }                
                 }
