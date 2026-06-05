@@ -11304,6 +11304,8 @@ function eventLeaderboardScreen() {
     // var board_offsets = [0, .04, .28, .36, .44, .84, .92];
     var board_offsets = [.02, .16, .32, .40, .64, .88, .96]; // x-centers of all columns
     var width = fullsize.x - anchor.x;
+    // check leaderboard
+    if(_eventLeaderboard.length <= 0) {evscMeta.state == 'empty'};
     // draw leaderboard items
     for(var i=0; i<_eventLeaderboard.length+1; i++) {
         // detect hovering
