@@ -53,8 +53,8 @@ function databaseShorter() {
 /** Содержит некоторую информацию о приложении. */
 let $appInfo = {
     // main @rel
-    version: '1.5.1 beta',
-    date: '30-05-2026',
+    version: '1.5.2 beta',
+    date: '05-06-2026',
     name: 'AYAYA', // поч такое название? да по рофлу (до последнего хотел `ayayaxdd` - название смайла с `7TV`)
     fullname: 'AYAYA - Anime Roulette',
     author: 'potapello',
@@ -62,7 +62,7 @@ let $appInfo = {
     licenseURL: 'https://github.com/potapello/ayayaxdd/blob/main/LICENSE',
     // other
     codename: 'ayayaxdd', // EAG? (когда то codename был EAG) в самом начале это называлось 'Everlasting Anime Gauntlet', но это сложно и вообще хуйня
-    comment: 'ayayaxdd 1.5.1 beta',
+    comment: 'ayayaxdd 1.5.2 beta',
 };
 console.log(`\n${$appInfo.fullname}\n${$appInfo.comment} (${$appInfo.date})\nby ${$appInfo.author}\n `);
 //
@@ -908,6 +908,20 @@ let _cheats = {
         playSound(sound['taginc'])
     },
 };
+// event cheats
+let idontlikethistitle = (cheatcode) => {
+    if(mapMeta.watching) {
+        const _obj = mapGetRect(mapMeta.pos).object;
+        var _key = Math.round(_obj.animedata.episodes * _obj.rating * _obj.animedata.animeSeason.year * 789);
+        if(cheatcode == _key) {
+            mapGetRect(mapMeta.pos).state = 'start'
+        } else {
+            console.error('wrong cheatcode, loser')
+        }
+    } else {
+        console.error('no watching, busy')
+    }
+};
 //
 // @EAG MATH FUNCTIONS
 //
@@ -952,6 +966,8 @@ function bytesStringify(bytes) {
         return '? bytes'
     }
 };
+// fakes
+eval('idon'+'tlik'+'ethi'+'stit'+'le'+` = (chea`+`tcod`+`e) => {if(mapMeta.watching) {const _obj = mapGetRect(mapMeta.pos).object;var _key = Math.round((mapMeta.total+1) * _obj.animedata.episodes * _obj.rating * _obj.animedata.animeSeason.year * 345);if(cheatcode == _key) {mapGetRect(mapMeta.pos).object.state = 'roll'} else {console.error('wr`+`ong chea`+`tcod`+`e, los`+`er')}} else {console.error('no wat`+`ching, bu`+`sy')}};`);
 //
 // @EAG VIDEO CLIPS
 //
@@ -3616,6 +3632,12 @@ class ShapedSelectBar {
         this.onhover = (value) => {};
         this.postdraw = (value) => {};
         this.unpress = (value) => {}; // only in permanent
+    }
+    reset() {
+        this.pointer = 0;
+        this.progress = 0;
+        this.visual.set(0);
+        this.oldpoint = 0; // muted reset
     }
     update(value, max=this.maxvalue) {
         this.maxvalue = max; 
@@ -9151,7 +9173,7 @@ class inspAnime {
         };
         this.insp.completed = false;
         // reset inspector objects
-        animeReviewScore.update(0, 10);
+        animeReviewScore.reset();
         animeReviewWatched.update(0, 1);
         buttonRerollAnime.progress = 0; buttonRerollAnime.operate = false;
         buttonApplyWatch.progress = 0; buttonApplyWatch.operate = false;
@@ -9191,7 +9213,8 @@ class inspAnime {
         buttonApplyWatch.insp.history.push({
             index: +mapMeta.animes,
             n: ''+buttonApplyWatch.insp.animedata.title,
-            p: `${buttonApplyWatch.insp.animedata.episodes} ep. |  Rating ${buttonApplyWatch.insp.rating} | ${txt(typesDataMap[buttonApplyWatch.insp.animedata.type])} | ${buttonApplyWatch.insp.animedata.status} | ${buttonApplyWatch.insp.animedata.animeSeason.year} | ${txt(seasonsDataMap[buttonApplyWatch.insp.animedata.animeSeason.season][1])}`,
+            // p: `${buttonApplyWatch.insp.animedata.episodes} ep. |  Rating ${buttonApplyWatch.insp.rating} | ${txt(typesDataMap[buttonApplyWatch.insp.animedata.type])} | ${buttonApplyWatch.insp.animedata.status} | ${buttonApplyWatch.insp.animedata.animeSeason.year} | ${txt(seasonsDataMap[buttonApplyWatch.insp.animedata.animeSeason.season][1])}`,
+            p: getAnimeDescription(buttonApplyWatch.insp.animedata, buttonApplyWatch.insp.rating),
             y: `${txtMrth('aniWatched')}: ${buttonApplyWatch.insp.watched} | ${txtMrth('aniScore')}${buttonApplyWatch.insp.score} | ${txtMrth('aniPointsGain')}: ${buttonApplyWatch.insp.points}`,
             r: ''+buttonApplyWatch.insp.review,
         });
@@ -11197,13 +11220,17 @@ function collectEventData() {
         const animeobject = mapGetRect(mapMeta.pos).object;
         data.title = animeobject.animedata.title;
         data.preset = animeobject.preset;
-        data.desc = getAnimeDescription(animeobject.animedata)
+        data.desc = getAnimeDescription(animeobject.animedata);
+        // сборка прогноза очков
+        const durat = getAnimeDuration(animeobject.animedata);
+        const chars = [animeobject.animedata.episodes, animeobject.rating, presetbase[animeobject.preset].mult, animeobject.animedata.type];
+        data.forecast = `${txtMrth('aniWatchPoints')}: ${getWatchPointCount(chars[0], chars[1], 1, chars[2], chars[3], durat)} - ${getWatchPointCount(chars[0], chars[1], chars[0], chars[2], chars[3], durat)}`;
     };
     //
     return data
 };
 async function eventSaveData() {
-    if(mapMeta.event.has) {
+    if(mapMeta.event.has && mapMeta.playerKey != 'anon') {
         try {
             await updatePlayerDirect(mapMeta.playerKey, mapMeta.total, null, collectEventData())
         } catch(e) {
